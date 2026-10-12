@@ -235,7 +235,7 @@
 
   {#if facingNatives}
     <EdgePanel seat={facingNatives.seat} {viewport} inset={railDepth + target * 0.4} testid="policy-edge-{facingNatives.seat.id}">
-      <PolicyChooser seat={facingNatives.seat.id} tribe={facingNatives.tribe.id} warriors={facingNatives.tribe.warriors} onchoose={(policy) => choosePolicy(facingNatives!.seat.id, policy)} />
+      <PolicyChooser seat={facingNatives.seat.id} tribe={facingNatives.tribe.id} warriors={facingNatives.tribe.warriors} attitude={facingNatives.tribe.attitude} regard={facingNatives.tribe.regard[facingNatives.seat.id] ?? 0} onchoose={(policy) => choosePolicy(facingNatives!.seat.id, policy)} />
     </EdgePanel>
   {/if}
 

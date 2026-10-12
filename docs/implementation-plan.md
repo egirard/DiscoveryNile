@@ -60,7 +60,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 017-native-reaction-and-combat     landed
 018-defeat-escape-and-victory      landed
 019-negotiation-and-trade          landed
-020-tribe-attitude
+020-tribe-attitude                 landed
 021-sickness-starvation-desertion
 022-specialties-in-the-field
 023-caches-and-reorganisation
@@ -197,9 +197,11 @@ Gift offers, insulted chiefs and poisoning, "give everything", trade prices roll
 
 - **As landed:** a calm reaction to policy 3 or 5 opens the `negotiate` phase and a panel at the edge: offer gifts (`natives/offered`, gifts × the larger of two dice against the warriors), give everything but the men (three dice of gifts back), or decline; an insulted chief keeps the gifts (G-64) and reconsiders through the same hide-or-attack and fight as a hostile reaction, poisoning the explorer when too weak to attack (dies, recovers with a bonus, or fails). A satisfied chief rolls a price per item for sale here (animals in the desert, canoes on water, rations per gift, bearers, guides, askaris plus a musket) and the `trade` phase's panel buys and sells one at a time (`natives/traded`, `natives/done`); prior negotiation counts as local knowledge on later contacts. Scenario 019 (seed 18, scripted combat dice): `chief-satisfied` → `traded` → `given-everything`; the insult and poison path is unit-tested.
 
-### 20. Tribe attitude — `020-tribe-attitude`
+### 20. Tribe attitude — `020-tribe-attitude` ✅ landed
 
 Per-tribe attitude persisted and applied, per-explorer bonuses for releasing prisoners, prior-negotiation and published-hex modifiers.
+
+- **As landed:** each tribe keeps `attitude` (towards everyone: −1 for an explorer's defeat, −1 more for his death, evangelism and medicine from 022) and `regard` per seat (+3 for releasing every prisoner); both are reaction modifiers at the rail and are shown on the policy panel. Prior negotiation already counts as local knowledge (019); the published-hex modifier waits for 025. Scenario 020 (seed 18): `prisoners-released` → `remembered` → `calmer-welcome`.
 
 ### 21. Sickness, starvation and desertion — `021-sickness-starvation-desertion`
 

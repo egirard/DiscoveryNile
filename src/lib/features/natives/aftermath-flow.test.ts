@@ -48,7 +48,7 @@ describe('victory: prisoners, the village and the loot (rules §8.4)', () => {
     expect(looted.tribes[1].pending).toBeNull();
     const released = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('natives/spoils', { seat: 'bottom-1', choice: 'release' })]);
     expect(released.explorers[0].chart).toMatchObject({ bearers: 6, food: 100 });
-    expect(released.tribes[1]).toMatchObject({ warriors: 6, attitude: 3, pending: null });
+    expect(released.tribes[1]).toMatchObject({ warriors: 6, attitude: 0, regard: { 'bottom-1': 3 }, pending: null });
   });
   it('a village not found is searched again next turn while the explorer stays', () => {
     const combat = [6, 6, 6, 1, 6, 6, 2, 1, 6, 6, 3, 4, ...Array(12).fill(1)];
@@ -99,5 +99,20 @@ describe('defeat: captivity, escape and death', () => {
     expect(onward.turn!.current).toBe('top-1');
     const again = reduce([...ev4, event('turn/ended', { seat: 'bottom-1' }), ...pass('top-1', onward)]);
     expect(again.turn).toMatchObject({ current: 'top-1', round: 5 }); // bottom-1's seat is skipped
+  });
+});
+
+describe('tribe attitude (rules §8.6)', () => {
+  it('released prisoners earn regard for that explorer alone; a defeat lowers the attitude towards everyone', () => {
+    const combat = [6, 6, 6, 1, 6, 6, 2, 1, 3, 4, /* turn 4, policy 5: */ 1, 1, 1];
+    const { events, pass } = facingTheTribe(combat);
+    const ev3 = [...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('natives/spoils', { seat: 'bottom-1', choice: 'release' }), event('turn/ended', { seat: 'bottom-1' })];
+    const s3 = reduce(ev3);
+    expect(s3.tribes[1]).toMatchObject({ attitude: 0, regard: { 'bottom-1': 3 } });
+    const s4 = reduce([...ev3, ...pass('top-1', s3), event('natives/policy', { seat: 'bottom-1', policy: 5 })]);
+    const reaction = s4.turn!.log.find((l) => l.kind === 'reaction')!;
+    expect(reaction.modifiers).toEqual([{ label: 'distance to port', value: 1 }, { label: 'policy 5', value: 5 }, { label: 'regard for you', value: 3 }]);
+    expect(reaction.outcome).toBe('not hostile (3 within 9)');
+    expect(s4.turn!.phase).toBe('negotiate');
   });
 });

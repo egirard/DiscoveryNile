@@ -12,6 +12,8 @@ export interface ReactionInput {
   /** A guide hired in an adjacent hex, prior negotiation with this tribe, or a published hex (+1 for policies 3 and 5). */
   localKnowledge: boolean;
   attitude: number;
+  /** The tribe's regard for this explorer alone (rules §8.6). */
+  regard: number;
   inDesert: boolean;
   /** Every man rides (rules: "entirely mounted on camels and/or horses"). */
   mounted: boolean;
@@ -41,6 +43,7 @@ export function reactionModifiers(input: ReactionInput): Modifier[] {
   }
   if ((policy === 3 || policy === 5) && input.localKnowledge) out.push({ label: 'local knowledge', value: 1 });
   if (input.attitude) out.push({ label: 'attitude', value: input.attitude });
+  if (input.regard) out.push({ label: 'regard for you', value: input.regard });
   return out;
 }
 

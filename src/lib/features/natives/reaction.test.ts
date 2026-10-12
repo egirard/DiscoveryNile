@@ -4,7 +4,7 @@ import { rngScripted } from '$lib/game/random';
 import { react, reactionModifiers, type ReactionInput } from './reaction';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
-const base: ReactionInput = { policy: 3, distanceToPort: 1, warriors: 12, chart: chart({ askaris: 5, bearers: 6, muskets: 0, food: 100 }), localKnowledge: false, attitude: 0, inDesert: false, mounted: false };
+const base: ReactionInput = { policy: 3, distanceToPort: 1, warriors: 12, chart: chart({ askaris: 5, bearers: 6, muskets: 0, food: 100 }), localKnowledge: false, attitude: 0, regard: 0, inDesert: false, mounted: false };
 const run = (combat: number[], input: Partial<ReactionInput> = {}) => react(rngScripted(1, { combat }), { ...base, ...input });
 
 describe('native reaction (rules §8.2)', () => {
@@ -12,6 +12,7 @@ describe('native reaction (rules §8.2)', () => {
     expect(reactionModifiers(base).map((m) => m.value)).toEqual([1, 3]);
     expect(reactionModifiers({ ...base, policy: 5, chart: chart({ bearers: 3 }) }).map((m) => m.label)).toEqual(['distance to port', 'policy 5', 'no askaris', 'unarmed']);
     expect(reactionModifiers({ ...base, policy: 5, localKnowledge: true, attitude: -1 }).map((m) => m.value)).toEqual([1, 5, 1, -1]);
+    expect(reactionModifiers({ ...base, attitude: -1, regard: 3 }).map((m) => m.label)).toEqual(['distance to port', 'policy 3', 'attitude', 'regard for you']);
     expect(reactionModifiers({ ...base, policy: 4, localKnowledge: true }).map((m) => m.label)).toEqual(['distance to port', 'policy 4']);
   });
   it('target at or above the three dice means no hostility this turn', () => {

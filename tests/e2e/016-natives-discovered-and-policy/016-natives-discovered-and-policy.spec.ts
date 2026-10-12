@@ -76,7 +76,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
           await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
           const s = await state(page);
           expect(s.turn).toMatchObject({ phase: 'natives', policy: null });
-          expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0, pending: null, negotiatedBy: [] } });
+          expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0, pending: null, negotiatedBy: [], regard: {} } });
           expect(s.diagnostics).toEqual([]);
         } }
       ]

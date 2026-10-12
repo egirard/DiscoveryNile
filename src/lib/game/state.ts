@@ -77,6 +77,8 @@ export interface Tribe {
   pending: { by: SeatId; prisoners: number; policy: number; original: number } | null;
   /** Explorers who have negotiated with this tribe (+1 on later contacts with policies 3 and 5). */
   negotiatedBy: SeatId[];
+  /** Attitude earned towards one explorer only, such as for releasing every prisoner (rules §8.6). */
+  regard: Partial<Record<SeatId, number>>;
 }
 
 /** A hex whose terrain has been determined in play. */

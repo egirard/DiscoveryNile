@@ -180,7 +180,7 @@ function lootVillage(state: GameState, explorer: ExplorerState, tribe: Tribe): G
 function reactionInput(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: HexId, policy: number) {
   return {
     policy, distanceToPort: distanceToNearestPort(hex), warriors: tribe.warriors, chart: explorer.chart!,
-    localKnowledge: guideFromAdjacent(explorer, hex) || tribe.negotiatedBy.includes(explorer.seat), attitude: tribe.attitude,
+    localKnowledge: guideFromAdjacent(explorer, hex) || tribe.negotiatedBy.includes(explorer.seat), attitude: tribe.attitude, regard: tribe.regard[explorer.seat] ?? 0,
     inDesert: terrainOf(state, hex) === 'desert', mounted: modeFor(explorer.chart!, false) === 'mounted'
   };
 }
@@ -477,10 +477,10 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
       const tribe = state.tribes[state.map[hex].tribe!];
       if (choice === 'keep') return lootVillage(state, explorer, tribe);
-      // Release every prisoner: the tribe's attitude rises by three (towards this explorer, G-61) and the village is left alone.
+      // Release every prisoner: the tribe's regard for this explorer rises by three (rules §8.6) and the village is left alone.
       const chart = { ...explorer.chart!, bearers: explorer.chart!.bearers - tribe.pending!.prisoners };
       const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: [], outcome: `${tribe.pending!.prisoners} prisoners released: the tribe is grateful` };
-      return { ...replaceExplorer(state, { ...explorer, chart }), tribes: { ...state.tribes, [tribe.id]: { ...tribe, warriors: tribe.warriors + tribe.pending!.prisoners, attitude: tribe.attitude + 3, pending: null } }, turn: { ...state.turn, phase: 'act', log: [...state.turn.log, record] } };
+      return { ...replaceExplorer(state, { ...explorer, chart }), tribes: { ...state.tribes, [tribe.id]: { ...tribe, warriors: tribe.warriors + tribe.pending!.prisoners, regard: { ...tribe.regard, [explorer.seat]: (tribe.regard[explorer.seat] ?? 0) + 3 }, pending: null } }, turn: { ...state.turn, phase: 'act', log: [...state.turn.log, record] } };
     }
     case 'water/taken': {
       const { seat, rations } = event.payload as { seat?: string; rations?: unknown };

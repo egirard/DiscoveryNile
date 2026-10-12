@@ -5,9 +5,13 @@
     seat: string;
     warriors: number;
     tribe: number;
+    /** The tribe's attitude towards everyone, and its regard for this explorer alone (rules §8.6). */
+    attitude?: number;
+    regard?: number;
     onchoose: (policy: number) => void;
   }
-  let { seat, warriors, tribe, onchoose }: Props = $props();
+  let { seat, warriors, tribe, attitude = 0, regard = 0, onchoose }: Props = $props();
+  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const POLICIES = [
     { n: 1, name: 'Defensive stand', note: 'Stay put on guard: no hunting, research or trade, no leaving until next turn' },
     { n: 2, name: 'Retreat', note: 'Back to the hex you came from; your marker here is removed' },
@@ -17,8 +21,12 @@
   ];
 </script>
 
-<div class="chooser" data-testid="policy-panel-{seat}" data-tribe={tribe} role="group" aria-label="Natives: tribe {tribe}, {warriors} warriors. Choose a policy">
-  <p class="heading"><span class="marker">{tribe}</span> {warriors} warriors</p>
+<div class="chooser" data-testid="policy-panel-{seat}" data-tribe={tribe} data-attitude={attitude} data-regard={regard} role="group" aria-label="Natives: tribe {tribe}, {warriors} warriors, attitude {signed(attitude)}{regard ? `, regard for you ${signed(regard)}` : ''}. Choose a policy">
+  <p class="heading"><span class="marker">{tribe}</span> {warriors} warriors
+    {#if attitude || regard}
+      <span class="attitude" data-testid="tribe-attitude-{seat}">· attitude {signed(attitude)}{regard ? ` (${signed(regard)} for you)` : ''}</span>
+    {/if}
+  </p>
   {#each POLICIES as p (p.n)}
     <button data-testid="policy-{p.n}-{seat}" onclick={() => onchoose(p.n)}>
       <span class="n">{p.n}</span>
@@ -42,6 +50,10 @@
     gap: calc(var(--gap) * 0.5);
     font-weight: 700;
     font-size: calc(var(--target) * 0.38);
+  }
+  .attitude {
+    font-weight: 400;
+    font-size: calc(var(--target) * 0.28);
   }
   .marker {
     width: calc(var(--target) * 0.7);
