@@ -58,4 +58,4 @@ resume as per instructions in discovery-nile-wip-012
 
 continue implementation
 
-`Outcome (in progress): 025 (publishing and points), 026 (death and retirement), 027 (superlatives), 028 (epic transits, with a recorded trek replayed), 029 (joint expeditions) and 030 (game end by limit or consensus, standings, continuation on the same map) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..103 and RQ-15..16 logged.`
+`Outcome (in progress): 025 (publishing and points), 026 (death and retirement), 027 (superlatives), 028 (epic transits, with a recorded trek replayed), 029 (joint expeditions), 030 (game end and continuation) and 031 (within-turn undo and reload at every phase) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..106 and RQ-15..16 logged.`

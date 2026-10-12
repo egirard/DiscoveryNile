@@ -2,7 +2,7 @@
 export const SCHEMA_VERSION = 1;
 export const REDUCER_VERSION = 1;
 
-export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'turn/ended' | 'cards/discarded' | 'voyage/booked' | 'expedition/outfitted' | 'expedition/moved' | 'water/taken' | 'natives/policy' | 'natives/spoils' | 'natives/offered' | 'natives/traded' | 'natives/done' | 'specialty/performed' | 'expedition/reorganised' | 'cache/recovered' | 'expedition/returned' | 'hex/published' | 'explorer/retired' | 'expedition/joined' | 'expedition/split' | 'game/end-voted' | 'game/continued';
+export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'turn/ended' | 'cards/discarded' | 'voyage/booked' | 'expedition/outfitted' | 'expedition/moved' | 'water/taken' | 'natives/policy' | 'natives/spoils' | 'natives/offered' | 'natives/traded' | 'natives/done' | 'specialty/performed' | 'expedition/reorganised' | 'cache/recovered' | 'expedition/returned' | 'hex/published' | 'explorer/retired' | 'expedition/joined' | 'expedition/split' | 'game/end-voted' | 'game/continued' | 'turn/undone';
 
 export interface GameEvent {
   id: string;

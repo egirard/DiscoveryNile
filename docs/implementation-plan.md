@@ -263,9 +263,11 @@ The optional round limit (`RQ-10`), ending by consensus, final retirement and pu
 
 - **As landed:** a round limit is chosen beside the start control (`game/started {roundLimit}`, kept on the turn); when the order would wrap past it, or when every seat with an explorer has voted on the retire panel (`game/end-voted`), `endGame` runs: every explorer in Europe publishes all he can (scoring as usual), every explorer retires (the usual erasure), and `state.ended` records the standings and the winner or winners. The table shows the standings in the middle with a continue control; `game/continued` keeps the map (published hexes, their tribes, the superlative records, the transits) and clears scores, explorers, deck and turn so the seats commission anew and start again. Scenario 030 (seed 26, five rounds): `round-limit` → `game-over` → `continued`.
 
-### 31. Reload and undo — `031-reload-and-undo`
+### 31. Reload and undo — `031-reload-and-undo` ✅ landed
 
 Reload at every phase of a turn reconstructs the same screen; confirmation at the edge for consequential actions; a within-turn undo for choices not yet resolved by dice.
+
+- **As landed:** the reducer keeps `state.undo`, the one action that can still be taken back: after every event it compares the states before and after, and an event made by the current seat that rolled no die (same `rng`), drew no card (same `deck`), kept the turn and did not end the game is undoable; `turn/undone {seat, eventId}` restores the state it was applied to (one level, as part of the event log, so a reload replays it). The rail shows a dashed undo control beside the turn controls while it applies. Reload reconstructs every phase from the log, as before; the choosers that live only on the screen (the port chooser, the claim, the reorganise and split panels) close on reload. Confirmations at the edge: ending the turn, outfitting, retiring, splitting; publication opens a deliberate claim. Scenario 031 (seed 26): `undone-voyage` → `reloaded-discarding` → `undone-outfit` → `resolved-by-dice` → `reloaded-mid-turn`.
 
 ### 32. Responsive pass at 27" and 55" — `032-responsive-27-and-55`
 

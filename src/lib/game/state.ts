@@ -255,6 +255,11 @@ export interface GameState {
   ended: GameEnd | null;
   /** How many games have been played on this map (rules: each may start where the last left off). */
   games: number;
+  /**
+   * The one action that can still be taken back this turn: the last event, if it rolled no dice, drew no card and
+   * ended no turn (docs/tabletop-ux.md: an undo within the same turn). `before` is the state it was applied to.
+   */
+  undo: { eventId: string; seat: SeatId; type: string; before: GameState } | null;
   diagnostics: Diagnostic[];
 }
 
@@ -266,5 +271,5 @@ export interface GameEnd {
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, diagnostics: [] };
 }

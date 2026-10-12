@@ -11,8 +11,10 @@
     /** Offered in Europe: opens the port chooser on the board. */
     onsail?: (() => void) | null;
     sailing?: boolean;
+    /** Offered while the last action of the turn can still be taken back (no dice rolled, no card drawn). */
+    onundo?: (() => void) | null;
   }
-  let { seat, phase, onend, onsail = null, sailing = false }: Props = $props();
+  let { seat, phase, onend, onsail = null, sailing = false, onundo = null }: Props = $props();
   let confirming = $state(false);
   $effect(() => {
     if (phase !== 'act') confirming = false;
@@ -20,6 +22,11 @@
 </script>
 
 <span class="controls" data-testid="turn-controls-{seat}" data-phase={phase}>
+  {#if onundo && !confirming}
+    <button class="undo" data-testid="undo-{seat}" aria-label="Take back the last action" onclick={onundo}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></svg>
+    </button>
+  {/if}
   {#if phase === 'discard'}
     <span class="prompt" data-testid="discard-prompt-{seat}" aria-label="Over the hand limit: tap a card to discard it">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -95,5 +102,9 @@
   .prompt {
     background: #e7b4a8;
     cursor: default;
+  }
+  .undo {
+    background: var(--paper);
+    border-style: dashed;
   }
 </style>

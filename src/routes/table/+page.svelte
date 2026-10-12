@@ -486,6 +486,7 @@
                 onend={() => endTurn(seat)}
                 onsail={explorer.location.kind === 'europe' ? () => (sailingSeat = sailingSeat === seat.id ? null : seat.id) : null}
                 sailing={sailingSeat === seat.id}
+                onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null}
               />
             {:else if explorer.lastMeal}
               <RollLog seat={seat.id} log={[explorer.lastMeal]} />
@@ -504,7 +505,7 @@
           {:else if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
             <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
             <RollLog seat={seat.id} log={gameState.turn.log} />
-            <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} />
+            <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null} />
           {:else}
             <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
           {/if}
