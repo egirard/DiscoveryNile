@@ -8,6 +8,8 @@ Game rules come from the pinned, private rules reference described in [`docs/rul
 
 ## Status
 
+Now deployed.
+
 Phase 1 (bootstrap): template imported, documentation filled in, rules reference vendored and pinned, implementation plan written. The seed from the template (scenarios 001 and 002) builds and passes. The first DiscoveryNile slice is **003** in [`docs/implementation-plan.md`](docs/implementation-plan.md), with its issue spec in [`.github/ISSUES/003-africa-board-and-six-seats.md`](.github/ISSUES/003-africa-board-and-six-seats.md).
 
 ## Getting started
