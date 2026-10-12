@@ -18,8 +18,8 @@ export function dryDesert(camp: Camp): boolean {
 }
 
 /** Water rations one turn in the dry desert costs: one per man, four per horse or camel (G-48). */
-export function waterPerTurn(chart: Chart): number {
-  return 1 + chart.guides + chart.bearers + chart.askaris + 4 * (chart.horses + chart.camels);
+export function waterPerTurn(chart: Chart, explorers = 1): number {
+  return explorers + chart.guides + chart.bearers + chart.askaris + 4 * (chart.horses + chart.camels);
 }
 
 export interface DrinkResult {
@@ -35,13 +35,13 @@ export interface DrinkResult {
  * The evening's water in a dry desert hex: men drink first (the explorer, askaris, bearers, then guides
  * go without in reverse), then horses and camels; anyone without water dies.
  */
-export function drink(chart: Chart, camp: Camp): DrinkResult | null {
+export function drink(chart: Chart, camp: Camp, explorers = 1): DrinkResult | null {
   if (!dryDesert(camp)) return null;
   const next = { ...chart };
   let water = next.water;
   const died = { guides: 0, bearers: 0, askaris: 0, horses: 0, camels: 0 };
   const take = (n: number) => { const t = Math.min(water, n); water -= t; return t; };
-  const explorerDrank = take(1);
+  const explorerDrank = take(explorers) === explorers; // a joint expedition's explorers drink first, together
   for (const type of ['askaris', 'bearers', 'guides'] as const) {
     const got = take(next[type]);
     died[type] = next[type] - got;
@@ -121,9 +121,9 @@ export interface MealResult {
  * desert eat four rations each from the stores. When the stores run short, horses and then camels are
  * shot for ten rations apiece (rules §11) before anyone goes hungry.
  */
-export function feed(chart: Chart, sick: Sickness, camp: Camp, game: number): MealResult {
+export function feed(chart: Chart, sick: Sickness, camp: Camp, game: number, explorers = 1): MealResult {
   const next = { ...chart };
-  const men = 1 + next.guides + next.bearers + next.askaris;
+  const men = explorers + next.guides + next.bearers + next.askaris;
   const fromGame = Math.min(game, men);
   const desert = camp.terrain === 'desert';
   let need = men - fromGame + (desert ? 4 * next.horses : 0);

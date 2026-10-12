@@ -77,6 +77,15 @@ export interface ExplorerState {
   fate: { kind: 'died' | 'retired'; round: number; cause: string } | null;
   /** A crossing of the continent completed on this trip (rules §12, Epic Transits): its route hexes earn a bonus when published. */
   transit: Transit | null;
+  /** The joint expedition this explorer travels with (rules §13), by id. */
+  party: number | null;
+}
+
+/** A joint expedition (rules §13): its chart is held by the leader; it moves on the turn of its last member in order. */
+export interface Party {
+  id: number;
+  leader: SeatId;
+  members: SeatId[];
 }
 
 export interface Transit {
@@ -141,7 +150,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit' | 'party';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -236,9 +245,11 @@ export interface GameState {
   superlatives: SuperlativeRecord[];
   /** Crossings of the continent completed, in order (rules §12, Epic Transits). */
   transits: Transit[];
+  /** Joint expeditions on the board, by id (rules §13). */
+  parties: Record<number, Party>;
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, diagnostics: [] };
 }

@@ -14,6 +14,7 @@ import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
 import { sickCarried } from '$features/rations/rations';
 import { completeTransit, portAt } from '$features/scoring/transits';
+import { alive, holderOf, members, moverOf, partyOf } from '$features/expedition/party';
 
 /** The hex an explorer stands on, if on the board. */
 export function standingHex(e: ExplorerState): HexId | null {
@@ -111,11 +112,14 @@ function cataractAt(state: GameState, id: HexId): boolean {
 
 /** What a step from `from` to `to` would cost and by what mode, or why it is not allowed. */
 function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): { mode: Mode; cost: number; unknown: boolean; water: boolean } | string {
-  const chart = e.chart!;
-  if (sickCarried(chart, e.sick).halted) return 'the sick cannot all be carried: the expedition halts';
-  if (researchPending(e).length) return 'the naturalist must study this hex first';
+  const holder = holderOf(state, e); // a joint expedition's chart is its leader's (rules §13)
+  const crew = members(state, e);
+  const chart = holder.chart!;
+  if (sickCarried(chart, holder.sick).halted) return 'the sick cannot all be carried: the expedition halts';
+  if (crew.some((m) => researchPending(m).length)) return 'the naturalist must study this hex first';
   const water = waterLink(state, from, to);
-  const laden = { ...chart, food: chart.food + e.specimens.zoology + e.specimens.geology }; // specimens weigh a ration each (rules §9)
+  const specimens = crew.reduce((sum, m) => sum + m.specimens.zoology + m.specimens.geology, 0);
+  const laden = { ...chart, food: chart.food + specimens }; // specimens weigh a ration each (rules §9)
   const mode: Mode = state.turn!.movement?.mode ?? modeFor(laden, water);
   const terrain = terrainOf(state, to);
   if (mode === 'canoe' && !water) return 'canoes must follow the water';
@@ -133,7 +137,9 @@ function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): {
 /** Where the expedition may step now, with the mode and cost of each step. */
 export function moveTargets(state: GameState, e: ExplorerState): MoveTarget[] {
   const from = standingHex(e);
-  if (!from || e.location.kind === 'captive' || !e.chart || !state.turn || state.turn.current !== e.seat || state.turn.phase !== 'act' || state.turn.moved) return [];
+  if (!from || e.location.kind === 'captive' || !holderOf(state, e).chart || !state.turn || state.turn.current !== e.seat || state.turn.phase !== 'act' || state.turn.moved) return [];
+  const party = partyOf(state, e);
+  if (party && moverOf(state, party) !== e.seat) return []; // the joint expedition moves on its last member's turn
   const out: MoveTarget[] = [];
   for (const hex of neighbours(from)) {
     if (!isLand(hex)) continue;
@@ -163,7 +169,10 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       const from = standingHex(explorer);
       if (explorer.location.kind === 'captive') return 'the explorer is held prisoner';
       if (!from) return 'the explorer is not in Africa';
-      if (!explorer.chart) return 'the expedition is not outfitted';
+      const party = partyOf(state, explorer);
+      if (party && moverOf(state, party) !== explorer.seat) return 'the joint expedition moves on its last member\u2019s turn';
+      const holder = holderOf(state, explorer);
+      if (!holder.chart) return 'the expedition is not outfitted';
       if (!Array.isArray(path) || path.length !== 1 || typeof path[0] !== 'string') return 'expedition/moved needs a path of one hex';
       const target = path[0] as HexId;
       if (!isLand(target)) return `${target} is not on the board`;
@@ -172,16 +181,20 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       if (typeof plan === 'string') return plan;
       if (state.turn.moved) return 'the expedition cannot move again this turn'; // halted by a disaster, a stand, or the voyage home
       const { mode, cost } = plan;
-      const chart = explorer.chart;
+      const chart = holder.chart;
+      const crew = members(state, explorer); // a joint expedition moves as one (rules §13)
+      const seats = crew.map((m) => m.seat);
       let movement: MovementBudget = state.turn.movement ?? budgetFor(mode, chart);
 
       let rng = state.rng!;
       const log: RollRecord[] = [];
       const finish = (st: GameState, mv: MovementBudget) => ({ ...st, rng, turn: { ...st.turn!, movement: mv, moved: mv.halted || mv.spent >= mv.points, log: [...st.turn!.log, ...log] } });
+      const learn = (st: GameState) => crew.reduce((acc, m) => { const e = alive(acc, m.seat)!; return e.known.includes(target) ? acc : replaceExplorer(acc, { ...e, known: [...e.known, target] }); }, st);
 
       if (plan.unknown) {
+        // One lost check for the whole expedition (rules §13), with the holder's guides.
         const river = riverDirection(courseAt(state, from), directionTo(from, target) as Direction);
-        const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(explorer, from), ailing: false });
+        const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(holder, from), ailing: false });
         rng = check.rng;
         const { result } = check;
         log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, outcome: result.lost ? 'lost' : 'found the way', lost: result.lost });
@@ -206,11 +219,11 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         }
         map = {
           ...map,
-          [target]: { terrain, markers: [explorer.seat], publishedBy: null, river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? [explorer.seat] : [], peakFeet: water.result.peakFeet, tribe: null, nativesCheckedBy: [] }
+          [target]: { terrain, markers: seats, publishedBy: null, river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? seats : [], peakFeet: water.result.peakFeet, tribe: null, nativesCheckedBy: [] }
         };
-      } else if (!hexAt(target)?.terrain && !map[target].publishedBy && !map[target].markers.includes(explorer.seat)) {
+      } else if (!hexAt(target)?.terrain && !map[target].publishedBy && seats.some((s) => !map[target].markers.includes(s))) {
         // Entering another explorer's unpublished hex places a marker too (rules §7.6); a published hex takes none.
-        map = { ...map, [target]: { ...map[target], markers: [...map[target].markers, explorer.seat] } };
+        map = { ...map, [target]: { ...map[target], markers: [...map[target].markers, ...seats.filter((s) => !map[target].markers.includes(s))] } };
       }
       // A later explorer makes his own oasis check on first entering a mapped, river-less desert hex (G-49).
       if (!newlyMapped && map[target] && oasisSearchable(map[target], explorer.seat)) {
@@ -219,12 +232,11 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         map = { ...map, [target]: search.hex };
         log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' });
       }
-      const known = explorer.known.includes(target) ? explorer.known : [...explorer.known, target];
 
       // Terrain conflict (rules §7.1): the hex is mapped and claimed, but the expedition turns back.
       if (!passable(mode, terrain, chart)) {
         log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back` });
-        return finish({ ...replaceExplorer(state, { ...explorer, known }), map }, { ...movement, spent: movement.spent + cost, halted: true });
+        return finish({ ...learn(state), map }, { ...movement, spent: movement.spent + cost, halted: true });
       }
 
       // Canoes first discovering a cataract going downstream: d6 − 3 canoes go over the falls (rules §7.5).
@@ -237,7 +249,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : 'every canoe survives the cataract' });
       }
       // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once
-      // here, unless the hex is published (then the world knows there are none).
+      // here, unless the hex is published (then the world knows there are none). A joint expedition rolls once.
       let tribes = state.tribes;
       let phase: 'act' | 'natives' = 'act';
       const entered = map[target];
@@ -255,26 +267,30 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
               phase = 'natives';
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
             } else {
-              map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, explorer.seat] } };
+              map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, ...seats.filter((s) => !entered.nativesCheckedBy.includes(s))] } };
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: 'no natives' });
             }
           }
         }
       }
-      // A zoologist or geologist must spend a turn studying every unpublished hex he enters (rules §9).
-      const naturalist = explorer.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain && !map[target]?.publishedBy;
-      const research = naturalist ? { hex: target, done: [] as ('zoology' | 'geology')[] } : null;
-      let moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from, research };
-      // Stepping onto a port across the continent from the port of entry completes an epic transit (rules §12).
+      // Every member steps: a zoologist or geologist among them must spend a turn studying an unpublished hex (rules §9), and
+      // stepping onto a port across the continent from his port of entry completes an epic transit (rules §12).
+      let next: GameState = { ...state, map, tribes };
       let transits = state.transits;
-      const port = portAt(target);
-      const crossing = port ? completeTransit({ ...state, map }, moved, port) : null;
-      if (crossing) {
-        moved = { ...moved, transit: crossing.transit };
-        transits = [...transits, crossing.transit];
-        log.push({ kind: 'transit', seat: explorer.seat, hex: target, rolls: [], outcome: crossing.note });
+      for (const m of crew) {
+        const known = m.known.includes(target) ? m.known : [...m.known, target];
+        const naturalist = m.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain && !map[target]?.publishedBy;
+        let moved: ExplorerState = { ...m, location: { kind: 'hex', hex: target }, known, chart: m.seat === holder.seat ? nextChart : m.chart, cameFrom: from, research: naturalist ? { hex: target, done: [] } : null };
+        const port = portAt(target);
+        const crossing = port ? completeTransit({ ...next, transits }, moved, port) : null;
+        if (crossing) {
+          moved = { ...moved, transit: crossing.transit };
+          transits = [...transits, crossing.transit];
+          log.push({ kind: 'transit', seat: m.seat, hex: target, rolls: [], outcome: crossing.note });
+        }
+        next = replaceExplorer(next, moved);
       }
-      const done = finish({ ...replaceExplorer(state, moved), map, tribes, transits }, { ...movement, spent: movement.spent + cost });
+      const done = finish({ ...next, transits }, { ...movement, spent: movement.spent + cost });
       return phase === 'natives' ? { ...done, turn: { ...done.turn!, phase } } : done;
     }
     default:

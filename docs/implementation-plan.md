@@ -251,9 +251,11 @@ Detecting the four crossings, route uniqueness, bonus computation, the north-eas
 
 - **As landed:** `scoring/transits.ts` recognises a crossing when an expedition steps onto a port across the continent from its port of entry (the route is every hex passed through on the trip, from `known`); the pre-printed hexes at the north-east edge (columns 22 and beyond, rows up to 11) bar it, the route must differ from every earlier route on that crossing, and four explorers at most may score one. The explorer carries the `transit` (and `state.transits` keeps them in order); each route hex he publishes earns 1, ½, ⅓ or ¼ point by his order (RQ-16), shown in the publish note and counted in the tally with its fraction. Scenario 028 (seed 43) replays a trek recorded in `trek.json` through the table's event log up to the last step onto Khartoum: `crossing` → `route-published`.
 
-### 29. Joint expeditions — `029-joint-expeditions`
+### 29. Joint expeditions — `029-joint-expeditions` ✅ landed
 
 Pooling money, moving as one on the last member's turn, joining and splitting, shared lost checks and disasters, disputed assets.
+
+- **As landed:** a party (`state.parties`, `explorer.party`) has one chart, held by its leader (`expedition/party.ts`: `holderOf`, `moverOf`, `leaveParty`). In Europe `voyage/booked` takes `with`: companions pool their hands' cash (tickets are never pooled) and sail and land with the leader, whose turn lands everyone. The party moves on the turn of the member last in the order, as one: one lost check, one natives roll, markers and knowledge for every member, each naturalist owing his study. The leader's turn draws the disaster and feeds every explorer from the one chart; the fight is the party's, and a defeat sends each member to the consequences table and breaks the party up. `expedition/joined` merges a chart into another's party where they stand (not on policy 1 or 2); `expedition/split` leaves with a share chosen at the edge, the rest passing to the next member; death or sailing home leaves the men with the companions. Scenario 029 (seed 26): `pooled` → `landed-together` → `moved-as-one` → `split`.
 
 ### 30. Game end and continuation — `030-game-end-and-continuation`
 

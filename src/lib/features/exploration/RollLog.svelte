@@ -35,7 +35,7 @@
           <span class="note" data-testid="meal-note-{seat}">{r.outcome}</span>
         {:else if recent && r.kind === 'natives'}
           <span class="note" data-testid="natives-note-{seat}">{r.outcome}</span>
-        {:else if recent && (r.kind === 'reaction' || r.kind === 'combat' || r.kind === 'defeat' || r.kind === 'captivity' || r.kind === 'victory' || r.kind === 'loot' || r.kind === 'negotiation' || r.kind === 'poison' || r.kind === 'trade' || r.kind === 'specialty' || r.kind === 'cache' || r.kind === 'published' || r.kind === 'transit')}
+        {:else if recent && (r.kind === 'reaction' || r.kind === 'combat' || r.kind === 'defeat' || r.kind === 'captivity' || r.kind === 'victory' || r.kind === 'loot' || r.kind === 'negotiation' || r.kind === 'poison' || r.kind === 'trade' || r.kind === 'specialty' || r.kind === 'cache' || r.kind === 'published' || r.kind === 'transit' || r.kind === 'party')}
           <span class="note" data-testid="{r.kind}-note-{seat}">{r.outcome}</span>
         {/if}
         {#if r.modifiers?.length}

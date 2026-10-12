@@ -302,7 +302,11 @@
     {/each}
     {#each tokens as t (t.seat)}
       {@const c = centre(t.hex)}
-      <g data-testid="board-token-{t.seat}" data-hex={t.hex} class="token" aria-label="Explorer of seat {t.seat} at {t.hex}" transform="translate({c.x} {c.y})">
+      {@const sharing = tokens.filter((o) => o.hex === t.hex)}
+      {@const k = sharing.findIndex((o) => o.seat === t.seat)}
+      {@const dx = sharing.length > 1 ? (k - (sharing.length - 1) / 2) * radius * 0.5 : 0}
+      <!-- Explorers sharing a hex (a joint expedition, or a meeting) sit side by side. -->
+      <g data-testid="board-token-{t.seat}" data-hex={t.hex} data-shared={sharing.length > 1} class="token" aria-label="Explorer of seat {t.seat} at {t.hex}" transform="translate({c.x + dx} {c.y})">
         <circle r={radius * 0.42} fill={colourFor(t.seat)} />
       </g>
     {/each}

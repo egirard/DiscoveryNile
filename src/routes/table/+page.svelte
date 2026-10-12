@@ -12,8 +12,11 @@
   import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
   import ExplorerToken from '$features/explorers/ExplorerToken.svelte';
   import { explorerAt } from '$features/explorers/reducer';
+  import { colourFor } from '$features/explorers/colours';
   import { fallenAt } from '$features/explorers/fate';
   import RetirePanel from '$features/explorers/RetirePanel.svelte';
+  import SplitPanel from '$features/expedition/SplitPanel.svelte';
+  import { chartOf, holderOf, moverOf, partyOf } from '$features/expedition/party';
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
@@ -90,11 +93,17 @@
     if (!sailingSeat || gameState.turn?.current !== sailingSeat) return null;
     const explorer = explorerAt(gameState, sailingSeat);
     if (!explorer || explorer.location.kind !== 'europe') return null;
-    const cash = handValue(explorer.hand);
+    const cash = handValue(explorer.hand) + pooling.filter((s) => poolable.includes(s)).reduce((sum, s) => sum + handValue(explorerAt(gameState, s)!.hand), 0);
     const tickets = new Set(explorer.hand.map((id) => cardOf(id).donation).filter((d) => d.kind === 'ticket').map((d) => (d as { port: PortId }).port));
     const out: Partial<Record<PortId, PortChoice>> = {};
     for (const id of Object.keys(BOARD.ports) as PortId[]) out[id] = { fare: tickets.has(id) ? 'ticket' : cash >= PASSAGE_FARE ? 'cash' : 'none' };
     return out;
+  });
+  // Companions in Europe chosen to pool their donations and sail along (rules §13).
+  let pooling = $state<SeatId[]>([]);
+  const poolable = $derived.by(() => {
+    if (!sailingSeat) return [];
+    return gameState.explorers.filter((e) => e.seat !== sailingSeat && e.location.kind === 'europe' && e.party === null).map((e) => e.seat);
   });
   async function bookPassage(port: PortId) {
     const seat = sailingSeat;
@@ -104,8 +113,26 @@
       const d = cardOf(id).donation;
       return d.kind === 'ticket' && d.port === port;
     });
+    const companions = pooling.filter((s) => poolable.includes(s));
     sailingSeat = null;
-    await game?.append('voyage/booked', { seat, port, ticketCardId: ticket ?? null });
+    pooling = [];
+    await game?.append('voyage/booked', { seat, port, ticketCardId: ticket ?? null, ...(companions.length ? { with: companions } : {}) });
+  }
+  let splittingSeat = $state<string | null>(null);
+  const splitting = $derived.by(() => {
+    if (!splittingSeat || gameState.turn?.current !== splittingSeat || gameState.turn.phase !== 'act') return null;
+    const seat = seats.find((s) => s.id === splittingSeat);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    const chart = explorer && chartOf(gameState, explorer);
+    if (!seat || !explorer || !partyOf(gameState, explorer) || !chart) return null;
+    return { seat, chart };
+  });
+  /** Other explorers standing in the same hex, not yet of the same party: candidates to join forces with. */
+  function joinable(seat: string) {
+    const explorer = explorerAt(gameState, seat);
+    const hex = explorer && standingHex(explorer);
+    if (!explorer || !hex || explorer.location.kind === 'captive' || explorer.party !== null) return [];
+    return gameState.explorers.filter((e) => e.seat !== seat && e.location.kind !== 'dead' && e.location.kind !== 'captive' && standingHex(e) === hex && (e.chart || chartOf(gameState, e)));
   }
   async function outfit(seat: Seat, purchases: Purchases) {
     await game?.append('expedition/outfitted', { seat: seat.id, purchases });
@@ -170,10 +197,11 @@
     const seat = seats.find((s) => s.id === reorganisingSeat);
     const explorer = seat && explorerAt(gameState, seat.id);
     const hex = explorer && standingHex(explorer);
-    if (!seat || !explorer || !explorer.chart || !hex || explorer.location.kind === 'captive') return null;
+    const chart = explorer && chartOf(gameState, explorer);
+    if (!seat || !explorer || !chart || !hex || explorer.location.kind === 'captive') return null;
     // One's own caches, and anyone's in a published hex (RQ-3).
     const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && (c.seat === seat.id || !!gameState.map[hex]?.publishedBy) && c.round < gameState.turn!.round);
-    return { seat, explorer, caches };
+    return { seat, explorer: { ...explorer, chart }, caches };
   });
   // Publishing: the current seat, in Europe, opens the claim on the board; a tap on a marker hex publishes it.
   let publishingSeat = $state<string | null>(null);
@@ -309,6 +337,12 @@
     </EdgePanel>
   {/if}
 
+  {#if splitting}
+    <EdgePanel seat={splitting.seat} {viewport} inset={railDepth + target * 0.4} testid="split-edge-{splitting.seat.id}">
+      <SplitPanel seat={splitting.seat.id} chart={splitting.chart} onsplit={(take) => { const seat = splitting!.seat.id; splittingSeat = null; game?.append('expedition/split', { seat, take }); }} onclose={() => (splittingSeat = null)} />
+    </EdgePanel>
+  {/if}
+
   {#if reorganising}
     <EdgePanel seat={reorganising.seat} {viewport} inset={railDepth + target * 0.4} testid="reorganise-edge-{reorganising.seat.id}">
       <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches}
@@ -345,10 +379,22 @@
                 <Card {id} seat={seat.id} onselect={discarding ? (c) => discard(seat, c) : undefined} />
               {/each}
             </span>
+            {@const party = partyOf(gameState, explorer)}
             {#if explorer.chart}
               <ChartSummary seat={seat.id} chart={explorer.chart} sick={explorer.sick} specimens={explorer.specimens} />
+            {:else if party}
+              <!-- A companion's rail: the men icon and the leader's colour; the leader's own rail counts the explorers. -->
+              <span class="party" data-testid="party-{seat.id}" data-party={party.id} data-leader={party.leader} data-mover={moverOf(gameState, party)} aria-label="In a joint expedition led by {party.leader}; it moves on {moverOf(gameState, party)}'s turn">
+                <Icon name="men" size="1.2em" />
+                {#if party.leader === seat.id}{party.members.length}{:else}<span class="leader" style="--colour:{colourFor(holderOf(gameState, explorer).seat)}"></span>{/if}
+              </span>
             {:else}
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
+            {/if}
+            {#if party && explorer.chart}
+              <span class="party" data-testid="party-{seat.id}" data-party={party.id} data-leader={party.leader} data-mover={moverOf(gameState, party)} aria-label="Leading a joint expedition with {party.members.filter((s) => s !== seat.id).join(', ')}; it moves on {moverOf(gameState, party)}'s turn">
+                <Icon name="men" size="1.2em" />{party.members.length}
+              </span>
             {/if}
             <Tally seat={seat.id} points={scoreOf(gameState, seat.id as SeatId)} />
             {#if mine}
@@ -378,21 +424,40 @@
                   {/each}
                 </span>
               {/if}
-              {#if explorer.chart && gameState.turn.phase === 'act' && portOf(explorer)}
+              {#if sailingSeat === seat.id && poolable.length}
+                <span class="pooling" data-testid="pooling-{seat.id}">
+                  {#each poolable as other (other)}
+                    <button class="pool" class:on={pooling.includes(other)} data-testid="pool-{other}-{seat.id}" aria-pressed={pooling.includes(other)} aria-label="{pooling.includes(other) ? 'Sail without' : 'Pool donations and sail with'} {other}" style="--colour:{colourFor(other)}" onclick={() => (pooling = pooling.includes(other) ? pooling.filter((s) => s !== other) : [...pooling, other])}><span class="dot"></span></button>
+                  {/each}
+                </span>
+              {/if}
+              {#if gameState.turn.phase === 'act' && !gameState.turn.moved}
+                {#each joinable(seat.id) as other (other.seat)}
+                  <button class="reorganise" data-testid="join-{other.seat}-{seat.id}" aria-label="Join forces with {other.seat}'s expedition" onclick={() => game?.append('expedition/joined', { seat: seat.id, with: other.seat })}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2M12 20v-2a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v2" /></svg>
+                  </button>
+                {/each}
+              {/if}
+              {#if party && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive'}
+                <button class="reorganise" data-testid="split-{seat.id}" aria-label="Leave the joint expedition with a share" aria-pressed={splittingSeat === seat.id} onclick={() => (splittingSeat = splittingSeat === seat.id ? null : seat.id)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="8" r="3" /><circle cx="17" cy="8" r="3" /><path d="M2 20v-2a5 5 0 0 1 5-5M22 20v-2a5 5 0 0 0-5-5" /><path d="M9 15l6 6M15 15l-6 6" /></svg>
+                </button>
+              {/if}
+              {#if (explorer.chart || party) && gameState.turn.phase === 'act' && portOf(explorer)}
                 <button class="reorganise" data-testid="sail-home-{seat.id}" aria-label="Dismiss the expedition and sail home to Europe" onclick={() => game?.append('expedition/returned', { seat: seat.id })}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c-4 2-6 5-6 9h6" /><path d="M12 6c3 1 5 3 5 6h-5" /></svg>
                 </button>
               {/if}
-              {#if explorer.chart && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
+              {#if chartOf(gameState, explorer) && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
                 <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="Reorganise the expedition: cache, dismiss, turn loose or eat" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10H4z" /><path d="M4 9l2-4h12l2 4" /><path d="M10 13h4" /></svg>
                 </button>
               {/if}
-              {#if explorer.chart && waterAvailable(gameState, explorer)}
+              {#if chartOf(gameState, explorer) && waterAvailable(gameState, explorer)}
                 <span class="water-controls" data-testid="water-controls-{seat.id}">
                   <button class="water" data-testid="take-water-{seat.id}" aria-label="Take {WATER_STEP} water rations" onclick={() => takeWater(seat.id, WATER_STEP)}><Icon name="water" size="1.2em" /><span class="sign">+</span></button>
-                  {#if explorer.chart.water > 0}
-                    <button class="water" data-testid="pour-water-{seat.id}" aria-label="Pour out {Math.min(WATER_STEP, explorer.chart.water)} water rations" onclick={() => takeWater(seat.id, -Math.min(WATER_STEP, explorer.chart!.water))}><Icon name="water" size="1.2em" /><span class="sign">−</span></button>
+                  {#if chartOf(gameState, explorer)!.water > 0}
+                    <button class="water" data-testid="pour-water-{seat.id}" aria-label="Pour out {Math.min(WATER_STEP, chartOf(gameState, explorer)!.water)} water rations" onclick={() => takeWater(seat.id, -Math.min(WATER_STEP, chartOf(gameState, explorer)!.water))}><Icon name="water" size="1.2em" /><span class="sign">−</span></button>
                   {/if}
                 </span>
               {/if}
@@ -499,6 +564,53 @@
   }
   button.turn-marker {
     cursor: pointer;
+  }
+  .party {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+    margin-left: var(--gap);
+    padding: 0.15em 0.5em;
+    border-radius: 999px;
+    border: 2px solid var(--accent);
+    color: var(--paper);
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.3);
+  }
+  .party .leader {
+    width: 0.9em;
+    height: 0.9em;
+    border-radius: 50%;
+    background: var(--colour);
+    border: 2px solid var(--paper);
+  }
+  .pooling {
+    display: inline-flex;
+    gap: calc(var(--gap) * 0.4);
+    margin-left: var(--gap);
+  }
+  .pool {
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    border: 3px solid var(--paper);
+    background: transparent;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    opacity: 0.55;
+  }
+  .pool.on {
+    opacity: 1;
+    background: var(--accent);
+  }
+  .pool .dot {
+    width: 55%;
+    height: 55%;
+    border-radius: 50%;
+    background: var(--colour);
+    border: 2px solid var(--paper);
   }
   .obituary {
     margin-left: var(--gap);

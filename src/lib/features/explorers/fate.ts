@@ -3,6 +3,7 @@
 // with him"; later explorers will find his discoveries were only rumours and generate the hex
 // anew), his own caches vanish, and he is out of play. Points already scored stay with the seat.
 import { NO_SICKNESS, type ExplorerState, type GameState } from '$lib/game/state';
+import { leaveParty } from '$features/expedition/party';
 
 export interface Fate {
   kind: 'died' | 'retired';
@@ -13,6 +14,7 @@ export interface Fate {
 
 export function perish(state: GameState, explorer: ExplorerState, kind: Fate['kind'], cause: string): GameState {
   const seat = explorer.seat;
+  state = leaveParty(state, seat, null); // a party's men stay with the party (rules §13)
   const map: GameState['map'] = {};
   const erased = new Set<string>();
   for (const [id, m] of Object.entries(state.map)) {
@@ -38,6 +40,7 @@ export function perish(state: GameState, explorer: ExplorerState, kind: Fate['ki
     specimens: { zoology: 0, geology: 0 },
     goodWorks: { evangelism: 0, medicine: 0 },
     transit: null,
+    party: null,
     fate: { kind, round: state.turn?.round ?? 0, cause }
   };
   const explorers = state.explorers.map((e) => {
