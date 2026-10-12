@@ -48,7 +48,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 005-commission-an-explorer         landed
 006-first-player-and-donations     landed
 007-a-turn-in-europe               landed
-008-sail-to-africa
+008-sail-to-africa                 landed
 009-outfit-the-expedition
 010-first-step-into-the-unknown
 011-rivers-and-oases
@@ -119,7 +119,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 007:** `turn-begins-draw` (bottom-1 draws; six cards) → `end-turn-confirmed` (tap end turn, confirm; marker at next seat) → `hand-limit` (a seeded hand of six at the next seat forces a discard choice; choose one; draw) → `ticket-expires` (a ticket held across a turn is discarded).
 - **Unit tests:** ticket expiry; discard to five before draw; draw order from the seed; reshuffle at empty deck; clockwise order with gaps (empty seats skipped); illegal end-turn while a discard is pending is a diagnostic.
 
-### 8. Sail to Africa — `008-sail-to-africa`
+### 8. Sail to Africa — `008-sail-to-africa` ✅ landed
 
 - **Player sees:** a "sail" control at the rail opens a port chooser on the board: the 13 ports highlight; ports for which the player holds a ticket show the ticket; others show the $500 fare; ports unaffordable are disabled with the reason. Choosing one moves the explorer token from the rail to the port hex over the following skipped turn; the rail shows the remaining budget.
 - **Introduced:** `voyage/booked`; explorer `location: { port }` and `money`; the skipped turn in the turn cycle; `PortChooser.svelte`.

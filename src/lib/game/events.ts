@@ -2,7 +2,7 @@
 export const SCHEMA_VERSION = 1;
 export const REDUCER_VERSION = 1;
 
-export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'turn/ended' | 'cards/discarded';
+export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'turn/ended' | 'cards/discarded' | 'voyage/booked';
 
 export interface GameEvent {
   id: string;

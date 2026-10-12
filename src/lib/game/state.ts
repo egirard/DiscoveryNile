@@ -1,6 +1,7 @@
 import type { SeatId } from '$lib/tabletop/seats';
 import type { RngState } from './random';
 import type { CardId } from '$features/cards/deck';
+import type { PortId } from '$features/map/manifest';
 
 export interface SeatState {
   id: SeatId;
@@ -15,8 +16,12 @@ export interface Diagnostic {
 
 export type Specialty = 'evangelism' | 'medicine' | 'zoology' | 'geology';
 
-/** Where an explorer is. Grows as slices need it (port, hex, captivity, dead). */
-export type ExplorerLocation = { kind: 'europe' } | { kind: 'dead' };
+/** Where an explorer is. Grows as slices need it (hex, captivity). */
+export type ExplorerLocation =
+  | { kind: 'europe' }
+  | { kind: 'voyage'; port: PortId } // booked passage; arrives at the start of the explorer's next turn, which is skipped
+  | { kind: 'port'; port: PortId }
+  | { kind: 'dead' };
 
 export interface ExplorerState {
   seat: SeatId;
@@ -26,6 +31,8 @@ export interface ExplorerState {
   hand: CardId[];
   /** The round each card in hand was drawn in; free tickets expire at the owner's next turn. */
   drawnRound: Record<string, number>;
+  /** Expedition budget once passage is booked: the hand's money less the fare, until it is spent. */
+  money: number;
 }
 
 /**

@@ -18,7 +18,13 @@
   aria-label="Explorer of seat {explorer.seat}: {explorer.specialties.length ? explorer.specialties.join(', ') : 'ordinary explorer'}, in {explorer.location.kind}"
   style="--colour:{colourFor(explorer.seat)}; --size:{size}"
 >
-  <span class="disc"><Icon name="explorer" /></span>
+  <span class="disc"><Icon name="explorer" />
+    {#if explorer.location.kind === 'voyage'}
+      <span class="where" data-testid="at-sea-{explorer.seat}" aria-label="At sea, bound for {explorer.location.port}"><Icon name="ship" size="1em" /></span>
+    {:else if explorer.location.kind === 'port'}
+      <span class="where" data-testid="in-port-{explorer.seat}" aria-label="At the port of {explorer.location.port}"><Icon name="anchor" size="1em" /></span>
+    {/if}
+  </span>
   <span class="badges">
     {#each explorer.specialties as s (s)}
       <span class="badge" data-testid="badge-{s}-{explorer.seat}" aria-label={s}><Icon name={s} size="1em" /></span>
@@ -33,6 +39,7 @@
     gap: calc(var(--size) * 0.15);
   }
   .disc {
+    position: relative;
     width: var(--size);
     height: var(--size);
     border-radius: 50%;
@@ -41,6 +48,19 @@
     color: var(--paper);
     display: grid;
     place-items: center;
+  }
+  .where {
+    position: absolute;
+    right: -0.35em;
+    bottom: -0.35em;
+    width: 1.3em;
+    height: 1.3em;
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    font-size: calc(var(--size) * 0.32);
   }
   .badges {
     display: flex;

@@ -1,11 +1,13 @@
 import type { GameEvent } from '$lib/game/events';
 import type { ExplorerState, GameState, RollOff } from '$lib/game/state';
 import { dice, shuffleWith } from '$lib/game/random';
-import { CARD_IDS, card, isCardId, type CardId } from '$features/cards/deck';
+import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
+import { BOARD, type PortId } from '$features/map/manifest';
 import type { SeatId } from '$lib/tabletop/seats';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
+export const PASSAGE_FARE = 500;
 
 /** Seats holding a living explorer, in clockwise table order. */
 export function explorerSeats(state: GameState): SeatId[] {
@@ -36,14 +38,28 @@ function drawOne(state: GameState, explorer: ExplorerState): GameState {
   return { ...replaceExplorer(state, next), rng, deck: { draw: rest, discard } };
 }
 
+/** Hand the turn to the next seat clockwise; a new round starts when the order wraps. */
+function advance(state: GameState): GameState {
+  const { order, current, round } = state.turn!;
+  const i = order.indexOf(current);
+  const next = order[(i + 1) % order.length];
+  return beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: i + 1 >= order.length ? round + 1 : round } }, next);
+}
+
 /**
- * The start of a Europe turn (rules §4): expired free tickets go to the discard pile, then the
- * hand limit applies (the player chooses what to discard), then one card is drawn.
+ * The start of a turn. In Europe (rules §4): expired free tickets go to the discard pile, then
+ * the hand limit applies (the player chooses what to discard), then one card is drawn. At sea:
+ * the explorer lands at the chosen port and this turn is the one the rules say is skipped.
  */
 function beginTurn(state: GameState, seat: SeatId): GameState {
   const turn = { ...state.turn!, current: seat, phase: 'act' as const };
   state = { ...state, turn };
   let explorer = currentExplorer(state)!;
+  if (explorer.location.kind === 'voyage') {
+    const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port: explorer.location.port } });
+    return advance(landed);
+  }
+  if (explorer.location.kind !== 'europe') return state;
   const expired = explorer.hand.filter((id) => card(id).donation.kind === 'ticket' && (explorer.drawnRound[id] ?? 0) < turn.round);
   if (expired.length) {
     const drawnRound = { ...explorer.drawnRound };
@@ -112,11 +128,28 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
-      const { order } = state.turn;
-      const i = order.indexOf(state.turn.current);
-      const next = order[(i + 1) % order.length];
-      const round = i + 1 >= order.length ? state.turn.round + 1 : state.turn.round;
-      return beginTurn({ ...state, rollOff: null, turn: { ...state.turn, round } }, next);
+      return advance(state);
+    }
+    case 'voyage/booked': {
+      const { seat, port, ticketCardId } = event.payload as { seat?: string; port?: string; ticketCardId?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'act') return 'cannot sail while discarding';
+      const explorer = currentExplorer(state)!;
+      if (explorer.location.kind !== 'europe') return 'the explorer is not in Europe';
+      if (!port || !(port in BOARD.ports)) return 'voyage/booked needs a port of entry';
+      let fare = PASSAGE_FARE;
+      if (ticketCardId !== undefined && ticketCardId !== null) {
+        if (!isCardId(ticketCardId) || !explorer.hand.includes(ticketCardId)) return 'the ticket is not in the hand';
+        const d = card(ticketCardId).donation;
+        if (d.kind !== 'ticket' || d.port !== port) return `that card is not a free ticket to ${port}`;
+        fare = 0;
+      }
+      const raised = handValue(explorer.hand);
+      if (raised < fare) return `passage costs $${fare}; only $${raised} raised`;
+      // The whole hand becomes the expedition budget; any ticket not used is lost with it.
+      const sailed: ExplorerState = { ...explorer, hand: [], drawnRound: {}, money: raised - fare, location: { kind: 'voyage', port: port as PortId } };
+      return { ...replaceExplorer(state, sailed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...explorer.hand] } };
     }
     case 'cards/discarded': {
       const { seat, cardIds } = event.payload as { seat?: string; cardIds?: unknown };

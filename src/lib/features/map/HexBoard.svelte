@@ -3,14 +3,30 @@
   // table the whole board is turned so north points to the left edge, because Africa is taller
   // than it is wide and hexes must stay touch-sized. Symbols and labels are kept upright for the
   // bottom seat; every seat reads the same omnidirectional iconography.
-  import { BOARD, LAND_HEXES, PORTS, RIVERS, hexAt, riverMouths, type BoardHex, type River } from './manifest';
+  import { BOARD, LAND_HEXES, PORTS, RIVERS, hexAt, riverMouths, type BoardHex, type PortId, type River } from './manifest';
   import { hexPoints, toPixel, type HexId } from './hex';
+
+  import { colourFor } from '$features/explorers/colours';
+
+  export interface BoardToken {
+    seat: string;
+    hex: HexId;
+  }
+  export interface PortChoice {
+    /** 'ticket': a free ticket pays; 'cash': the $500 fare; 'none': unaffordable. */
+    fare: 'ticket' | 'cash' | 'none';
+  }
 
   interface Props {
     width: number;
     height: number;
+    /** Explorer tokens standing on hexes. */
+    tokens?: BoardToken[];
+    /** When set, the ports become a chooser (sailing from Europe). */
+    portChoices?: Partial<Record<PortId, PortChoice>> | null;
+    onport?: (port: PortId) => void;
   }
-  let { width, height }: Props = $props();
+  let { width, height, tokens = [], portChoices = null, onport }: Props = $props();
 
   const SQ3 = Math.sqrt(3);
   const extents = (() => {
@@ -138,7 +154,11 @@
     {/each}
     {#each PORTS as p (p.id)}
       {@const c = centre(BOARD.hexes[p.hex])}
-      <g data-testid="port-{p.id}" class="port" aria-label="Port of entry: {p.name}" transform="translate({c.x} {c.y}) {upright}">
+      {@const choice = portChoices?.[p.id]}
+      <g data-testid="port-{p.id}" class="port" class:choosable={Boolean(choice)} data-fare={choice?.fare} aria-label="Port of entry: {p.name}" transform="translate({c.x} {c.y}) {upright}">
+        {#if choice}
+          <circle class="halo" class:none={choice.fare === 'none'} r={radius * 1.15} />
+        {/if}
         <circle r={radius * 0.48} />
         <g class="anchor" transform="scale({radius / 28}) translate(-12 -12)">
           <circle cx="12" cy="5" r="3" />
@@ -146,6 +166,33 @@
           <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
         </g>
         <text class="label" y={radius * 1.25} font-size={radius * 0.62}>{p.name}</text>
+        {#if choice}
+          <g class="fare" transform="translate(0 {-radius * 0.95})">
+            {#if choice.fare === 'ticket'}
+              <rect x={-radius * 0.55} y={-radius * 0.32} width={radius * 1.1} height={radius * 0.64} rx={radius * 0.12} class="ticket" />
+              <path d="M{-radius * 0.15} {-radius * 0.22} V{radius * 0.22}" class="ticket-perf" />
+            {:else}
+              <text class="fare-text" font-size={radius * 0.6} dominant-baseline="central">{choice.fare === 'cash' ? '$500' : '✕'}</text>
+            {/if}
+          </g>
+          <circle
+            class="hit"
+            r={radius * 1.2}
+            role="button"
+            tabindex="0"
+            data-testid="choose-port-{p.id}"
+            aria-disabled={choice.fare === 'none'}
+            aria-label="Sail to {p.name}{choice.fare === 'ticket' ? ' with a free ticket' : choice.fare === 'cash' ? ' for $500' : ': cannot afford passage'}"
+            onclick={() => choice.fare !== 'none' && onport?.(p.id)}
+            onkeydown={(e) => e.key === 'Enter' && choice.fare !== 'none' && onport?.(p.id)}
+          />
+        {/if}
+      </g>
+    {/each}
+    {#each tokens as t (t.seat)}
+      {@const c = centre(t.hex)}
+      <g data-testid="board-token-{t.seat}" data-hex={t.hex} class="token" aria-label="Explorer of seat {t.seat} at {t.hex}" transform="translate({c.x} {c.y})">
+        <circle r={radius * 0.42} fill={colourFor(t.seat)} />
       </g>
     {/each}
   </g>
@@ -221,8 +268,43 @@
     stroke-width: 3px;
     stroke-linejoin: round;
   }
-  .port circle:first-child {
+  .port > circle:not(.halo):not(.hit) {
     fill: #1c2a2e;
+  }
+  .halo {
+    fill: #c9a24a;
+    opacity: 0.85;
+  }
+  .halo.none {
+    fill: #777;
+    opacity: 0.4;
+  }
+  .hit {
+    fill: transparent;
+    cursor: pointer;
+  }
+  .fare .ticket {
+    fill: #d7e6c4;
+    stroke: #1c2a2e;
+    stroke-width: 1;
+  }
+  .fare .ticket-perf {
+    stroke: #1c2a2e;
+    stroke-width: 1;
+    stroke-dasharray: 2 2;
+  }
+  .fare-text {
+    fill: #1c2a2e;
+    text-anchor: middle;
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: #efe6cc;
+    stroke-width: 3px;
+  }
+  .token circle {
+    stroke: #efe6cc;
+    stroke-width: 2;
   }
   .anchor {
     fill: none;

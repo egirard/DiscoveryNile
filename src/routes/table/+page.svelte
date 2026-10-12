@@ -16,7 +16,10 @@
   import DeckStack from '$features/cards/DeckStack.svelte';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import TurnControls from '$features/turn/TurnControls.svelte';
-  import { handValue, type CardId } from '$features/cards/deck';
+  import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
+  import { BOARD, type PortId } from '$features/map/manifest';
+  import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
+  import { PASSAGE_FARE } from '$features/turn/reducer';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
 
@@ -63,6 +66,33 @@
     await game?.append('cards/discarded', { seat: seat.id, cardIds: [id] });
   }
 
+  // Sailing: the current seat opens the port chooser on the map; a port tap books passage.
+  let sailingSeat = $state<string | null>(null);
+  const portChoices = $derived.by((): Partial<Record<PortId, PortChoice>> | null => {
+    if (!sailingSeat || gameState.turn?.current !== sailingSeat) return null;
+    const explorer = explorerAt(gameState, sailingSeat);
+    if (!explorer || explorer.location.kind !== 'europe') return null;
+    const cash = handValue(explorer.hand);
+    const tickets = new Set(explorer.hand.map((id) => cardOf(id).donation).filter((d) => d.kind === 'ticket').map((d) => (d as { port: PortId }).port));
+    const out: Partial<Record<PortId, PortChoice>> = {};
+    for (const id of Object.keys(BOARD.ports) as PortId[]) out[id] = { fare: tickets.has(id) ? 'ticket' : cash >= PASSAGE_FARE ? 'cash' : 'none' };
+    return out;
+  });
+  async function bookPassage(port: PortId) {
+    const seat = sailingSeat;
+    const explorer = seat ? explorerAt(gameState, seat) : undefined;
+    if (!seat || !explorer) return;
+    const ticket = explorer.hand.find((id) => {
+      const d = cardOf(id).donation;
+      return d.kind === 'ticket' && d.port === port;
+    });
+    sailingSeat = null;
+    await game?.append('voyage/booked', { seat, port, ticketCardId: ticket ?? null });
+  }
+  const boardTokens = $derived.by((): BoardToken[] =>
+    gameState.explorers.filter((e) => e.location.kind === 'port').map((e) => ({ seat: e.seat, hex: BOARD.ports[(e.location as { port: PortId }).port].hex }))
+  );
+
   onMount(() => {
     diagonal = readDiagonalInches();
     viewport = { w: innerWidth, h: innerHeight };
@@ -103,7 +133,7 @@
   style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <HexBoard width={boardW} height={boardH} />
+    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} />
   </div>
 
   {#if canStart}
@@ -137,9 +167,15 @@
                 <Card {id} seat={seat.id} onselect={discarding ? (c) => discard(seat, c) : undefined} />
               {/each}
             </span>
-            <span class="money" data-testid="money-{seat.id}" aria-label="Money raised">${handValue(explorer.hand)}</span>
+            <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {#if mine}
-              <TurnControls seat={seat.id} phase={gameState.turn.phase} onend={() => endTurn(seat)} />
+              <TurnControls
+                seat={seat.id}
+                phase={gameState.turn.phase}
+                onend={() => endTurn(seat)}
+                onsail={explorer.location.kind === 'europe' ? () => (sailingSeat = sailingSeat === seat.id ? null : seat.id) : null}
+                sailing={sailingSeat === seat.id}
+              />
             {/if}
           {/if}
         {:else}

@@ -1,7 +1,7 @@
 <script lang="ts">
   // Inline SVG icons. Every icon is direction-agnostic and carries no text. Original drawings.
   interface Props {
-    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology';
+    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology' | 'ship' | 'anchor';
     size?: string;
   }
   let { name, size = '1.6em' }: Props = $props();
@@ -26,6 +26,10 @@
   {:else if name === 'zoology'}
     <!-- paw -->
     <circle cx="7" cy="9" r="2" /><circle cx="17" cy="9" r="2" /><circle cx="10" cy="5" r="1.8" /><circle cx="14" cy="5" r="1.8" /><path d="M8 18c0-3 2-5 4-5s4 2 4 5c0 2-2 3-4 3s-4-1-4-3z" />
+  {:else if name === 'ship'}
+    <path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c4 2 6 5 6 9H12" /><path d="M12 6c-3 1-5 3-5 6h5" />
+  {:else if name === 'anchor'}
+    <circle cx="12" cy="5" r="3" /><line x1="12" y1="22" x2="12" y2="8" /><path d="M5 12H2a10 10 0 0 0 20 0h-3" />
   {:else if name === 'geology'}
     <!-- crystal -->
     <path d="M12 3l6 6-6 12-6-12z" /><path d="M6 9h12" /><path d="M12 3v18" />

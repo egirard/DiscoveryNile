@@ -8,8 +8,11 @@
     seat: string;
     phase: Phase;
     onend: () => void;
+    /** Offered in Europe: opens the port chooser on the board. */
+    onsail?: (() => void) | null;
+    sailing?: boolean;
   }
-  let { seat, phase, onend }: Props = $props();
+  let { seat, phase, onend, onsail = null, sailing = false }: Props = $props();
   let confirming = $state(false);
   $effect(() => {
     if (phase !== 'act') confirming = false;
@@ -33,6 +36,11 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
     </button>
   {:else}
+    {#if onsail}
+      <button class="sail" class:active={sailing} data-testid="sail-{seat}" aria-label={sailing ? 'Choose a port of entry on the map, or tap again to stay' : 'Sail to Africa'} aria-pressed={sailing} onclick={onsail}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c4 2 6 5 6 9H12" /><path d="M12 6c-3 1-5 3-5 6h5" /></svg>
+      </button>
+    {/if}
     <button class="end" data-testid="end-turn-{seat}" aria-label="End the turn" onclick={() => (confirming = true)}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h12" /><path d="M12 6l6 6-6 6" /><path d="M20 5v14" /></svg>
     </button>
@@ -67,6 +75,9 @@
     stroke-linejoin: round;
   }
   .confirm {
+    background: var(--accent);
+  }
+  .sail.active {
     background: var(--accent);
   }
   .prompt {

@@ -3,7 +3,7 @@ import { reduce } from '$lib/game/reduce';
 import { created, event, resetSequence } from '$lib/game/test-fixtures';
 import type { GameState } from '$lib/game/state';
 import { card } from '$features/cards/deck';
-import { currentExplorer, explorerSeats } from './reducer';
+import { currentExplorer, explorerSeats, PASSAGE_FARE } from './reducer';
 
 beforeEach(resetSequence);
 
@@ -148,5 +148,64 @@ describe('turn/ended and the start of a Europe turn (rules §4)', () => {
     expect(s.deck!.draw.length + s.deck!.discard.length).toBeLessThan(before + 2);
     expect(new Set(allCards(s)).size).toBe(48);
     expect(currentExplorer(s)).toBeDefined();
+  });
+});
+
+describe('voyage/booked (rules §5)', () => {
+  const cash = (s: GameState, seat: string) => hand(s, seat).reduce((sum, id) => sum + (card(id).donation.kind === 'money' ? (card(id).donation as { amount: number }).amount : 0), 0);
+  /** The first seed (from 1) whose started game satisfies the predicate for the first player. */
+  const seedWhere = (pred: (s: GameState, first: string) => boolean) => {
+    for (let seed = 1; seed < 500; seed++) {
+      resetSequence();
+      const s = reduce(twoPlayers(seed));
+      if (pred(s, s.turn!.current)) return seed;
+    }
+    throw new Error('no seed found');
+  };
+  const setup = (seed: number) => {
+    resetSequence();
+    const base = twoPlayers(seed);
+    const s0 = reduce(base);
+    return { base, first: s0.turn!.current, second: other(s0), s0 };
+  };
+  it('turns the hand into a budget less the $500 fare and puts the explorer at sea', () => {
+    const { base, first, s0 } = setup(seedWhere((s, f) => cash(s, f) >= PASSAGE_FARE));
+    const s = reduce([...base, event('voyage/booked', { seat: first, port: 'mombasa' })]);
+    expect(s.diagnostics).toEqual([]);
+    const e = s.explorers.find((x) => x.seat === first)!;
+    expect(e.location).toEqual({ kind: 'voyage', port: 'mombasa' });
+    expect(e.money).toBe(cash(s0, first) - PASSAGE_FARE);
+    expect(e.hand).toEqual([]);
+    expect(s.deck!.discard).toHaveLength(6);
+    expect(new Set(allCards(s)).size).toBe(48);
+  });
+  it('sails free with a ticket to that port and keeps the whole budget', () => {
+    const { base, first, s0 } = setup(seedWhere((s, f) => hand(s, f).some((id) => card(id).donation.kind === 'ticket')));
+    const ticket = hand(s0, first).find((id) => card(id).donation.kind === 'ticket')!;
+    const port = (card(ticket).donation as { port: string }).port;
+    const s = reduce([...base, event('voyage/booked', { seat: first, port, ticketCardId: ticket })]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers.find((x) => x.seat === first)!.money).toBe(cash(s0, first));
+    const wrong = reduce([...base, event('voyage/booked', { seat: first, port: port === 'mombasa' ? 'brass' : 'mombasa', ticketCardId: ticket })]);
+    expect(wrong.diagnostics.at(-1)?.reason).toMatch(/not a free ticket/);
+  });
+  it('rejects sailing out of turn, to an unknown port, without the fare, or when not in Europe', () => {
+    const rich = setup(seedWhere((s, f) => cash(s, f) >= PASSAGE_FARE));
+    expect(reduce([...rich.base, event('voyage/booked', { seat: rich.second, port: 'mombasa' })]).diagnostics.at(-1)?.reason).toBe(`it is not ${rich.second}'s turn`);
+    expect(reduce([...rich.base, event('voyage/booked', { seat: rich.first, port: 'atlantis' })]).diagnostics.at(-1)?.reason).toBe('voyage/booked needs a port of entry');
+    expect(reduce([...rich.base, event('voyage/booked', { seat: rich.first, port: 'mombasa' }), event('voyage/booked', { seat: rich.first, port: 'kilwa' })]).diagnostics.at(-1)?.reason).toBe('the explorer is not in Europe');
+    const poor = setup(seedWhere((s, f) => cash(s, f) < PASSAGE_FARE));
+    expect(reduce([...poor.base, event('voyage/booked', { seat: poor.first, port: 'mombasa' })]).diagnostics.at(-1)?.reason).toBe(`passage costs $500; only $${cash(poor.s0, poor.first)} raised`);
+  });
+  it('skips the next turn at sea: the explorer lands at the port and the turn passes on', () => {
+    const { base, first, second } = setup(seedWhere((s, f) => cash(s, f) >= PASSAGE_FARE));
+    const events = [...base, event('voyage/booked', { seat: first, port: 'mombasa' }), event('turn/ended', { seat: first }), event('turn/ended', { seat: second })];
+    const s = reduce(events);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers.find((x) => x.seat === first)!.location).toEqual({ kind: 'port', port: 'mombasa' });
+    expect(s.turn).toMatchObject({ current: second, round: 2 });
+    const s2 = reduce([...events, event('turn/ended', { seat: second })]);
+    expect(s2.turn).toMatchObject({ current: first, round: 3, phase: 'act' });
+    expect(s2.explorers.find((x) => x.seat === first)!.hand).toEqual([]);
   });
 });
