@@ -3,6 +3,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import { ITEMS, type Chart } from './prices';
   import type { Sickness } from '$lib/game/state';
+  import { sickCarried } from '$features/rations/rations';
 
   interface Props {
     seat: string;
@@ -20,6 +21,11 @@
   {/each}
   {#if sickCount}
     <span class="item sick" data-testid="sick-{seat}" data-count={sickCount} data-explorer={sick!.explorer} aria-label="{sickCount} sick"><Icon name="medicine" size="1.2em" />{sickCount}</span>
+    {#if sickCarried(chart, sick!).halted}
+      <span class="item halt" data-testid="sick-halt-{seat}" aria-label="The sick cannot all be carried: the expedition cannot move">
+        <svg viewBox="0 0 24 24" width="1.2em" height="1.2em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5v14M19 5v14M9 12h6" /><path d="M12 9v6" /></svg>
+      </span>
+    {/if}
   {/if}
 </span>
 
@@ -38,7 +44,8 @@
     align-items: center;
     gap: 0.15em;
   }
-  .sick {
+  .sick,
+  .halt {
     color: #e7b4a8;
   }
 </style>

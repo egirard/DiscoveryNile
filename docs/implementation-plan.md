@@ -61,7 +61,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 018-defeat-escape-and-victory      landed
 019-negotiation-and-trade          landed
 020-tribe-attitude                 landed
-021-sickness-starvation-desertion
+021-sickness-starvation-desertion  landed
 022-specialties-in-the-field
 023-caches-and-reorganisation
 024-return-to-europe
@@ -203,9 +203,11 @@ Per-tribe attitude persisted and applied, per-explorer bonuses for releasing pri
 
 - **As landed:** each tribe keeps `attitude` (towards everyone: −1 for an explorer's defeat, −1 more for his death, evangelism and medicine from 022) and `regard` per seat (+3 for releasing every prisoner); both are reaction modifiers at the rail and are shown on the policy panel. Prior negotiation already counts as local knowledge (019); the published-hex modifier waits for 025. Scenario 020 (seed 18): `prisoners-released` → `remembered` → `calmer-welcome`.
 
-### 21. Sickness, starvation and desertion — `021-sickness-starvation-desertion`
+### 21. Sickness, starvation and desertion — `021-sickness-starvation-desertion` ✅ landed
 
 Starvation order, sick men and carrying, recovery and death rolls, explorer respect and askari desertion, guards on starving bearers.
+
+- **As landed:** after the meal and the water, `starve` hands hunger to bearers, guides, askaris and the explorer in turn: hungry guides and askaris desert (askaris with muskets), hungry bearers desert unless an askari guards each, the sick cannot desert (G-68); `sicknessRound` on the `sickness` stream rolls the sick (−1 healthy doctor, +3 starving: ≤1 recovers, ≥5 dies, the explorer included) and then the starving well (4–6 fall sick); `sickCarried` halts movement when the sick outnumber animals, pairs of well bearers and canoe seats, with a halt mark at the rail. Scenario 021 (seed 863, hunting 1,1, sickness 4,5,6,1,2,3,4): `starving` → `halted` → `wasting`. Desertion stopping on a victory is not modelled (desertion is immediate, G-69).
 
 ### 22. Specialties in the field — `022-specialties-in-the-field`
 

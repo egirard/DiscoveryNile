@@ -142,11 +142,123 @@ export function feed(chart: Chart, sick: Sickness, camp: Camp, game: number): Me
   const hungryHorses = Math.ceil((forHorses - horsesFed) / 4);
   const parts: string[] = [];
   parts.push(game ? `${game} rations bagged` : 'no game');
-  parts.push(`${men} men ate${fromGame < men ? ` (${men - fromGame} from the stores)` : ''}`);
+  parts.push(`${men} men ate${fromGame < men ? ` (${menFromStore} from the stores)` : ''}`);
   if (forHorses) parts.push(`${next.horses} horses ate ${horsesFed}`);
   if (shot.horses || shot.camels) parts.push(`shot for food: ${[shot.horses ? `${shot.horses} horse${shot.horses > 1 ? 's' : ''}` : '', shot.camels ? `${shot.camels} camel${shot.camels > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ')}`);
   if (hungryMen) parts.push(`${hungryMen} men go hungry`);
   if (hungryHorses) parts.push(`${hungryHorses} horses go hungry`);
   void sick;
   return { chart: next, men, fromGame, fromStore: menFromStore, forHorses, shot, hungryMen, hungryHorses, summary: parts.join(', ') };
+}
+
+// ---- Starvation, desertion and sickness (rules §11) --------------------------------------------
+
+export interface StarvationResult {
+  chart: Chart;
+  /** Men still with the expedition but unfed this turn, by type (the explorer separately). */
+  starving: { guides: number; bearers: number; askaris: number; explorer: boolean };
+  deserted: { guides: number; bearers: number; askaris: number };
+  summary: string;
+}
+
+/**
+ * The hungry go without in the rules' order: bearers first, then guides, askaris, and the explorer last.
+ * Starving guides and askaris desert (the askaris with their muskets); starving bearers desert unless an
+ * askari guards each of them. Sick men cannot walk away (G-68).
+ */
+export function starve(chart: Chart, sick: Sickness, hungry: number): StarvationResult {
+  const next = { ...chart };
+  let left = hungry;
+  const take = (n: number) => { const t = Math.min(left, n); left -= t; return t; };
+  const bearersHungry = take(next.bearers);
+  const guidesHungry = take(next.guides);
+  const askarisHungry = take(next.askaris);
+  const explorer = take(1) > 0;
+  const deserted = { guides: 0, bearers: 0, askaris: 0 };
+  // Guides and askaris walk away (the sick among them cannot).
+  deserted.guides = Math.max(0, guidesHungry - sick.guides);
+  deserted.askaris = Math.max(0, askarisHungry - sick.askaris);
+  next.guides -= deserted.guides;
+  next.askaris -= deserted.askaris;
+  next.muskets = Math.max(0, next.muskets - deserted.askaris);
+  // Bearers stay only where an askari guards each; the sick stay regardless.
+  const guards = next.askaris;
+  const wellHungryBearers = Math.max(0, bearersHungry - sick.bearers);
+  deserted.bearers = Math.max(0, wellHungryBearers - guards);
+  next.bearers -= deserted.bearers;
+  const starving = { guides: guidesHungry - deserted.guides, bearers: bearersHungry - deserted.bearers, askaris: askarisHungry - deserted.askaris, explorer };
+  const parts: string[] = [];
+  const list = (o: Record<string, number>, verb: string) => Object.entries(o).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${n === 1 ? k.slice(0, -1) : k}`).join(', ') + (Object.values(o).some((n) => n > 0) ? ` ${verb}` : '');
+  if (Object.values(deserted).some((n) => n > 0)) parts.push(list(deserted, 'desert'));
+  const kept = { guides: starving.guides, bearers: starving.bearers, askaris: starving.askaris };
+  if (Object.values(kept).some((n) => n > 0)) parts.push(list(kept, 'go hungry'));
+  if (explorer) parts.push('the explorer goes hungry');
+  return { chart: next, starving, deserted, summary: parts.join('; ') };
+}
+
+export interface SicknessRound {
+  rng: RngState;
+  rolls: Roll[];
+  chart: Chart;
+  sick: Sickness;
+  died: { guides: number; bearers: number; askaris: number };
+  explorerDied: boolean;
+  summary: string;
+}
+
+type MenType = 'guides' | 'bearers' | 'askaris';
+const MEN: MenType[] = ['bearers', 'guides', 'askaris'];
+
+/**
+ * Each starving man rolls once: 4–6 and he falls sick. Each man already sick rolls once, −1 with a healthy
+ * doctor, +3 if starving: 1 or less recovers, 5 or more dies. The starving sick are counted first (G-68).
+ */
+export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starving: StarvationResult['starving'], doctor: boolean): SicknessRound {
+  const rolls: Roll[] = [];
+  const roll = (label: string) => {
+    const r = d6(rng, 'sickness');
+    rng = r.state;
+    rolls.push({ label, value: r.value });
+    return r.value;
+  };
+  const next = { ...chart };
+  const nextSick = { ...sick };
+  const died = { guides: 0, bearers: 0, askaris: 0 };
+  const notes: string[] = [];
+  const healthyDoctor = doctor && !sick.explorer;
+  // The sick: recovery or death.
+  for (const t of MEN) {
+    let recovered = 0;
+    for (let i = 0; i < sick[t]; i++) {
+      const isStarving = i < starving[t];
+      const v = roll(`sick ${t.slice(0, -1)}`) - (healthyDoctor ? 1 : 0) + (isStarving ? 3 : 0);
+      if (v <= 1) { nextSick[t]--; recovered++; }
+      else if (v >= 5) { nextSick[t]--; next[t]--; died[t]++; }
+    }
+    if (recovered) notes.push(`${recovered} ${recovered === 1 ? t.slice(0, -1) : t} recover${recovered === 1 ? 's' : ''}`);
+    if (died[t]) notes.push(`${died[t]} ${died[t] === 1 ? t.slice(0, -1) : t} die${died[t] === 1 ? 's' : ''} of sickness`);
+  }
+  let explorerDied = false;
+  if (sick.explorer) {
+    const v = roll('sick explorer') + (starving.explorer ? 3 : 0);
+    if (v <= 1) { nextSick.explorer = false; notes.push('the explorer recovers'); }
+    else if (v >= 5) { explorerDied = true; notes.push('the explorer dies of sickness'); }
+  }
+  // The starving who were well: do they fall sick?
+  for (const t of MEN) {
+    let fell = 0;
+    const wellStarving = Math.max(0, starving[t] - sick[t]);
+    for (let i = 0; i < wellStarving; i++) if (roll(`starving ${t.slice(0, -1)}`) >= 4) fell++;
+    nextSick[t] += fell;
+    if (fell) notes.push(`${fell} starving ${fell === 1 ? t.slice(0, -1) : t} fall${fell === 1 ? 's' : ''} sick`);
+  }
+  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer') >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
+  return { rng, rolls, chart: next, sick: nextSick, died, explorerDied, summary: notes.join(', ') };
+}
+
+/** Sick men must be carried: by an animal, by two unladen bearers, or in a canoe; otherwise the expedition halts. */
+export function sickCarried(chart: Chart, sick: Sickness): { sickMen: number; carriers: number; halted: boolean } {
+  const sickMen = sick.guides + sick.bearers + sick.askaris + (sick.explorer ? 1 : 0);
+  const carriers = chart.camels + chart.horses + Math.floor(Math.max(0, chart.bearers - sick.bearers) / 2) + chart.canoes * 12;
+  return { sickMen, carriers, halted: sickMen > carriers };
 }

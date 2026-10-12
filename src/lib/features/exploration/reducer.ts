@@ -12,6 +12,7 @@ import { budgetFor, coastal, modeFor, passable, type Mode, type MovementBudget }
 import { d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
+import { sickCarried } from '$features/rations/rations';
 
 /** The hex an explorer stands on, if on the board. */
 export function standingHex(e: ExplorerState): HexId | null {
@@ -99,6 +100,7 @@ function cataractAt(state: GameState, id: HexId): boolean {
 /** What a step from `from` to `to` would cost and by what mode, or why it is not allowed. */
 function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): { mode: Mode; cost: number; unknown: boolean; water: boolean } | string {
   const chart = e.chart!;
+  if (sickCarried(chart, e.sick).halted) return 'the sick cannot all be carried: the expedition halts';
   const water = waterLink(state, from, to);
   const mode: Mode = state.turn!.movement?.mode ?? modeFor(chart, water);
   const terrain = terrainOf(state, to);

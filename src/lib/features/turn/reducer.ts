@@ -16,7 +16,7 @@ import type { Chart, Item } from '$features/expedition/prices';
 import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
 import { directionTo } from '$features/map/hex';
-import { drink, dryDesert, feed, hunt } from '$features/rations/rations';
+import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -115,10 +115,19 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game);
   const water = drink(meal.chart, camp);
   const hex = (explorer.location as { hex: string }).hex as HexId;
-  const outcome = water ? `${meal.summary}; ${water.summary}` : meal.summary;
-  const sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
-  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls: h.result.rolls, modifiers: h.result.modifiers, total: h.result.total, outcome };
-  return { ...replaceExplorer(state, { ...explorer, chart: water?.chart ?? meal.chart, sick, lastMeal }), rng: h.rng };
+  const parts = [meal.summary];
+  if (water) parts.push(water.summary);
+  let sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
+  // Starvation, desertion and sickness (rules §11) on the 'sickness' stream.
+  const hunger = starve(water?.chart ?? meal.chart, sick, meal.hungryMen);
+  if (hunger.summary) parts.push(hunger.summary);
+  const round = sicknessRound(h.rng, hunger.chart, sick, hunger.starving, explorer.specialties.includes('medicine'));
+  if (round.summary) parts.push(round.summary);
+  sick = round.sick;
+  const rolls = [...h.result.rolls, ...round.rolls];
+  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: parts.join('; ') };
+  if (round.explorerDied) return { ...replaceExplorer(state, { ...explorer, location: { kind: 'dead' }, chart: null, sick, lastMeal }), rng: round.rng };
+  return { ...replaceExplorer(state, { ...explorer, chart: round.chart, sick, lastMeal }), rng: round.rng };
 }
 
 /** Camped in a mapped desert hex whose oasis exists but is unknown to him, the explorer tries again each turn (rules §7.4). */

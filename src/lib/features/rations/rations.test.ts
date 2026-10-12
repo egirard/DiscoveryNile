@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
 import { NO_SICKNESS } from '$lib/game/state';
 import { rngScripted } from '$lib/game/random';
-import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, waterPerTurn, type Camp } from './rations';
+import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, sickCarried, sicknessRound, starve, waterPerTurn, type Camp } from './rations';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
 const veldt: Camp = { terrain: 'veldt', river: false, oasis: false };
@@ -82,5 +82,50 @@ describe('water in the desert (rules §5, §11)', () => {
     const alone = drink({ ...caravan, water: 0 }, dry)!;
     expect(alone.explorerThirsty).toBe(true);
     expect(alone.summary).toContain('the explorer is struck down by thirst');
+  });
+});
+
+describe('starvation and desertion (rules §11)', () => {
+  const sick0 = NO_SICKNESS;
+  it('bearers go hungry first, then guides, askaris and the explorer; the unguarded desert', () => {
+    const r = starve(chart({ askaris: 3, bearers: 10, food: 0 }), sick0, 9);
+    expect(r.deserted).toEqual({ guides: 0, bearers: 6, askaris: 0 });
+    expect(r.starving).toEqual({ guides: 0, bearers: 3, askaris: 0, explorer: false });
+    expect(r.chart.bearers).toBe(4);
+    expect(r.summary).toBe('6 bearers desert; 3 bearers go hungry');
+    const all = starve(chart({ askaris: 2, guides: 1, bearers: 2, muskets: 2, food: 0 }), sick0, 6);
+    expect(all.deserted).toEqual({ guides: 1, bearers: 2, askaris: 2 });
+    expect(all.chart).toMatchObject({ guides: 0, askaris: 0, bearers: 0, muskets: 0 });
+    expect(all.starving.explorer).toBe(true);
+    expect(all.summary).toBe('1 guide, 2 bearers, 2 askaris desert; the explorer goes hungry');
+  });
+  it('the sick cannot desert', () => {
+    const r = starve(chart({ askaris: 0, bearers: 4, food: 0 }), { ...sick0, bearers: 3 }, 4);
+    expect(r.deserted.bearers).toBe(1);
+    expect(r.starving.bearers).toBe(3);
+  });
+});
+
+describe('sickness rolls', () => {
+  it('starving men fall sick on 4–6; the sick recover on 1 or less and die on 5 or more, +3 starving, −1 with a doctor', () => {
+    const starving = { guides: 0, bearers: 3, askaris: 0, explorer: false };
+    const fell = sicknessRound(rngScripted(1, { sickness: [4, 5, 3] }), chart({ bearers: 3 }), NO_SICKNESS, starving, false);
+    expect(fell.sick.bearers).toBe(2);
+    expect(fell.summary).toBe('2 starving bearers fall sick');
+    const sickOnes = sicknessRound(rngScripted(1, { sickness: [1, 2, 3] }), chart({ bearers: 3 }), { ...NO_SICKNESS, bearers: 3 }, starving, false);
+    expect(sickOnes.died.bearers).toBe(2); // 2 + 3 and 3 + 3 are 5 or more; 1 + 3 = 4 lingers
+    expect(sickOnes.sick.bearers).toBe(1);
+    expect(sickOnes.chart.bearers).toBe(1);
+    const fed = { guides: 0, bearers: 0, askaris: 0, explorer: false };
+    const doctored = sicknessRound(rngScripted(1, { sickness: [2, 5] }), chart({ bearers: 2 }), { ...NO_SICKNESS, bearers: 2 }, fed, true);
+    expect(doctored.summary).toBe('1 bearer recovers'); // 2 − 1 recovers; 5 − 1 = 4 lingers
+    const explorer = sicknessRound(rngScripted(1, { sickness: [5] }), chart({}), { ...NO_SICKNESS, explorer: true }, fed, false);
+    expect(explorer.explorerDied).toBe(true);
+  });
+  it('sick men must be carried or the expedition halts', () => {
+    expect(sickCarried(chart({ bearers: 4 }), { ...NO_SICKNESS, bearers: 3 })).toEqual({ sickMen: 3, carriers: 0, halted: true });
+    expect(sickCarried(chart({ bearers: 6 }), { ...NO_SICKNESS, bearers: 2 })).toMatchObject({ carriers: 2, halted: false });
+    expect(sickCarried(chart({ horses: 3 }), { ...NO_SICKNESS, askaris: 2, explorer: true })).toMatchObject({ sickMen: 3, carriers: 3, halted: false });
+    expect(sickCarried(chart({ canoes: 1 }), { ...NO_SICKNESS, bearers: 5 }).halted).toBe(false);
   });
 });
