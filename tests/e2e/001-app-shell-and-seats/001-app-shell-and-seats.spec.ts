@@ -1,0 +1,80 @@
+import { test, expect } from '@playwright/test';
+import { TestStepHelper } from '../helpers/test-step-helper';
+
+test.describe('001 - App shell and seats', () => {
+  test('the table loads with four empty seats, a player takes the bottom seat, and it survives a reload', async ({ page }, testInfo) => {
+    const steps = new TestStepHelper(page, testInfo);
+    steps.setMetadata(
+      'App shell and seats',
+      'The table opens with a seat on each edge. A player at the bottom edge takes a seat; the rail shows them, faces them, and is still there after the table reloads.'
+    );
+
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
+
+    await steps.step('empty-table', {
+      description: 'The table shows four empty seats around the board',
+      verifications: [
+        { spec: 'Four seat rails are visible, one per edge', check: async () => {
+          await expect(page.locator('[data-testid^="seat-rail-"]')).toHaveCount(4);
+        } },
+        { spec: 'Every seat offers a join control and none is taken', check: async () => {
+          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(4);
+          await expect(page.locator('[data-taken="true"]')).toHaveCount(0);
+        } },
+        { spec: 'The pinned room code and the build marker are shown', check: async () => {
+          await expect(page.getByTestId('room-code')).toHaveText('ABCDE');
+          await expect(page.getByTestId('build-marker')).toHaveText('e2e-tes');
+        } },
+        { spec: 'The game was created with the seed from the URL', check: async () => {
+          const seed = await page.evaluate(() => window.__TABLETOP__!.getSeed());
+          expect(seed).toBe(1234);
+        } }
+      ]
+    });
+
+    await page.getByTestId('seat-join-bottom-1').click();
+
+    await steps.step('bottom-seat-taken', {
+      description: 'The bottom seat is taken and its rail faces the player',
+      verifications: [
+        { spec: 'The bottom rail is marked taken and shows the player icon', check: async () => {
+          await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'true');
+          await expect(page.getByTestId('seat-name-bottom-1')).toBeVisible();
+        } },
+        { spec: 'The other three seats are still free', check: async () => {
+          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(3);
+        } },
+        { spec: 'The bottom rail is upright (0°) and the top rail is turned around (180°)', check: async () => {
+          await expect(page.getByTestId('seat-rail-bottom-1').locator('.face')).toHaveCSS('rotate', '0deg');
+          await expect(page.getByTestId('seat-rail-top-1').locator('.face')).toHaveCSS('rotate', '180deg');
+        } },
+        { spec: 'The state records the occupant of bottom-1 and no diagnostics', check: async () => {
+          const state = await page.evaluate(() => window.__TABLETOP__!.getState());
+          expect(state.seats.find((s) => s.id === 'bottom-1')?.uid).toBe('table:bottom-1');
+          expect(state.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.reload();
+
+    await steps.step('persists-after-reload', {
+      description: 'After a reload the same game and the taken seat are restored',
+      verifications: [
+        { spec: 'The same room code is shown and the one-shot URL parameters are gone', check: async () => {
+          await expect(page.getByTestId('room-code')).toHaveText('ABCDE');
+          expect(new URL(page.url()).search).toBe('');
+        } },
+        { spec: 'The bottom seat is still taken', check: async () => {
+          await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'true');
+        } },
+        { spec: 'The event stream was replayed, not recreated', check: async () => {
+          const events = await page.evaluate(() => window.__TABLETOP__!.getEvents());
+          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken']);
+        } }
+      ]
+    });
+
+    steps.generateDocs();
+  });
+});

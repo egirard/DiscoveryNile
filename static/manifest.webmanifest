@@ -1,0 +1,10 @@
+{
+  "name": "Tabletop Template",
+  "short_name": "Tabletop",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#1c2a2e",
+  "theme_color": "#1c2a2e",
+  "icons": [{ "src": "icons/app.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

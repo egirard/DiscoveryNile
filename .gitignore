@@ -1,0 +1,13 @@
+node_modules/
+.svelte-kit/
+build/
+.cache/
+test-results/
+playwright-report/
+.env
+.env.*
+!.env.example
+.direnv/
+.firebase/
+*.log
+diagnostics/

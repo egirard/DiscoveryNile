@@ -1,0 +1,35 @@
+# Prepares the runner a coding agent works in. For GitHub Copilot this file and the job must be
+# named `copilot-setup-steps`; other agents may not use it at all. After it runs,
+# `bun run verify:change` works and the agent can satisfy the commit contract.
+name: Agent setup steps
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  agent-setup-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+      - name: Install and allow direnv
+        run: |
+          nix profile install nixpkgs#direnv
+          direnv allow . || true
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bunx playwright install --with-deps chromium
+      - run: |
+          echo "bun $(bun --version)"
+          echo "playwright $(bunx playwright --version)"
