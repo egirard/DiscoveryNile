@@ -248,7 +248,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
           rng = found.rng;
           if (found.result.rolls.length) {
             if (found.result.found) {
-              const id = Object.keys(tribes).length + 1;
+              const id = Math.max(0, ...Object.keys(tribes).map(Number)) + 1; // never reuse a number (erased tribes leave gaps)
               tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';

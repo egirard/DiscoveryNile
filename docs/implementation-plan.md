@@ -233,9 +233,11 @@ Choosing hexes to publish in Europe, stealing contested hexes, extra cards per h
 
 - **As landed:** in Europe a publish control at the rail opens the claim on the board: every hex under the seat's marker is offered and a tap sends `hex/published` for it. The hex records `publishedBy`, every marker on it comes off, its points (terrain and water from `map/scoring.ts`, the tribe discovered and, for its victor, defeated) go to `state.scores[seat]`, one donation card is drawn, and the rail notes what was counted. Each rail shows its score as tally marks (`scoring/Tally.svelte`), drawn only once a point exists. A published hex is known to all: no lost check or unknown-hex cost, no natives roll, no marker, no naturalist's turn, its oasis and its caches open to everyone (RQ-3), and a +1 on reactions with policies 3 and 5; published hexes south of the Orange or draining into it join Cape Colony (G-81). Specimens and good works score on landing in Europe (G-79). A halted expedition can no longer move by a direct event. Scenario 025 (seed 26): `contested` → `published` → `stolen`.
 
-### 26. Death and retirement — `026-death-and-retirement`
+### 26. Death and retirement — `026-death-and-retirement` ✅ landed
 
 Explorer death from any cause, retirement from Europe, erasure of unpublished hexes nobody else visited (with the regenerate-later behaviour), commissioning a new explorer at the same seat.
+
+- **As landed:** every death (a fight, captivity, a disaster card that strikes the explorer, poison, disease, sickness) and `explorer/retired` (a tap on one's explorer at the rail, confirmed at the edge) go through `explorers/fate.ts`: markers off, unpublished hexes only he had visited erased with their tribes and caches (so a later explorer generates them anew), his caches gone, everyone's known hexes trimmed, and `fate` recorded for the obituary at the rail. The seat's turn stays open to read the rail and ends as usual; the seat is skipped until `explorer/commissioned` again, when the new explorer starts in Europe with an empty hand. Tribe and cache numbers are never reused. Scenario 026 (seed 18, 018's dice with a 1 on the defeat die): `killed` → `successor` → `retired`.
 
 ### 27. Superlatives — `027-superlatives`
 

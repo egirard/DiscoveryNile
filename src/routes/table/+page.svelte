@@ -12,6 +12,8 @@
   import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
   import ExplorerToken from '$features/explorers/ExplorerToken.svelte';
   import { explorerAt } from '$features/explorers/reducer';
+  import { fallenAt } from '$features/explorers/fate';
+  import RetirePanel from '$features/explorers/RetirePanel.svelte';
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
@@ -20,7 +22,7 @@
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
-  import { PASSAGE_FARE, waterAvailable, WATER_STEP, worksOwed, portOf } from '$features/turn/reducer';
+  import { PASSAGE_FARE, waterAvailable, WATER_STEP, worksOwed, portOf, explorerSeats } from '$features/turn/reducer';
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
@@ -185,6 +187,20 @@
     const seat = publishingSeat;
     if (seat) await game?.append('hex/published', { seat, hex });
   }
+  // Retiring: a tap on one's own explorer at the rail during one's turn asks for confirmation at the edge (rules §12).
+  let retiringSeat = $state<string | null>(null);
+  const retiring = $derived.by(() => {
+    if (!retiringSeat || gameState.turn?.current !== retiringSeat) return null;
+    const seat = seats.find((s) => s.id === retiringSeat);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer || explorer.location.kind === 'voyage' || explorer.location.kind === 'homeward') return null;
+    const where = explorer.location.kind === 'europe' ? 'in Europe' : explorer.location.kind === 'captive' ? 'in captivity' : 'in Africa';
+    return { seat, where };
+  });
+  async function retire(seat: string) {
+    retiringSeat = null;
+    await game?.append('explorer/retired', { seat });
+  }
   async function perform(seat: string, specialty: string) {
     await game?.append('specialty/performed', { seat, specialty });
   }
@@ -287,6 +303,12 @@
     </EdgePanel>
   {/if}
 
+  {#if retiring}
+    <EdgePanel seat={retiring.seat} {viewport} inset={railDepth + target * 0.4} testid="retire-edge-{retiring.seat.id}">
+      <RetirePanel seat={retiring.seat.id} where={retiring.where} onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} />
+    </EdgePanel>
+  {/if}
+
   {#if reorganising}
     <EdgePanel seat={reorganising.seat} {viewport} inset={railDepth + target * 0.4} testid="reorganise-edge-{reorganising.seat.id}">
       <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches}
@@ -307,9 +329,10 @@
       {#snippet content()}
         {@const explorer = explorerAt(gameState, seat.id)}
         {#if explorer}
-          <span class="turn-marker" data-testid="turn-marker-{seat.id}" data-current={gameState.turn?.current === seat.id} aria-label={gameState.turn?.current === seat.id ? 'It is this seat\'s turn' : ''}>
+          {@const canRetire = gameState.turn?.current === seat.id && explorer.location.kind !== 'voyage' && explorer.location.kind !== 'homeward'}
+          <svelte:element this={canRetire ? 'button' : 'span'} class="turn-marker" role={canRetire ? 'button' : undefined} data-testid="turn-marker-{seat.id}" data-current={gameState.turn?.current === seat.id} aria-label={canRetire ? 'It is this seat\'s turn; tap the explorer to retire him' : gameState.turn?.current === seat.id ? 'It is this seat\'s turn' : ''} onclick={canRetire ? () => (retiringSeat = retiringSeat === seat.id ? null : seat.id) : undefined}>
             <ExplorerToken {explorer} />
-          </span>
+          </svelte:element>
           {#if gameState.rollOff?.[seat.id]}
             <DiceRoll values={gameState.rollOff[seat.id].at(-1) ?? []} label="Roll for first player" testid="roll-off-{seat.id}" />
           {/if}
@@ -385,7 +408,20 @@
             {/if}
           {/if}
         {:else}
-          <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
+          {@const fallen = fallenAt(gameState, seat.id)}
+          {#if fallen?.fate}
+            <span class="obituary" data-testid="fate-{seat.id}" data-fate={fallen.fate.kind} aria-label="The explorer {fallen.fate.cause}">{fallen.fate.cause}</span>
+          {/if}
+          {#if gameState.turn}
+            <Tally seat={seat.id} points={scoreOf(gameState, seat.id as SeatId)} />
+          {/if}
+          {#if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
+            <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
+            <RollLog seat={seat.id} log={gameState.turn.log} />
+            <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} />
+          {:else}
+            <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
+          {/if}
         {/if}
       {/snippet}
     </SeatRail>
@@ -455,6 +491,22 @@
     border-radius: 999px;
     padding: 3px;
     border: 3px solid transparent;
+    background: none;
+    font: inherit;
+    color: inherit;
+    margin: 0;
+  }
+  button.turn-marker {
+    cursor: pointer;
+  }
+  .obituary {
+    margin-left: var(--gap);
+    flex-shrink: 0;
+    max-width: calc(var(--target) * 5);
+    font-family: system-ui, sans-serif;
+    font-size: calc(var(--target) * 0.3);
+    line-height: 1.2;
+    color: #e7b4a8;
   }
   .turn-marker[data-current='true'] {
     border-color: var(--accent);

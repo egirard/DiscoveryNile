@@ -10,6 +10,7 @@ import { inCapeColony } from './cape-colony';
 import { PORTS } from '$features/map/manifest';
 import { resolveDisaster, type Situation } from './resolve';
 import { replaceExplorer } from '$features/turn/reducer';
+import { perish } from '$features/explorers/fate';
 
 export function situationOf(state: GameState, e: ExplorerState): Situation | null {
   if (e.location.kind !== 'hex') return null;
@@ -43,10 +44,12 @@ export function drawDisaster(state: GameState, e: ExplorerState): GameState {
   const record: RollRecord = { kind: 'disaster', seat: e.seat, hex: (e.location as { hex: string }).hex as RollRecord['hex'], card: top, applies: result.applies, rolls: result.rolls, outcome: result.outcome };
   const next: ExplorerState = { ...e, chart: result.chart, sick: result.sick };
   const turn = state.turn!;
+  const hex = (e.location as { hex: string }).hex;
+  const after = result.explorerDies ? perish(state, next, 'died', `struck down by ${card(top).disaster.type.replace(/\s*\(.*$/, '')} at ${hex}`) : replaceExplorer(state, next);
   return {
-    ...replaceExplorer(state, next),
+    ...after,
     rng: result.rng,
     deck: { draw: rest, discard: [...discard, top] },
-    turn: { ...turn, moved: turn.moved || result.halted, log: [...turn.log, record] }
+    turn: { ...turn, moved: turn.moved || result.halted || result.explorerDies, log: [...turn.log, record] }
   };
 }

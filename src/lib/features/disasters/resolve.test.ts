@@ -36,8 +36,9 @@ describe('disaster effects', () => {
   it('kills the named men and strikes the explorer when there are none of that type', () => {
     expect(resolve(1, veldt, FOOT)).toMatchObject({ applies: true, outcome: '1 askari killed', chart: { askaris: 4 } });
     const none = resolve(42, { ...veldt, terrain: 'jungle' }, FOOT);
-    expect(none.outcome).toBe('no such men: the explorer is struck down');
-    expect(none.sick.explorer).toBe(true);
+    expect(none.outcome).toBe('no such men: the explorer is struck down and dies');
+    expect(none.explorerDies).toBe(true);
+    expect(none.sick.explorer).toBe(false);
   });
   it('sickness is counted per type and a doctor averts it on a six', () => {
     const r = resolve(6, { ...veldt, terrain: 'jungle' }, FOOT);

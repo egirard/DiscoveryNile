@@ -32,6 +32,7 @@ export type ExplorerLocation =
   | { kind: 'hex'; hex: HexId }
   /** Held prisoner by a tribe (rules §8.4): an escape roll every turn; `had` is the chart at capture, for the survival table. */
   | { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number }
+  /** Out of play, dead or retired (`fate` says which); the seat may commission a new explorer. */
   | { kind: 'dead' };
 
 /** Who in the expedition is sick (rules §10–11). Consequences of sickness arrive with slice 021. */
@@ -72,6 +73,8 @@ export interface ExplorerState {
   goodWorks: { evangelism: number; medicine: number };
   /** The unpublished hex a naturalist entered and must study for a turn per specialty before moving on. */
   research: { hex: HexId; done: ('zoology' | 'geology')[] } | null;
+  /** Set when the explorer is out of play (location 'dead'): how, when, and the obituary for the rail (rules §12). */
+  fate: { kind: 'died' | 'retired'; round: number; cause: string } | null;
 }
 
 /** A tribe discovered in play (rules §7.7), numbered as its marker. */

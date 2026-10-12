@@ -94,7 +94,8 @@ describe('defeat: captivity, escape and death', () => {
     const dead = reduce(ev4);
     expect(dead.turn!.log.at(-1)).toMatchObject({ kind: 'defeat', outcome: 'the explorer is killed' });
     expect(dead.explorers[0].location).toEqual({ kind: 'dead' });
-    expect(dead.tribes[1].attitude).toBe(-2);
+    expect(dead.tribes).toEqual({}); // the hex only he had visited is erased with its tribe (rules §12, slice 026)
+    expect(dead.map['c24r12']).toBeUndefined();
     const onward = reduce([...ev4, event('turn/ended', { seat: 'bottom-1' })]);
     expect(onward.turn!.current).toBe('top-1');
     const again = reduce([...ev4, event('turn/ended', { seat: 'bottom-1' }), ...pass('top-1', onward)]);

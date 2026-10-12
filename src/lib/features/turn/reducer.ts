@@ -19,6 +19,7 @@ import { modeFor } from '$features/exploration/movement';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
 import { addScore, homecoming, valueOf } from '$features/scoring/score';
+import { perish } from '$features/explorers/fate';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -101,6 +102,7 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     explorer = currentExplorer(state)!;
     const rechecked = oasisRecheck(state, explorer);
     const drawn = drawDisaster(rechecked, currentExplorer(rechecked)!);
+    if (!currentExplorer(drawn)) return drawn; // the card killed him: the seat's turn stays open to read the rail, then passes
     // Remaining in a hex with natives: a policy is chosen again (rules §8.1), unless the village's spoils are being dealt with.
     if (drawn.turn!.phase === 'spoils') return drawn;
     return drawn.map[hex]?.tribe != null ? { ...drawn, turn: { ...drawn.turn!, phase: 'natives' } } : drawn;
@@ -141,7 +143,7 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   sick = round.sick;
   const rolls = [...h.result.rolls, ...round.rolls];
   const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: parts.join('; ') };
-  if (round.explorerDied) return { ...replaceExplorer(state, { ...explorer, location: { kind: 'dead' }, chart: null, sick, lastMeal }), rng: round.rng };
+  if (round.explorerDied) return { ...perish(state, { ...explorer, sick, lastMeal }, 'died', `died of sickness at ${hex}`), rng: round.rng };
   return { ...replaceExplorer(state, { ...explorer, chart: round.chart, sick, lastMeal }), rng: round.rng };
 }
 
@@ -164,7 +166,7 @@ function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
   const turn = { ...state.turn!, log: [...state.turn!.log, record], moved: true };
   if (r.fate === 'killed') {
     const t = state.tribes[tribe];
-    return { ...replaceExplorer(state, { ...explorer, location: { kind: 'dead' }, chart: null }), rng: r.rng, turn, tribes: { ...state.tribes, [tribe]: { ...t, attitude: t.attitude - 1 } } };
+    return { ...perish({ ...state, tribes: { ...state.tribes, [tribe]: { ...t, attitude: t.attitude - 1 } } }, explorer, 'died', `killed in captivity by tribe ${tribe} at ${hex}`), rng: r.rng, turn };
   }
   if (r.fate === 'prisoner') return { ...replaceExplorer(state, explorer), rng: r.rng, turn };
   // Free, but still in the tribe's hex: a policy is chosen (rules §8.1).
@@ -223,8 +225,9 @@ function settle(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: He
     rng = d.rng;
     tribes = { ...tribes, [tribe.id]: { ...tribes[tribe.id], attitude: tribe.attitude - 1 - (d.fate === 'killed' ? 1 : 0) } };
     log.push({ kind: 'defeat', seat: explorer.seat, hex, rolls: d.rolls, outcome: d.summary });
-    const location: ExplorerState['location'] = d.fate === 'killed' ? { kind: 'dead' } : d.fate === 'prisoner' ? { kind: 'captive', hex, tribe: tribe.id, had: result.chart, goodwill: 0 } : { kind: 'hex', hex };
-    const chart = d.fate === 'killed' || d.fate === 'prisoner' ? null : d.chart;
+    if (d.fate === 'killed') return { ...perish({ ...next, tribes }, explorer, 'died', `killed by tribe ${tribe.id} at ${hex}`), rng, turn: { ...turn, phase: 'act', log, moved: true } };
+    const location: ExplorerState['location'] = d.fate === 'prisoner' ? { kind: 'captive', hex, tribe: tribe.id, had: result.chart, goodwill: 0 } : { kind: 'hex', hex };
+    const chart = d.fate === 'prisoner' ? null : d.chart;
     return { ...replaceExplorer(next, { ...explorer, location, chart }), rng, tribes, turn: { ...turn, phase: 'act', log, moved: true } };
   }
   if (result.outcome === 'victory') {
@@ -343,12 +346,13 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const { seat } = event.payload as { seat?: string };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      const ending = currentExplorer(state);
+      if (!ending) return advance(state); // the explorer died or retired this turn: the turn passes whatever was pending
       if (state.turn.phase === 'natives') return 'choose a policy towards the natives first';
       if (state.turn.phase === 'spoils') return 'deal with the prisoners and the village first';
       if (state.turn.phase === 'negotiate' || state.turn.phase === 'trade') return 'finish with the chief first';
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
-      const ending = currentExplorer(state);
-      return advance(ending ? eatAndHunt(state, ending) : state);
+      return advance(eatAndHunt(state, ending));
     }
     case 'voyage/booked': {
       const { seat, port, ticketCardId } = event.payload as { seat?: string; port?: string; ticketCardId?: unknown };
@@ -448,7 +452,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const poison = attemptPoison(h.rng, e2.poisonBonus);
       const log: RollRecord[] = [...afterHostilities.turn!.log, { kind: 'combat', seat: e2.seat, hex, rolls: h.combat, outcome: h.summary }, { kind: 'poison', seat: e2.seat, hex, rolls: poison.rolls, outcome: poison.summary }];
       const turn = { ...afterHostilities.turn!, phase: 'act' as const, log, moved: true };
-      if (poison.result === 'dies') return { ...replaceExplorer(afterHostilities, { ...e2, location: { kind: 'dead' }, chart: null }), rng: poison.rng, turn };
+      if (poison.result === 'dies') return { ...perish(afterHostilities, e2, 'died', `poisoned by the chief of tribe ${tribe.id} at ${hex}`), rng: poison.rng, turn };
       if (poison.result === 'recovers') return { ...replaceExplorer(afterHostilities, { ...e2, poisonBonus: e2.poisonBonus + 1 }), rng: poison.rng, turn };
       return { ...afterHostilities, rng: poison.rng, turn };
     }
@@ -546,14 +550,14 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       let next: ExplorerState = { ...explorer, goodWorks };
       if (captive && work.attitude > 0) next = { ...next, location: { ...(explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number }), goodwill: (explorer.location as { goodwill: number }).goodwill + work.attitude } };
       const t = work as { explorerDies?: boolean; explorerSick?: boolean };
-      if (t.explorerDies) return { ...replaceExplorer(state, { ...next, location: { kind: 'dead' }, chart: null }), rng, tribes, turn: { ...state.turn, log, moved: true } };
+      if (t.explorerDies) return { ...perish({ ...state, tribes }, next, 'died', `died of disease treating tribe ${tribe.id} at ${hex}`), rng, turn: { ...state.turn, log, moved: true } };
       if (t.explorerSick) next = { ...next, sick: { ...next.sick, explorer: true } };
       // The chief's and the witch doctor's poison (rules §9), until one succeeds.
       for (let i = 0; i < work.poisonAttempts; i++) {
         const poison = attemptPoison(rng, next.poisonBonus);
         rng = poison.rng;
         log.push({ kind: 'poison', seat: explorer.seat, hex, rolls: poison.rolls, outcome: poison.summary });
-        if (poison.result === 'dies') return { ...replaceExplorer(state, { ...next, location: { kind: 'dead' }, chart: null }), rng, tribes, turn: { ...state.turn, log, moved: true } };
+        if (poison.result === 'dies') return { ...perish({ ...state, tribes }, next, 'died', `poisoned by tribe ${tribe.id} at ${hex}`), rng, turn: { ...state.turn, log, moved: true } };
         if (poison.result === 'recovers') next = { ...next, poisonBonus: next.poisonBonus + 1 };
       }
       return { ...replaceExplorer(state, next), rng, tribes, turn: { ...state.turn, log } };
@@ -585,6 +589,17 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (!port) return 'the explorer is not at a port of entry';
       const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex: BOARD.ports[port].hex, rolls: [], outcome: `the expedition is dismissed at ${BOARD.ports[port].name}; passage home is free` };
       return { ...replaceExplorer(state, { ...explorer, location: { kind: 'homeward', port }, chart: null, lastMeal: null, research: null, cameFrom: null }), turn: { ...state.turn, moved: true, log: [...state.turn.log, record] } };
+    }
+    case 'explorer/retired': {
+      // At any time on his own turn (rules §12): the explorer leaves play; his markers come off and his unvisited hexes are erased.
+      const { seat } = event.payload as { seat?: string };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      const explorer = currentExplorer(state);
+      if (!explorer) return 'no explorer to retire';
+      if (explorer.location.kind === 'voyage' || explorer.location.kind === 'homeward') return 'the explorer is at sea';
+      const where = explorer.location.kind === 'europe' ? 'retired in Europe' : explorer.location.kind === 'captive' ? `retired in captivity, abandoned to tribe ${explorer.location.tribe}` : `retired in Africa at ${standingHex(explorer)}`;
+      return { ...perish(state, explorer, 'retired', where), turn: { ...state.turn, phase: 'act', trade: null, moved: true } };
     }
     case 'hex/published': {
       // In Europe (rules §12): claim a hex under one's marker, even one mapped by another; every marker comes off,
@@ -628,7 +643,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         chart[it] -= count;
         const mine = Object.values(caches).find((c) => c.hex === hex && c.seat === explorer.seat && c.round === state.turn!.round);
         if (mine) caches = { ...caches, [mine.id]: { ...mine, contents: { ...mine.contents, [it]: (mine.contents[it] ?? 0) + count } } };
-        else { const id = Object.keys(caches).length + 1; caches = { ...caches, [id]: { id, hex, seat: explorer.seat, round: state.turn.round, contents: { [it]: count } } }; }
+        else { const id = Math.max(0, ...Object.keys(caches).map(Number)) + 1; caches = { ...caches, [id]: { id, hex, seat: explorer.seat, round: state.turn.round, contents: { [it]: count } } }; }
         outcome = `${count} ${it} cached`;
       } else if (action === 'dismiss') {
         if (!men.includes(it)) return `${it} cannot be dismissed`;

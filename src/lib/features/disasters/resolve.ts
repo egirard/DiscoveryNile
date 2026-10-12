@@ -34,6 +34,8 @@ export interface DisasterResult {
   sick: Sickness;
   /** The expedition may not move this turn. */
   halted: boolean;
+  /** "The Explorer is affected instead" by a killing card (rules §10). */
+  explorerDies: boolean;
 }
 
 type Men = 'guides' | 'bearers' | 'askaris';
@@ -65,6 +67,7 @@ class Resolver {
   chart: Chart;
   sick: Sickness;
   halted = false;
+  explorerDies = false;
   constructor(public rng: RngState, party: Party, private specialties: Specialty[]) {
     this.chart = { ...party.chart };
     this.sick = { ...party.sick };
@@ -103,11 +106,17 @@ class Resolver {
     if (taken) this.notes.push(`${plural(taken, type.slice(0, -1))} sick`);
     if (taken < n) this.strikeExplorer('sick');
   }
-  /** "The Explorer is affected instead!" (rules §10). Death arrives with slice 026: recorded as sick (G-38). */
+  /** "The Explorer is affected instead!" (rules §10): a killing card kills him, a sickening card sickens him (G-38). */
   strikeExplorer(how: 'killed' | 'sick') {
+    if (how === 'killed') {
+      if (this.explorerDies) return;
+      this.explorerDies = true;
+      this.notes.push('no such men: the explorer is struck down and dies');
+      return;
+    }
     if (this.sick.explorer) return;
     this.sick.explorer = true;
-    this.notes.push(how === 'killed' ? 'no such men: the explorer is struck down' : 'no such men: the explorer is sick');
+    this.notes.push('no such men: the explorer is sick');
   }
   loseAnimals(n: number, what = 'animal') {
     let left = n;
@@ -171,7 +180,7 @@ const GOODS: readonly (keyof Chart & string)[] = ['canoes', 'muskets', 'food', '
 export function resolveDisaster(rng: RngState, card: Card, situation: Situation, party: Party): DisasterResult {
   const r = new Resolver(rng, party, party.specialties);
   const done = (applies: boolean, outcome?: string): DisasterResult => ({
-    rng: r.rng, applies, outcome: outcome ?? (r.notes.join(', ') || 'no effect'), rolls: r.rolls, chart: r.chart, sick: r.sick, halted: r.halted
+    rng: r.rng, applies, outcome: outcome ?? (r.notes.join(', ') || 'no effect'), rolls: r.rolls, chart: r.chart, sick: r.sick, halted: r.halted, explorerDies: r.explorerDies
   });
   if (card.disaster.type === 'None') return done(false, 'no disaster on this card');
   if (!applies(card, situation)) return done(false, `not here: ${card.disaster.context.toLowerCase()}`);
