@@ -205,7 +205,7 @@
               {/each}
             </span>
             {#if explorer.chart}
-              <ChartSummary seat={seat.id} chart={explorer.chart} />
+              <ChartSummary seat={seat.id} chart={explorer.chart} sick={explorer.sick} />
             {:else}
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {/if}

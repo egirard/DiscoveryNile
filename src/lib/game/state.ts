@@ -30,10 +30,22 @@ export type ExplorerLocation =
   | { kind: 'hex'; hex: HexId }
   | { kind: 'dead' };
 
+/** Who in the expedition is sick (rules §10–11). Consequences of sickness arrive with slice 021. */
+export interface Sickness {
+  explorer: boolean;
+  guides: number;
+  bearers: number;
+  askaris: number;
+  animals: number;
+}
+
+export const NO_SICKNESS: Sickness = { explorer: false, guides: 0, bearers: 0, askaris: 0, animals: 0 };
+
 export interface ExplorerState {
   seat: SeatId;
   specialties: Specialty[];
   location: ExplorerLocation;
+  sick: Sickness;
   /** Donation cards, face up. */
   hand: CardId[];
   /** The round each card in hand was drawn in; free tickets expire at the owner's next turn. */
@@ -62,9 +74,13 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster';
   seat: SeatId;
   hex: HexId;
+  /** The disaster card drawn this turn (rules §10). */
+  card?: CardId;
+  /** Whether the card's context matched the expedition's situation. */
+  applies?: boolean;
   rolls: Roll[];
   modifiers?: Modifier[];
   total?: number;

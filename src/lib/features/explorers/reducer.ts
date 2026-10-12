@@ -1,5 +1,5 @@
 import type { GameEvent } from '$lib/game/events';
-import type { ExplorerState, GameState, Specialty } from '$lib/game/state';
+import { NO_SICKNESS, type ExplorerState, type GameState, type Specialty } from '$lib/game/state';
 import { parseSeatId } from '$lib/tabletop/seats';
 
 export const SPECIALTIES: readonly Specialty[] = ['evangelism', 'medicine', 'zoology', 'geology'];
@@ -21,7 +21,7 @@ export function reduceExplorers(state: GameState, event: GameEvent): GameState |
       if (!Array.isArray(specialties) || !specialties.every((s) => SPECIALTIES.includes(s as Specialty)))
         return 'explorer/commissioned needs a list of specialties';
       const unique = [...new Set(specialties as Specialty[])].sort((a, b) => SPECIALTIES.indexOf(a) - SPECIALTIES.indexOf(b));
-      const explorer: ExplorerState = { seat: parsed.id, specialties: unique, location: { kind: 'europe' }, hand: [], drawnRound: {}, money: 0, chart: null, known: [] };
+      const explorer: ExplorerState = { seat: parsed.id, specialties: unique, location: { kind: 'europe' }, sick: NO_SICKNESS, hand: [], drawnRound: {}, money: 0, chart: null, known: [] };
       return { ...state, explorers: [...state.explorers, explorer] };
     }
     default:

@@ -53,7 +53,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 010-first-step-into-the-unknown    landed
 011-rivers-and-oases               landed
 012-movement-rates                 landed
-013-disaster-cards
+013-disaster-cards                 landed
 014-hunting-and-rations
 015-water-in-the-desert
 016-natives-discovered-and-policy
@@ -155,9 +155,11 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **As landed:** `mounted-four` → `terrain-conflict` → `canoe-along-river`, driven by seed 1573 and the first scripted dice (`?dice=`, see [e2e-test-guidelines.md](e2e-test-guidelines.md)); the path is still one `expedition/moved` per hex, tapped step by step against a per-turn budget of movement points shown as pips at the rail (G-32..36).
 - **Unit tests:** every row of §7.1; speed limit when loads exceed carriage; slowest canoe; `RQ-13`.
 
-### 13. Disaster cards — `013-disaster-cards`
+### 13. Disaster cards — `013-disaster-cards` ✅ landed
 
 Draw at the start of each African turn outside ports and Cape Colony; applicability by terrain context; losses applied to the chart; "explorer suffers instead" when the type is absent; averting rolls for askaris, doctors, missionaries, geologists; card-specific procedures from the deck CSV. Cape Colony membership computed from the map.
+
+- **As landed:** every card's disaster face is a case in `disasters/resolve.ts` over the seeded dice; sickness is tallied per type on the explorer (`sick`) for 021 to act on; the explorer struck "instead" is recorded as sick until 026 models death; cards that need combat (16 unpaid, 29), the defeat table (46) or the poisoning table (18) record what happened and hand over to 017–019; missionary attitude against bad omens waits for 022. Scenario 013 (seed 863, dice-scripted rhino): `disaster-strikes` → `no-effect` → `rhino-charges`. Guesses G-37..43.
 
 ### 14. Hunting and rations — `014-hunting-and-rations`
 

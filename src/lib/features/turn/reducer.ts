@@ -5,6 +5,7 @@ import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/card
 import { BOARD, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
+import { drawDisaster } from '$features/disasters/draw';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -61,6 +62,7 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
     return advance(landed);
   }
+  if (explorer.location.kind === 'hex') return drawDisaster(state, explorer);
   if (explorer.location.kind !== 'europe') return state;
   const expired = explorer.hand.filter((id) => card(id).donation.kind === 'ticket' && (explorer.drawnRound[id] ?? 0) < turn.round);
   if (expired.length) {

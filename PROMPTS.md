@@ -52,4 +52,4 @@ We can substitute in a non-random die sequence for the purpose of running unit t
 
 resume as per instructions in discovery-nile-wip-012
 
-`Outcome: Finished slice 012 (movement rates): per-turn movement budget with pips at the rail, mounted/canoe/foot rates, terrain conflict, canoe water links and cataract portage; scenario 012 driven by seed 1573 and the first dice script; river overlays no longer swallow taps; G-32..36 logged; committed and pushed.`
+`Outcome: Resumed the roll-through. 012 (movement rates) and 013 (disaster cards) landed and pushed; river overlays no longer swallow taps; G-32..43 logged.`
