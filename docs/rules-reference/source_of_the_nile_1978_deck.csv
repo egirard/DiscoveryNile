@@ -1,0 +1,49 @@
+Card #,Image,Disaster Text,Terrain / Context,Disaster Type,Funding / Reward Type,Funding / Reward Value,Funding / Ticket Port
+1,"Image 1 (Row 1, Col 1)","One of your ASKARIS is killed by a buffalo, while hunting on the VELDT.",VELDT,Loss (Askari),Donation,$200,None
+2,"Image 1 (Row 1, Col 2)",Half of the MEN in the expidition become sick while camped in the JUNGLE.,JUNGLE,Sickness (Half Men),Free Ticket,Free Ticket,Mombasa
+3,"Image 1 (Row 1, Col 3)",Five of your MEN become sick from the cold while camped high on the MOUNTAIN slopes.,MOUNTAIN,Sickness (5 Men),Donation,$100,None
+4,"Image 1 (Row 2, Col 1)",No Disaster on this Card,None / Special,None,Donation (Special),$77,None (Nobel Order of Cabalistic Mystics - Temple of Nosh / Source of the Nile)
+5,"Image 1 (Row 2, Col 2)",Your GUIDE is knocked out of the canoe by a low-hanging tree branch while riding through the JUNGLE and drowns in the RIVER.,JUNGLE / RIVER,Loss (Guide),Donation,$50,None
+6,"Image 1 (Row 2, Col 3)",FOUR ASKARIS and four BEARERS are sick after eating some fruit they picked in the JUNGLE.,JUNGLE,Sickness (4 Askaris & 4 Bearers),Donation,$500,None
+7,"Image 1 (Row 3, Col 1)",Your GUIDE is bitten by a large snake in the reeds at the edge of the LAKE and dies.,LAKE,Loss (Guide),Donation,$50,None
+8,"Image 1 (Row 3, Col 2)","Your GUIDE says that the next hex to the east contains the Elephants' Graveyard, where endless amounts of ivory lie about in piles.",General (Rumor/Guide),Rumor / Clue,None,$0,None (No Donation on this Card)
+9,"Image 1 (Row 3, Col 3)","A herd of hippos migrates through your camp to reach the LAKE, wrecking four CANOES, but your men all escape injury. Save one canoe per hippo shot.",LAKE,Equipment Loss (Canoes),Donation,$200,None
+10,"Image 1 (Row 4, Col 1)",No Disaster on this Card,None / Special,None,Donation (Special),$5,None (Mrs. Purity Smoothbottle - Find missing husband)
+11,"Image 1 (Row 4, Col 2)","One of the BEARERS is stung by a centipede while clearing a campsite in the JUNGLE, and dies.",JUNGLE,Loss (Bearer),Donation,$200,None
+12,"Image 1 (Row 4, Col 3)","A flash flood sweeps down the narrow MOUNTAIN valley in which you are camped, drowning half your MEN and ANIMALS.",MOUNTAIN,Loss (Half Men & Animals),Donation,$200,None
+13,"Image 2 (Row 1, Col 1)",One of your ASKARIS falls into the LAKE and is attacked by four crocodiles. You must shoot them all to save him.,LAKE,Hazard / Combat (Crocodiles),Donation,$200,None
+14,"Image 2 (Row 1, Col 2)",Your BEARERS say the SWAMP is inhabited by evil spirits. You can only force as many of them to go on as you have askaris.,SWAMP,Desertion / Morale (Bearers),Donation,$200,None
+15,"Image 2 (Row 1, Col 3)","A sandstorm sweeps across the DESERT and overwhelms your camp. Afterwards, half of your baggage ANIMALS are lost.",DESERT,Loss (Half Baggage Animals),Free Ticket,Free Ticket,Capetown
+16,"Image 2 (Row 2, Col 1)",Twelve DESERT raiders demand that you pay them a toll of 2-12 GIFTS (roll 2 dice) to let you pass. If you do not pay they will attack.,DESERT,Encounter / Toll (Gifts/Attack),Donation,$100,None
+17,"Image 2 (Row 2, Col 2)","Four of your ASKARIS, who are not used to the DESERT, die from sunstroke.",DESERT,Loss (4 Askaris),Donation,$100,None
+18,"Image 2 (Row 2, Col 3)",The OASIS in this DESERT hex is poisoned. Roll twice on the Poisoning table for each MAN and ANIMAL.,DESERT (Oasis),Poisoning Check,Donation,$200,None
+19,"Image 2 (Row 3, Col 1)","A rare thunderstorm causes a flash flood in the DESERT wadi in which you are camped. Lose half your expedition, but find plenty of water.",DESERT,Loss (Half Expedition),Donation,$200,None
+20,"Image 2 (Row 3, Col 2)",An ASKARI becomes ill after eating some roots he has found in the SWAMP.,SWAMP,Sickness (1 Askari),Donation,$100,None
+21,"Image 2 (Row 3, Col 3)",One of your CANOES overturns on the RIVER.,RIVER,Loss (1 Canoe),Donation,$500,None
+22,"Image 2 (Row 4, Col 1)",An avalanche sweeps down the MOUNTAINSIDE and destroys half of your expedition.,MOUNTAIN,Loss (Half Expedition),Free Ticket,Free Ticket,Laurenco Marques
+23,"Image 2 (Row 4, Col 2)",Your expedition surprises a rhino on the VELDT. Lose one MAN each time he charges. He will charge six times if not shot. You may fire each time he charges.,VELDT,Animal Attack (Rhino),Donation,$200,None
+24,"Image 2 (Row 4, Col 3)",One ASKARI is accidentally shot by another while hunting in the JUNGLE.,JUNGLE,Loss (1 Askari),Donation,$100,None
+25,"Image 3 (Row 1, Col 1)",An enormous snake siezes one of your HORSES as you move through the JUNGLE and kills it.,JUNGLE,Loss (1 Horse),Donation,$200,None
+26,"Image 3 (Row 1, Col 2)",A BEARER goes fishing by the LAKE and is not seen again.,LAKE,Loss (1 Bearer),Donation,$100,None
+27,"Image 3 (Row 1, Col 3)",Locusts destroy all the grass in the VELDT hex you are in and force you to feed your ANIMALS food rations.,VELDT,Resource Loss (Rations for Animals),Donation,$200,None
+28,"Image 3 (Row 2, Col 1)",Your GUIDE and one of your ASKARIS are from different DESERT tribes. They fight a duel and the GUIDE is killed.,DESERT,Loss (Guide),Donation,$200,None
+29,"Image 3 (Row 2, Col 2)",Forty Cannibals attack your JUNGLE camp. Treat as an encounter with hostile natives. Assume explorer's option 4.,JUNGLE,Hostile Encounter (Cannibals),None,$0,None (No Donation on this Card)
+30,"Image 3 (Row 2, Col 3)",A dozen baboons attack your expedition on the MOUNTAINSIDE and kill six of your MEN. Save one for each two baboons you shoot.,MOUNTAIN,Animal Attack (Baboons),Free Ticket,Free Ticket,Quilimane
+31,"Image 3 (Row 3, Col 1)",The guide says the natives in the next blank hex to the east are very powerful and very unfriendly. He will desert you if you go there.,General (Rumor/Guide),Rumor / Warning,Free Ticket,Free Ticket,Calabar
+32,"Image 3 (Row 3, Col 2)","You find a previously unknown cache beside the RIVER containing a CANOE, 10 GIFTS and a MUSKET.",RIVER,Discovery / Supply Find,Free Ticket,Free Ticket,Kilwa
+33,"Image 3 (Row 3, Col 3)",All of your MEN and half of your ANIMALS are sick after being bitten by Tse-tse flies on the VELDT.,VELDT,Sickness (All Men & Half Animals),Free Ticket,Free Ticket,Launda
+34,"Image 3 (Row 4, Col 1)",A storm catches you far out on the LAKE (or SEA) and overturns half of your CANOES. (Round up if an odd number.),LAKE / SEA,Equipment Loss (Half Canoes),Free Ticket,Free Ticket,Benguela
+35,"Image 3 (Row 4, Col 2)",Six BEARERS and an ASKARI are sick after spending a night in the SWAMP.,SWAMP,Sickness (6 Bearers & 1 Askari),Free Ticket,Free Ticket,Port Elizabeth
+36,"Image 3 (Row 4, Col 3)",You were cheated by a sharp outfitter. Ten of your RATIONS are inedible. You must throw them away.,General (Outfitting),Resource Loss (10 Rations),Free Ticket,Free Ticket,Zanzibar
+37,"Image 4 (Row 1, Col 1)","Two of your HORSES lose their footing on the MOUNTAINSIDE and fall to their deaths, taking a BEARER with them.",MOUNTAIN,Loss (2 Horses & 1 Bearer),Donation,$100,None
+38,"Image 4 (Row 1, Col 2)",Your GUIDE steps on a crocodile sleeping in the edge of the SWAMP. Save him if you kill the croc.,SWAMP,Hazard / Guide Rescue,Donation,$200,None
+39,"Image 4 (Row 1, Col 3)",Half of your expedition becomes sick while camped in the SWAMP.,SWAMP,Sickness (Half Expedition),Free Ticket,Free Ticket,Durban
+40,"Image 4 (Row 2, Col 1)",Four BEARERS become sick after drinking water from the LAKE.,LAKE,Sickness (4 Bearers),Donation,$50,None
+41,"Image 4 (Row 2, Col 2)",There are bad omens today and your BEARERS refuse to leave camp. You cannot move to a different hex.,General (Morale),Turn Delay / Movement Lock,Donation,$500,None
+42,"Image 4 (Row 2, Col 3)",A leopard attacks and kills your GUIDE as he leads you through the JUNGLE.,JUNGLE,Loss (Guide),Donation,$100,None
+43,"Image 4 (Row 3, Col 1)",DESERT tribesmen slip into your camp to steal CAMELS and/or HORSES. Save one animal for each raider you shoot. (Roll for 6's for explorer & each askari.),DESERT,Theft / Combat (Animals),Free Ticket,Free Ticket,Brass
+44,"Image 4 (Row 3, Col 2)",One of your ASKARIS falls in the RIVER and drowns.,RIVER,Loss (1 Askari),Donation,$50,None
+45,"Image 4 (Row 3, Col 3)",One of your BEARERS is stung by a DESERT scorpion and becomes very sick.,DESERT,Sickness (1 Bearer),Donation,$500,None
+46,"Image 4 (Row 4, Col 1)","Your camp on the VELDT is destroyed by a herd of stampeding elephants. Roll one die, add 2, and consult the consequences of defeat table.",VELDT,Animal Attack / Camp Destroyed,None,$0,None (No Donation on this card)
+47,"Image 4 (Row 4, Col 2)","One of the BEARERS is bitten by a snake while trying to fish in the SWAMP, and dies.",SWAMP,Loss (1 Bearer),Donation,$200,None
+48,"Image 4 (Row 4, Col 3)",A crocodile eats one of your BEARERS when he goes down to the RIVER for a drink.,RIVER,Loss (1 Bearer),Donation,$200,None

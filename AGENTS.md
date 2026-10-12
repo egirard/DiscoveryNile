@@ -13,7 +13,8 @@ Keep the agent-specific files to that one line so the instructions live in one p
 2. [`docs/commit-contract.md`](docs/commit-contract.md) — what every commit must contain. This is not optional.
 3. [`docs/e2e-test-guidelines.md`](docs/e2e-test-guidelines.md) — how to write the E2E scenario that every commit needs.
 4. [`docs/architecture.md`](docs/architecture.md) and [`docs/tabletop-ux.md`](docs/tabletop-ux.md) — how the application is shaped and why.
-5. The project's `docs/implementation-plan.md` — the slice you have been asked to build and the slices around it.
+5. [`docs/rules.md`](docs/rules.md) and [`docs/rules-reference.md`](docs/rules-reference.md) — the game's rules, the pinned reference that is the authority for them, and how to raise a discrepancy instead of guessing.
+6. [`docs/implementation-plan.md`](docs/implementation-plan.md) — the slice you have been asked to build and the slices around it.
 
 ## The one rule
 
@@ -49,6 +50,7 @@ A task is one slice. It is done when all of the following are true:
 - Prefer icons to text in the UI. When text is unavoidable it must face its player.
 - Keep randomness behind the seeded PRNG so scenarios are deterministic.
 - Do not contact production Firebase from any test. Tests use the local backend or the emulators.
+- When a rule is unclear or sources disagree, add an `RQ-n` to `docs/rules.md`, implement the smallest interpretation, and cite it from the test and the commit message. Never silently pick a reading.
 - Keep commits small. If a task turns out to need two visible changes, make two commits, each with its own scenario step or scenario.
 
 ## When something is unclear

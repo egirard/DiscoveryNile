@@ -16,7 +16,7 @@ This document describes the environment a developer (or an AI coding agent) has 
 
 ```nix
 {
-  description = "{{PROJECT}} development environment";
+  description = "DiscoveryNile development environment";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
@@ -136,5 +136,6 @@ The agent runner is prepared by `.github/workflows/agent-setup-steps.yml` (renam
 | `bun: command not found` | You are outside the Nix shell: `nix develop` |
 | Port 3000 in use | Stop the other process; do not change the port |
 | Playwright cannot find Chromium | `bunx playwright install --with-deps chromium` inside the shell |
+| Chromium: `error while loading shared libraries: libnspr4.so` (fresh Ubuntu/WSL) | The browser downloaded but its system libraries did not: `sudo bunx playwright install-deps chromium` once, then rerun |
 | Screenshots differ from CI | See "Determinism" in [e2e-test-guidelines.md](e2e-test-guidelines.md); fonts and GPU flags are pinned, never loosen tolerance |
 | Firebase emulator will not start | `jdk` must be in the flake; check ports 8186 and 9200 |

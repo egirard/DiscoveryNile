@@ -66,7 +66,7 @@ When the game has hidden information, each seat shows a **QR code** on its rail.
 
 ## Checklist for a new screen
 
-- [ ] Works with 1 to `{{MAX_PLAYERS}}` seats occupied, on any combination of edges, including two on one edge.
+- [ ] Works with 1 to `6` seats occupied, on any combination of edges, including two on one edge.
 - [ ] Every player-facing element is rotated to its seat.
 - [ ] Every shared element is legible from every seat.
 - [ ] No text a player must read from the wrong direction.
