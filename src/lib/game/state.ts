@@ -90,6 +90,16 @@ export interface Tribe {
   treatedBy: SeatId[];
 }
 
+/** Goods buried or hidden on a hex under one of the explorer's cache markers (rules §5, RQ-3). */
+export interface Cache {
+  id: number;
+  hex: HexId;
+  seat: SeatId;
+  /** The round it was made; it may be dug up on a later turn. */
+  round: number;
+  contents: Partial<Record<Item, number>>;
+}
+
 /** A hex whose terrain has been determined in play. */
 export interface MappedHex {
   terrain: Terrain;
@@ -110,7 +120,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -174,9 +184,11 @@ export interface GameState {
   map: Record<string, MappedHex>;
   /** Tribes discovered, by marker number. */
   tribes: Record<number, Tribe>;
+  /** Caches left on the board, by marker number. */
+  caches: Record<number, Cache>;
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, diagnostics: [] };
 }

@@ -63,7 +63,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 020-tribe-attitude                 landed
 021-sickness-starvation-desertion  landed
 022-specialties-in-the-field       landed
-023-caches-and-reorganisation
+023-caches-and-reorganisation      landed
 024-return-to-europe
 025-publishing-and-points
 026-death-and-retirement
@@ -215,9 +215,11 @@ The turn spent on evangelism, medicine, zoology or geology instead of moving; re
 
 - **As landed:** `specialty/performed` on the `specialty` stream: zoology and geology are owed to every unpublished hex entered (`research`, one turn each, movement barred until done, one attempt per specialty per hex), specimens counted on the explorer and weighed as rations; evangelism and medicine are offered on the trade panel once the chief permits and are owed before trading ends (G-71), moving the tribe's attitude, banking points in `goodWorks`, with the chief's and witch doctor's poison attempts; captives preach or treat from the rail without permission (medicine −1) and the attitude gained adds to their escape rolls. Scenario 022 (seed 18): `permission` → `preached` → `study-owed` → `specimen`; medicine and captivity are unit-tested.
 
-### 23. Caches and reorganisation — `023-caches-and-reorganisation`
+### 23. Caches and reorganisation — `023-caches-and-reorganisation` ✅ landed
 
 Leaving caches with markers, dismissing men, releasing or eating animals, carrying canoes overland, recovering a cache (`RQ-3`).
+
+- **As landed:** a reorganise control at the rail opens an edge panel (`expedition/reorganised`: cache goods, dismiss men, turn animals loose or eat them for ten rations each); caches live in `state.caches` with a marker in the seat colour on the board, one per explorer, hex and turn; `cache/recovered` on a later turn rolls the `cache` stream (1–2 gone); another explorer's cache waits for publication (RQ-3, 025). Carrying canoes overland is already the foot rate (G-33). Scenario 023 (seed 863, cache 5): `cached` → `recovered`; eating and releasing animals are unit-tested.
 
 ### 24. Return to Europe — `024-return-to-europe`
 

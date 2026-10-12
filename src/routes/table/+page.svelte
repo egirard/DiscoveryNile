@@ -28,6 +28,7 @@
   import SpoilsChooser from '$features/natives/SpoilsChooser.svelte';
   import NegotiationPanel from '$features/natives/NegotiationPanel.svelte';
   import TradePanel from '$features/natives/TradePanel.svelte';
+  import ReorganisePanel from '$features/expedition/ReorganisePanel.svelte';
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
@@ -158,6 +159,16 @@
     if (!seat || !explorer || !explorer.chart) return null;
     return { seat, explorer, prices: gameState.turn.trade.prices };
   });
+  let reorganisingSeat = $state<string | null>(null);
+  const reorganising = $derived.by(() => {
+    if (!reorganisingSeat || gameState.turn?.current !== reorganisingSeat || gameState.turn.phase !== 'act') return null;
+    const seat = seats.find((s) => s.id === reorganisingSeat);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    const hex = explorer && standingHex(explorer);
+    if (!seat || !explorer || !explorer.chart || !hex || explorer.location.kind === 'captive') return null;
+    const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && c.seat === seat.id && c.round < gameState.turn!.round);
+    return { seat, explorer, caches };
+  });
   async function perform(seat: string, specialty: string) {
     await game?.append('specialty/performed', { seat, specialty });
   }
@@ -221,7 +232,7 @@
   style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} {targets} onhex={move} />
+    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} />
   </div>
 
   {#if canStart}
@@ -257,6 +268,15 @@
   {#if trading}
     <EdgePanel seat={trading.seat} {viewport} inset={railDepth + target * 0.4} testid="trade-edge-{trading.seat.id}">
       <TradePanel seat={trading.seat.id} prices={trading.prices} chart={trading.explorer.chart!} works={trading.explorer.specialties.filter((sp) => sp === 'evangelism' || sp === 'medicine')} owed={worksOwed(gameState, trading.explorer)} onwork={(sp) => perform(trading!.seat.id, sp)} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
+    </EdgePanel>
+  {/if}
+
+  {#if reorganising}
+    <EdgePanel seat={reorganising.seat} {viewport} inset={railDepth + target * 0.4} testid="reorganise-edge-{reorganising.seat.id}">
+      <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches}
+        onaction={(action, item, count) => game?.append('expedition/reorganised', { seat: reorganising!.seat.id, action, item, count })}
+        onrecover={(cacheId) => game?.append('cache/recovered', { seat: reorganising!.seat.id, cacheId })}
+        onclose={() => (reorganisingSeat = null)} />
     </EdgePanel>
   {/if}
 
@@ -311,6 +331,11 @@
                     <button class="study" data-testid="specialty-{sp}-{seat.id}" aria-label="{sp === 'evangelism' ? 'Preach to your captors' : 'Treat your captors'}" onclick={() => perform(seat.id, sp)}><Icon name={sp} size="1.3em" /></button>
                   {/each}
                 </span>
+              {/if}
+              {#if explorer.chart && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
+                <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="Reorganise the expedition: cache, dismiss, turn loose or eat" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10H4z" /><path d="M4 9l2-4h12l2 4" /><path d="M10 13h4" /></svg>
+                </button>
               {/if}
               {#if explorer.chart && waterAvailable(gameState, explorer)}
                 <span class="water-controls" data-testid="water-controls-{seat.id}">
@@ -412,6 +437,30 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .reorganise {
+    width: var(--target);
+    height: var(--target);
+    margin-left: var(--gap);
+    border-radius: 50%;
+    border: 3px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .reorganise[aria-pressed='true'] {
+    background: var(--accent);
+  }
+  .reorganise svg {
+    width: 60%;
+    height: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
   .research {
     display: inline-flex;

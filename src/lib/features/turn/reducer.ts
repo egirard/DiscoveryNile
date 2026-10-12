@@ -1,13 +1,13 @@
 import type { GameEvent } from '$lib/game/events';
 import type { ExplorerState, GameState, RollOff, RollRecord } from '$lib/game/state';
 import type { HexId } from '$features/map/hex';
-import { dice, shuffleWith } from '$lib/game/random';
+import { d6, dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
 import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
-import { oasisSearch, oasisSearchable, researchPending, terrainOf } from '$features/exploration/reducer';
+import { oasisSearch, oasisSearchable, researchPending, standingHex, terrainOf } from '$features/exploration/reducer';
 import { preach, study, treat, type TreatResult } from '$features/natives/specialties';
 import { hostilities, react, type ReactionResult } from '$features/natives/reaction';
 import { SELLABLE, attemptPoison, giveEverything, offerGifts, tradePrices } from '$features/natives/negotiation';
@@ -550,6 +550,73 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const chart = { ...explorer.chart!, bearers: explorer.chart!.bearers - tribe.pending!.prisoners };
       const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: [], outcome: `${tribe.pending!.prisoners} prisoners released: the tribe is grateful` };
       return { ...replaceExplorer(state, { ...explorer, chart }), tribes: { ...state.tribes, [tribe.id]: { ...tribe, warriors: tribe.warriors + tribe.pending!.prisoners, regard: { ...tribe.regard, [explorer.seat]: (tribe.regard[explorer.seat] ?? 0) + 3 }, pending: null } }, turn: { ...state.turn, phase: 'act', log: [...state.turn.log, record] } };
+    }
+    case 'expedition/reorganised': {
+      // Any turn (rules §5): cache goods under a marker, dismiss men, turn animals loose or eat them.
+      const { seat, action, item, count } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'act') return 'not now';
+      const explorer = currentExplorer(state)!;
+      if (!explorer.chart) return 'the expedition is not outfitted';
+      const hex = standingHex(explorer);
+      if (!hex || explorer.location.kind === 'captive') return 'the explorer is not free in Africa';
+      if (typeof count !== 'number' || !Number.isInteger(count) || count <= 0) return 'expedition/reorganised needs a count';
+      if (typeof item !== 'string' || !ITEMS.includes(item as Item)) return 'expedition/reorganised needs an item';
+      const it = item as Item;
+      const chart = { ...explorer.chart };
+      if (chart[it] < count) return `only ${chart[it]} ${it}`;
+      const men: Item[] = ['guides', 'bearers', 'askaris'];
+      const animals: Item[] = ['camels', 'horses'];
+      let outcome: string;
+      let caches = state.caches;
+      if (action === 'cache') {
+        if (men.includes(it) || animals.includes(it)) return `${it} cannot be cached`;
+        chart[it] -= count;
+        const mine = Object.values(caches).find((c) => c.hex === hex && c.seat === explorer.seat && c.round === state.turn!.round);
+        if (mine) caches = { ...caches, [mine.id]: { ...mine, contents: { ...mine.contents, [it]: (mine.contents[it] ?? 0) + count } } };
+        else { const id = Object.keys(caches).length + 1; caches = { ...caches, [id]: { id, hex, seat: explorer.seat, round: state.turn.round, contents: { [it]: count } } }; }
+        outcome = `${count} ${it} cached`;
+      } else if (action === 'dismiss') {
+        if (!men.includes(it)) return `${it} cannot be dismissed`;
+        chart[it] -= count;
+        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} dismissed`;
+      } else if (action === 'release') {
+        if (!animals.includes(it)) return `${it} cannot be turned loose`;
+        chart[it] -= count;
+        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} turned loose`;
+      } else if (action === 'eat') {
+        if (!animals.includes(it)) return `${it} cannot be eaten`;
+        chart[it] -= count;
+        chart.food += 10 * count;
+        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} eaten: ${10 * count} rations`;
+      } else return 'expedition/reorganised needs cache, dismiss, release or eat';
+      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [], outcome };
+      return { ...replaceExplorer(state, { ...explorer, chart }), caches, turn: { ...state.turn, log: [...state.turn.log, record] } };
+    }
+    case 'cache/recovered': {
+      const { seat, cacheId } = event.payload as { seat?: string; cacheId?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'act') return 'not now';
+      const explorer = currentExplorer(state)!;
+      if (!explorer.chart) return 'the expedition is not outfitted';
+      const hex = standingHex(explorer);
+      const cache = typeof cacheId === 'number' ? state.caches[cacheId] : undefined;
+      if (!cache) return 'no such cache';
+      if (!hex || explorer.location.kind === 'captive' || cache.hex !== hex) return 'the cache is not here';
+      if (cache.seat !== explorer.seat) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
+      if (cache.round >= state.turn.round) return 'a cache is dug up on a later turn';
+      // Returning to a cache: on a 1 or 2 it has disappeared (rules §5).
+      const r = d6(state.rng!, 'cache');
+      const { [cache.id]: _gone, ...rest } = state.caches;
+      void _gone;
+      const gone = r.value <= 2;
+      const chart = { ...explorer.chart };
+      if (!gone) for (const [k, n] of Object.entries(cache.contents)) chart[k as Item] += n ?? 0;
+      const listed = Object.entries(cache.contents).map(([k, n]) => `${n} ${k}`).join(', ');
+      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [{ label: 'cache', value: r.value }], outcome: gone ? `the cache has disappeared (${listed})` : `the cache is recovered: ${listed}` };
+      return { ...replaceExplorer(state, { ...explorer, chart }), rng: r.state, caches: rest, turn: { ...state.turn, log: [...state.turn.log, record] } };
     }
     case 'water/taken': {
       const { seat, rations } = event.payload as { seat?: string; rations?: unknown };

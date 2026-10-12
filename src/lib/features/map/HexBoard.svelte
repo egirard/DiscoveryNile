@@ -7,7 +7,7 @@
   import { hexPoints, toPixel, type HexId } from './hex';
 
   import { colourFor } from '$features/explorers/colours';
-  import type { MappedHex } from '$lib/game/state';
+  import type { MappedHex, Cache } from '$lib/game/state';
   import type { MoveTarget } from '$features/exploration/reducer';
 
   export interface BoardToken {
@@ -31,9 +31,11 @@
     mapped?: Record<string, MappedHex>;
     /** Hexes the current expedition may step into. */
     targets?: MoveTarget[];
+    /** Cache markers left on the board (rules §5). */
+    caches?: Cache[];
     onhex?: (hex: HexId) => void;
   }
-  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], onhex }: Props = $props();
+  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex }: Props = $props();
   const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
   const SQ3 = Math.sqrt(3);
@@ -197,6 +199,13 @@
           {/each}
         </g>
       {/if}
+    {/each}
+    {#each caches as cache (cache.id)}
+      {@const c = centre(cache.hex)}
+      <g class="cache" data-testid="cache-{cache.hex}-{cache.seat}" data-cache={cache.id} transform="translate({c.x + radius * 0.55} {c.y - radius * 0.55}) {upright}" aria-label="Cache of seat {cache.seat}">
+        <rect x={-radius * 0.22} y={-radius * 0.22} width={radius * 0.44} height={radius * 0.44} rx={radius * 0.06} fill={colourFor(cache.seat)} />
+        <path d={`M${-radius * 0.12} 0 H${radius * 0.12}`} />
+      </g>
     {/each}
     {#each targets as t (t.hex)}
       {@const c = centre(t.hex)}
@@ -428,6 +437,14 @@
   .marker {
     stroke: #efe6cc;
     stroke-width: 1;
+  }
+  .cache rect {
+    stroke: #efe6cc;
+    stroke-width: 1.2;
+  }
+  .cache path {
+    stroke: #efe6cc;
+    stroke-width: 1.2;
   }
   .tribe circle {
     fill: #1c2a2e;
