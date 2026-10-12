@@ -24,5 +24,5 @@ export function event(
   };
 }
 
-export const created = (gameId = 'ABCDE', seats = { bottom: 1, top: 1, left: 1, right: 1 }) =>
-  event('game/created', { gameId, seats });
+export const created = (gameId = 'ABCDE', seats = { bottom: 1, top: 1, left: 1, right: 1 }, seed = 1234) =>
+  event('game/created', { gameId, seats, seed });

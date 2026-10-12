@@ -12,6 +12,9 @@
   import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
   import ExplorerToken from '$features/explorers/ExplorerToken.svelte';
   import { explorerAt } from '$features/explorers/reducer';
+  import Card from '$features/cards/Card.svelte';
+  import DeckStack from '$features/cards/DeckStack.svelte';
+  import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
 
@@ -43,6 +46,12 @@
   async function commission(seat: Seat, specialties: Specialty[]) {
     await game?.append('explorer/commissioned', { seat: seat.id, specialties });
   }
+
+  async function start() {
+    await game?.append('game/started', {});
+  }
+
+  const canStart = $derived(!gameState.turn && gameState.explorers.length > 0);
 
   onMount(() => {
     diagonal = readDiagonalInches();
@@ -81,18 +90,42 @@
   data-e2e-layout
   data-testid="table"
   data-e2e-no-scroll
-  style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.45}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
+  style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
     <HexBoard width={boardW} height={boardH} />
   </div>
 
+  {#if canStart}
+    <button class="start" data-testid="start-game" aria-label="Start the game" onclick={start}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+    </button>
+  {/if}
+
+  {#if gameState.deck}
+    <div class="deck-area" data-e2e-fit>
+      <DeckStack deck={gameState.deck} />
+    </div>
+  {/if}
+
   {#each seats as seat (seat.id)}
-    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join}>
+    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} current={gameState.turn?.current === seat.id}>
       {#snippet content()}
         {@const explorer = explorerAt(gameState, seat.id)}
         {#if explorer}
-          <ExplorerToken {explorer} />
+          <span class="turn-marker" data-testid="turn-marker-{seat.id}" data-current={gameState.turn?.current === seat.id} aria-label={gameState.turn?.current === seat.id ? 'It is this seat\'s turn' : ''}>
+            <ExplorerToken {explorer} />
+          </span>
+          {#if gameState.rollOff?.[seat.id]}
+            <DiceRoll values={gameState.rollOff[seat.id].at(-1) ?? []} label="Roll for first player" testid="roll-off-{seat.id}" />
+          {/if}
+          {#if explorer.hand.length}
+            <span class="hand" data-testid="hand-{seat.id}" data-count={explorer.hand.length}>
+              {#each explorer.hand as id (id)}
+                <Card {id} seat={seat.id} />
+              {/each}
+            </span>
+          {/if}
         {:else}
           <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
         {/if}
@@ -134,6 +167,45 @@
     align-content: center;
     gap: 1rem;
     pointer-events: none;
+  }
+  .start {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    translate: -50% -50%;
+    width: calc(var(--target) * 2);
+    height: calc(var(--target) * 2);
+    border-radius: 50%;
+    border: 4px solid var(--paper);
+    background: var(--accent);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .start svg {
+    width: 60%;
+    fill: currentColor;
+  }
+  .deck-area {
+    position: absolute;
+    right: calc(var(--rail-depth) + var(--gap));
+    bottom: calc(var(--rail-depth) * 0.1);
+  }
+  .turn-marker {
+    display: inline-flex;
+    border-radius: 999px;
+    padding: 3px;
+    border: 3px solid transparent;
+  }
+  .turn-marker[data-current='true'] {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--ink), 0 0 12px var(--accent);
+  }
+  .hand {
+    display: inline-flex;
+    gap: calc(var(--gap) * 0.6);
+    margin-left: var(--gap);
   }
   .corner {
     position: absolute;

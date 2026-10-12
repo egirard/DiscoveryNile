@@ -12,8 +12,10 @@
     onjoin: (seat: Seat) => void;
     /** What the taken rail shows beside the player: the explorer setup, the explorer, later the chart. */
     content?: Snippet;
+    /** It is this seat's turn. */
+    current?: boolean;
   }
-  let { seat, state, qrImage = null, qrUrl = null, onjoin, content }: Props = $props();
+  let { seat, state, qrImage = null, qrUrl = null, onjoin, content, current = false }: Props = $props();
 
   const taken = $derived(Boolean(state.uid));
   const rotation = $derived(rotationFor(seat.edge));
@@ -37,6 +39,7 @@
   data-seat={seat.id}
   data-edge={seat.edge}
   data-taken={taken}
+  data-current={current}
   data-e2e-fit
 >
   <div class="face">

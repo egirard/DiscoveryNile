@@ -35,6 +35,13 @@ function readSeed(search: string): number | null {
   return Number.isFinite(s) && s > 0 ? s : null;
 }
 
+/** A fresh game needs a seed for its dice; E2E pins one with ?seed=. */
+function randomSeed(): number {
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return buf[0] || 1;
+}
+
 export async function openGame(options: OpenGameOptions): Promise<Game> {
   const search = location.search;
   const query = new URLSearchParams(search);
@@ -71,7 +78,7 @@ export async function openGame(options: OpenGameOptions): Promise<Game> {
     state: initialState(),
     events: [],
     status: 'syncing',
-    seed: readSeed(search),
+    seed: readSeed(search) ?? randomSeed(),
     append: (type, payload) => repository.append(type, payload),
     publishGeometry(g) {
       geometry = g;

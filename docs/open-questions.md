@@ -15,3 +15,6 @@ Every educated guess made while rolling through `docs/implementation-plan.md` wi
 | G-9 | 004 | Where a printed river meets the sea or leaves the board, how far to draw it | Extended one hex radius seaward from the mouth (and off-board for the Niger and Nile), with the drainage number placed just seaward | `HexBoard.svelte` |
 | G-10 | 005 | Seat colours are not in the rules (counters come in "one color group for each player") | Six fixed colours by seat: red, blue, green, yellow, purple, orange | `explorers/colours.ts` |
 | G-11 | 005 | Specialty iconography | Book (evangelism), medicine bottle (medicine), paw (zoology), crystal (geology), pith helmet (explorer); all original | `ui/Icon.svelte` |
+| G-12 | 006 | The rules do not say in what order the opening five cards are dealt | Round-robin in turn order starting with the first player, from a seeded shuffle | `turn/reducer.ts` |
+| G-13 | 006 | A game created without `?seed=` has no seed for its dice | The table draws a random 32-bit seed at creation and commits it in `game/created`; a stream without one falls back to a hash of the room code | `store.ts`, `seats/reducer.ts` |
+| G-14 | 006 | Pile counts are numbers, which the UX doc says should be countable marks on shared elements | Stacks show thickness layers plus a small number; revisit in the responsive pass | `DeckStack.svelte` |

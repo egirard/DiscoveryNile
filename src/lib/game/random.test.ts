@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRandom, shuffle } from './random';
+import { createRandom, shuffle, rngFromSeed, nextRandom, dice, shuffleWith } from './random';
 
 describe('createRandom', () => {
   it('produces the same sequence for the same seed', () => {
@@ -29,5 +29,29 @@ describe('shuffle', () => {
   });
   it('is deterministic for a seed', () => {
     expect(shuffle([1, 2, 3, 4, 5], createRandom(42))).toEqual(shuffle([1, 2, 3, 4, 5], createRandom(42)));
+  });
+});
+
+describe('serialisable PRNG', () => {
+  it('matches createRandom for the same seed', () => {
+    const closure = createRandom(99);
+    let s = rngFromSeed(99);
+    for (let i = 0; i < 20; i++) {
+      const r = nextRandom(s);
+      s = r.state;
+      expect(r.value).toBe(closure());
+    }
+  });
+  it('rolls dice in 1..6 and is deterministic', () => {
+    const a = dice(rngFromSeed(7), 1000);
+    const b = dice(rngFromSeed(7), 1000);
+    expect(a.values).toEqual(b.values);
+    expect(Math.min(...a.values)).toBe(1);
+    expect(Math.max(...a.values)).toBe(6);
+    expect(a.state).not.toBe(rngFromSeed(7));
+  });
+  it('shuffles the same way as shuffle(createRandom)', () => {
+    const items = [...Array(48).keys()];
+    expect(shuffleWith(items, rngFromSeed(1234)).items).toEqual(shuffle(items, createRandom(1234)));
   });
 });

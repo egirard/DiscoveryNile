@@ -2,12 +2,13 @@ import { REDUCER_VERSION, SCHEMA_VERSION, type GameEvent } from './events';
 import { initialState, type GameState } from './state';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
+import { reduceTurn } from '$features/turn/reducer';
 
 export type Step = (state: GameState, event: GameEvent) => GameState | string;
 
 // Each feature contributes a step. A step returns the new state, or a string explaining
 // why the event is illegal (which becomes a diagnostic and leaves state untouched).
-const steps: Step[] = [reduceSeats, reduceExplorers];
+const steps: Step[] = [reduceSeats, reduceExplorers, reduceTurn];
 
 export function reduceOne(state: GameState, event: GameEvent): GameState {
   if (event.schemaVersion !== SCHEMA_VERSION || event.reducerVersion !== REDUCER_VERSION) {

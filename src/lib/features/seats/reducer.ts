@@ -1,6 +1,7 @@
 import type { GameEvent } from '$lib/game/events';
 import type { GameState, SeatState } from '$lib/game/state';
 import { parseSeatId, seatsFor, type SeatLayout } from '$lib/tabletop/seats';
+import { rngFromSeed } from '$lib/game/random';
 
 // A reducer step returns the new state, a string diagnostic, or the same state object
 // to say "not mine".
@@ -8,10 +9,13 @@ export function reduceSeats(state: GameState, event: GameEvent): GameState | str
   switch (event.type) {
     case 'game/created': {
       if (state.gameId) return 'game already created';
-      const { gameId, seats } = event.payload as { gameId?: string; seats?: SeatLayout };
+      const { gameId, seats, seed } = event.payload as { gameId?: string; seats?: SeatLayout; seed?: unknown };
       if (!gameId || !seats) return 'game/created needs gameId and seats';
       const seatStates: SeatState[] = seatsFor(seats).map((s) => ({ id: s.id, uid: null, name: null }));
-      return { ...state, gameId, hostUid: event.actorUid, seats: seatStates };
+      // Every roll in the game derives from this seed (docs/rules.md D-1). A game created without
+      // one falls back to a hash of its room code so replay stays deterministic.
+      const rng = rngFromSeed(typeof seed === 'number' && Number.isFinite(seed) ? seed : hashCode(gameId));
+      return { ...state, gameId, hostUid: event.actorUid, seats: seatStates, rng };
     }
     // The occupant is `payload.uid` when the host appends on behalf of a table tap or a phone
     // intent, and the actor otherwise (a client that appends its own events, e.g. Firebase).
@@ -39,4 +43,10 @@ export function reduceSeats(state: GameState, event: GameEvent): GameState | str
     default:
       return state;
   }
+}
+
+function hashCode(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
 }

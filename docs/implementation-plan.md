@@ -46,7 +46,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 003-africa-board-and-six-seats     landed
 004-known-africa                   landed
 005-commission-an-explorer         landed
-006-first-player-and-donations
+006-first-player-and-donations     landed
 007-a-turn-in-europe
 008-sail-to-africa
 009-outfit-the-expedition
@@ -105,12 +105,12 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 005:** `setup-offered` (toggles visible at bottom-1 only, rotated 0°) → `zoologist-doctor-commissioned` (toggle two, confirm; token with two badges on the bottom rail; state has one explorer with `['medicine','zoology']`) → `second-seat-ordinary` (take `top-1`, confirm with no toggles; token rotated 180°).
 - **Unit tests:** reducer: commission needs a taken seat, one explorer per seat, specialties are a set, any subset including empty; re-commission rejected while an explorer is alive.
 
-### 6. First player and donations — `006-first-player-and-donations`
+### 6. First player and donations — `006-first-player-and-donations` ✅ landed
 
 - **Player sees:** a start control on the board once at least one explorer is commissioned; starting shows every explorer's four-dice roll-off at its rail, a turn marker at the winner's rail, and five donation cards face up on each explorer's rail (money cards show the amount facing the seat; ticket cards show a ticket icon and the port). The deck and discard pile appear on the board as omnidirectional stacks with countable marks.
 - **Introduced:** `game/started`; `turn` state (order, current seat, round 1); `deck` state seeded from the PRNG shuffle of the 48 cards; the card manifest generated from `docs/rules-reference/source_of_the_nile_1978_deck.csv` into `src/lib/features/cards/deck.ts` (ids `card-1` … `card-48`, port ids normalised per `RQ-11`); `DiceRoll.svelte`; `Card.svelte`; `rng` state.
 - **Scenario 006:** `ready-to-start` (two explorers; start control enabled) → `started` (dice shown at both rails with totals; turn marker at the high roller for seed 1234; five cards each; deck count 38; state `turn.current` matches) → `persists-after-reload` (same cards, same marker).
-- **Unit tests:** roll-off with `RQ-1` tie re-roll; dealing five from the seeded shuffle; deck manifest has 48 cards, 12 tickets, 32 money, 4 none (`RQ-12`); PRNG state advances identically on replay.
+- **Unit tests:** roll-off with `RQ-1` tie re-roll; dealing five from the seeded shuffle; deck manifest has 48 cards, 12 tickets, 33 money, 3 none (`RQ-12`); PRNG state advances identically on replay.
 
 ### 7. A turn in Europe — `007-a-turn-in-europe`
 
