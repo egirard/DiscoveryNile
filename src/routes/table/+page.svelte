@@ -20,7 +20,7 @@
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
-  import { PASSAGE_FARE, waterAvailable, WATER_STEP, worksOwed } from '$features/turn/reducer';
+  import { PASSAGE_FARE, waterAvailable, WATER_STEP, worksOwed, portOf } from '$features/turn/reducer';
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
@@ -331,6 +331,11 @@
                     <button class="study" data-testid="specialty-{sp}-{seat.id}" aria-label="{sp === 'evangelism' ? 'Preach to your captors' : 'Treat your captors'}" onclick={() => perform(seat.id, sp)}><Icon name={sp} size="1.3em" /></button>
                   {/each}
                 </span>
+              {/if}
+              {#if explorer.chart && gameState.turn.phase === 'act' && portOf(explorer)}
+                <button class="reorganise" data-testid="sail-home-{seat.id}" aria-label="Dismiss the expedition and sail home to Europe" onclick={() => game?.append('expedition/returned', { seat: seat.id })}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c-4 2-6 5-6 9h6" /><path d="M12 6c3 1 5 3 5 6h-5" /></svg>
+                </button>
               {/if}
               {#if explorer.chart && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
                 <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="Reorganise the expedition: cache, dismiss, turn loose or eat" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>

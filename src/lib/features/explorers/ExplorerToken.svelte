@@ -19,8 +19,8 @@
   style="--colour:{colourFor(explorer.seat)}; --size:{size}"
 >
   <span class="disc"><Icon name="explorer" />
-    {#if explorer.location.kind === 'voyage'}
-      <span class="where" data-testid="at-sea-{explorer.seat}" aria-label="At sea, bound for {explorer.location.port}"><Icon name="ship" size="1em" /></span>
+    {#if explorer.location.kind === 'voyage' || explorer.location.kind === 'homeward'}
+      <span class="where" data-testid="at-sea-{explorer.seat}" aria-label={explorer.location.kind === 'voyage' ? `At sea, bound for ${explorer.location.port}` : 'At sea, homeward bound'}><Icon name="ship" size="1em" /></span>
     {:else if explorer.location.kind === 'port'}
       <span class="where" data-testid="in-port-{explorer.seat}" aria-label="At the port of {explorer.location.port}"><Icon name="anchor" size="1em" /></span>
     {:else if explorer.location.kind === 'captive'}

@@ -7,6 +7,7 @@ import { shuffleWith } from '$lib/game/random';
 import { coastal } from '$features/exploration/movement';
 import { courseAt, terrainOf } from '$features/exploration/reducer';
 import { inCapeColony } from './cape-colony';
+import { PORTS } from '$features/map/manifest';
 import { resolveDisaster, type Situation } from './resolve';
 import { replaceExplorer } from '$features/turn/reducer';
 
@@ -19,7 +20,7 @@ export function situationOf(state: GameState, e: ExplorerState): Situation | nul
 
 /** Camped in a hex outside a port of entry and Cape Colony: disasters are drawn, hunting and meals happen (G-44). */
 export function inTheField(e: ExplorerState): boolean {
-  return e.location.kind === 'hex' && !!e.chart && !inCapeColony(e.location.hex);
+  return e.location.kind === 'hex' && !!e.chart && !inCapeColony(e.location.hex) && !PORTS.some((p) => p.hex === (e.location as { hex: string }).hex);
 }
 
 /** Whether this explorer draws a disaster card at the start of its turn. */

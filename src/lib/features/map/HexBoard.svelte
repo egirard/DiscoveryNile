@@ -438,6 +438,10 @@
     stroke: #efe6cc;
     stroke-width: 1;
   }
+  /* A port marker only takes taps while it is a chooser; otherwise the hex's move target beneath must. */
+  .port:not(.choosable) {
+    pointer-events: none;
+  }
   .cache rect {
     stroke: #efe6cc;
     stroke-width: 1.2;

@@ -27,6 +27,8 @@ export type ExplorerLocation =
   | { kind: 'europe' }
   | { kind: 'voyage'; port: PortId } // booked passage; arrives at the start of the explorer's next turn, which is skipped
   | { kind: 'port'; port: PortId }
+  /** Sailing home with the government's free passage; in Europe at the start of the explorer's next turn (rules §12). */
+  | { kind: 'homeward'; port: PortId }
   | { kind: 'hex'; hex: HexId }
   /** Held prisoner by a tribe (rules §8.4): an escape roll every turn; `had` is the chart at capture, for the survival table. */
   | { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number }

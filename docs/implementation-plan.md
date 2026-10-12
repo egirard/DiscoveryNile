@@ -64,7 +64,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 021-sickness-starvation-desertion  landed
 022-specialties-in-the-field       landed
 023-caches-and-reorganisation      landed
-024-return-to-europe
+024-return-to-europe               landed
 025-publishing-and-points
 026-death-and-retirement
 027-superlatives
@@ -221,9 +221,11 @@ Leaving caches with markers, dismissing men, releasing or eating animals, carryi
 
 - **As landed:** a reorganise control at the rail opens an edge panel (`expedition/reorganised`: cache goods, dismiss men, turn animals loose or eat them for ten rations each); caches live in `state.caches` with a marker in the seat colour on the board, one per explorer, hex and turn; `cache/recovered` on a later turn rolls the `cache` stream (1–2 gone); another explorer's cache waits for publication (RQ-3, 025). Carrying canoes overland is already the foot rate (G-33). Scenario 023 (seed 863, cache 5): `cached` → `recovered`; eating and releasing animals are unit-tested.
 
-### 24. Return to Europe — `024-return-to-europe`
+### 24. Return to Europe — `024-return-to-europe` ✅ landed
 
 Reaching a port, dismissing the expedition, sailing home, back in Europe next turn with the Europe turn resuming.
+
+- **As landed:** `expedition/returned` at a port of entry (landed there or standing on its hex) clears the chart and sets a `homeward` location; the explorer is in Europe at the start of his next turn and the Europe turn draws as usual; markers, known hexes, specimens and good works remain for 025. Standing on a port's hex now counts as being in port for disasters and meals (G-76). Scenario 024 (seed 863): `homeward` → `back-in-europe`.
 
 ### 25. Publishing and points — `025-publishing-and-points`
 

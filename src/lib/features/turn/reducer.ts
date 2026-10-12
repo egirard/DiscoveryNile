@@ -80,6 +80,11 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
     return advance(landed);
   }
+  if (explorer.location.kind === 'homeward') {
+    // Back in Europe the turn after leaving Africa (rules §12); the Europe turn then runs as usual.
+    explorer = { ...explorer, location: { kind: 'europe' } };
+    state = replaceExplorer(state, explorer);
+  }
   if (explorer.location.kind === 'captive') return escapeAttempt(state, explorer);
   if (explorer.location.kind === 'hex') {
     const hex = explorer.location.hex;
@@ -238,6 +243,13 @@ function permitTrade(state: GameState, tribe: Tribe): GameState {
   const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: prices.rolls, outcome: 'the chief permits trade: ' + Object.entries(prices.prices).map(([item, price]) => (item === 'food' ? `${price} rations per gift` : `${item.slice(0, -1)} ${price}`)).join(', ') };
   const negotiatedBy = tribe.negotiatedBy.includes(explorer.seat) ? tribe.negotiatedBy : [...tribe.negotiatedBy, explorer.seat];
   return { ...state, rng: prices.rng, tribes: { ...state.tribes, [tribe.id]: { ...state.tribes[tribe.id], negotiatedBy } }, turn: { ...state.turn!, phase: 'trade', trade: { tribe: tribe.id, prices: prices.prices }, log: [...state.turn!.log, record] } };
+}
+
+/** The port of entry the explorer is at: landed there, or standing on its hex (rules §12). */
+export function portOf(explorer: ExplorerState): PortId | null {
+  if (explorer.location.kind === 'port') return explorer.location.port;
+  if (explorer.location.kind === 'hex') { const hex = explorer.location.hex; return PORTS.find((p) => p.hex === hex)?.id ?? null; }
+  return null;
 }
 
 /** Specialties the explorer still owes this tribe while the chief's permission stands (rules §9: "must"). */
@@ -550,6 +562,19 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const chart = { ...explorer.chart!, bearers: explorer.chart!.bearers - tribe.pending!.prisoners };
       const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: [], outcome: `${tribe.pending!.prisoners} prisoners released: the tribe is grateful` };
       return { ...replaceExplorer(state, { ...explorer, chart }), tribes: { ...state.tribes, [tribe.id]: { ...tribe, warriors: tribe.warriors + tribe.pending!.prisoners, regard: { ...tribe.regard, [explorer.seat]: (tribe.regard[explorer.seat] ?? 0) + 3 }, pending: null } }, turn: { ...state.turn, phase: 'act', log: [...state.turn.log, record] } };
+    }
+    case 'expedition/returned': {
+      // At a port of entry the explorer dismisses his men, leaves them the supplies, and sails home free (rules §12).
+      const { seat } = event.payload as { seat?: string };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'act') return 'not now';
+      const explorer = currentExplorer(state)!;
+      if (!explorer.chart) return 'the expedition is not outfitted';
+      const port = portOf(explorer);
+      if (!port) return 'the explorer is not at a port of entry';
+      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex: BOARD.ports[port].hex, rolls: [], outcome: `the expedition is dismissed at ${BOARD.ports[port].name}; passage home is free` };
+      return { ...replaceExplorer(state, { ...explorer, location: { kind: 'homeward', port }, chart: null, lastMeal: null, research: null, cameFrom: null }), turn: { ...state.turn, moved: true, log: [...state.turn.log, record] } };
     }
     case 'expedition/reorganised': {
       // Any turn (rules §5): cache goods under a marker, dismiss men, turn animals loose or eat them.
