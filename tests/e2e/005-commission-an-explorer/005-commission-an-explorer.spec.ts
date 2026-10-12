@@ -49,7 +49,7 @@ test.describe('005 - Commission an explorer', () => {
         } },
         { spec: 'The state holds one explorer with the specialties in canonical order and no diagnostics', check: async () => {
           const state = await page.evaluate(() => window.__TABLETOP__!.getState());
-          expect(state.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, hand: [] }]);
+          expect(state.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, hand: [], drawnRound: {} }]);
           expect(state.diagnostics).toEqual([]);
         } }
       ]

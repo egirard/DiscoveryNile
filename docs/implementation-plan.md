@@ -47,7 +47,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 004-known-africa                   landed
 005-commission-an-explorer         landed
 006-first-player-and-donations     landed
-007-a-turn-in-europe
+007-a-turn-in-europe               landed
 008-sail-to-africa
 009-outfit-the-expedition
 010-first-step-into-the-unknown
@@ -112,7 +112,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 006:** `ready-to-start` (two explorers; start control enabled) → `started` (dice shown at both rails with totals; turn marker at the high roller for seed 1234; five cards each; deck count 38; state `turn.current` matches) → `persists-after-reload` (same cards, same marker).
 - **Unit tests:** roll-off with `RQ-1` tie re-roll; dealing five from the seeded shuffle; deck manifest has 48 cards, 12 tickets, 33 money, 3 none (`RQ-12`); PRNG state advances identically on replay.
 
-### 7. A turn in Europe — `007-a-turn-in-europe`
+### 7. A turn in Europe — `007-a-turn-in-europe` ✅ landed
 
 - **Player sees:** at the active rail, tickets drawn last turn are discarded automatically with a short animation; if the hand exceeds five the player must choose discards before anything else; then one card is drawn to the rail; an end-turn control (with confirmation at the edge) passes the marker clockwise. Money total shown at the rail as a number facing the seat.
 - **Introduced:** `turn/ended`, `cards/discarded`; phases within a Europe turn (`discard`, `draw`, `act`); hand-limit enforcement in the reducer; discard-pile reshuffle into the deck bottom when empty.

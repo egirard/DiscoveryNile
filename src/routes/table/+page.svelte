@@ -15,6 +15,8 @@
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
+  import TurnControls from '$features/turn/TurnControls.svelte';
+  import { handValue, type CardId } from '$features/cards/deck';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
 
@@ -52,6 +54,14 @@
   }
 
   const canStart = $derived(!gameState.turn && gameState.explorers.length > 0);
+
+  async function endTurn(seat: Seat) {
+    await game?.append('turn/ended', { seat: seat.id });
+  }
+
+  async function discard(seat: Seat, id: CardId) {
+    await game?.append('cards/discarded', { seat: seat.id, cardIds: [id] });
+  }
 
   onMount(() => {
     diagonal = readDiagonalInches();
@@ -119,12 +129,18 @@
           {#if gameState.rollOff?.[seat.id]}
             <DiceRoll values={gameState.rollOff[seat.id].at(-1) ?? []} label="Roll for first player" testid="roll-off-{seat.id}" />
           {/if}
-          {#if explorer.hand.length}
+          {#if gameState.turn}
+            {@const mine = gameState.turn.current === seat.id}
+            {@const discarding = mine && gameState.turn.phase === 'discard'}
             <span class="hand" data-testid="hand-{seat.id}" data-count={explorer.hand.length}>
               {#each explorer.hand as id (id)}
-                <Card {id} seat={seat.id} />
+                <Card {id} seat={seat.id} onselect={discarding ? (c) => discard(seat, c) : undefined} />
               {/each}
             </span>
+            <span class="money" data-testid="money-{seat.id}" aria-label="Money raised">${handValue(explorer.hand)}</span>
+            {#if mine}
+              <TurnControls seat={seat.id} phase={gameState.turn.phase} onend={() => endTurn(seat)} />
+            {/if}
           {/if}
         {:else}
           <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
@@ -206,6 +222,15 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .money {
+    margin-left: var(--gap);
+    padding: 0.15em 0.5em;
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.36);
   }
   .corner {
     position: absolute;

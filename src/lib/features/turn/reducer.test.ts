@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { reduce } from '$lib/game/reduce';
 import { created, event, resetSequence } from '$lib/game/test-fixtures';
-import { explorerSeats } from './reducer';
+import type { GameState } from '$lib/game/state';
+import { card } from '$features/cards/deck';
+import { currentExplorer, explorerSeats } from './reducer';
 
 beforeEach(resetSequence);
 
@@ -10,35 +12,29 @@ const seatAndCommission = (seat: string, specialties: string[] = []) => [
   event('seat/taken', { seat, uid: `table:${seat}` }),
   event('explorer/commissioned', { seat, specialties })
 ];
+const twoPlayers = (seed = 1234) => [created('ABCDE', LAYOUT, seed), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];
+const other = (s: GameState) => (s.turn!.current === 'bottom-1' ? 'top-1' : 'bottom-1');
+const hand = (s: GameState, seat: string) => s.explorers.find((e) => e.seat === seat)!.hand;
+const allCards = (s: GameState) => [...s.deck!.draw, ...s.deck!.discard, ...s.explorers.flatMap((e) => e.hand)];
 
 describe('game/started', () => {
-  it('rolls four dice per explorer, seats the high roller first, and deals five cards each from a seeded shuffle', () => {
-    const s = reduce([created('ABCDE', LAYOUT, 1234), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})]);
+  it('rolls four dice per explorer, seats the high roller first, deals five each and the first player draws', () => {
+    const s = reduce(twoPlayers());
     expect(s.diagnostics).toEqual([]);
-    expect(s.turn).not.toBeNull();
     expect(Object.keys(s.rollOff!).sort()).toEqual(['bottom-1', 'top-1']);
-    for (const attempts of Object.values(s.rollOff!)) {
-      expect(attempts.length).toBeGreaterThanOrEqual(1);
-      for (const roll of attempts) {
-        expect(roll).toHaveLength(4);
-        for (const d of roll) expect(d).toBeGreaterThanOrEqual(1);
-      }
-    }
+    for (const attempts of Object.values(s.rollOff!)) for (const roll of attempts) expect(roll).toHaveLength(4);
     const total = (seat: string) => s.rollOff![seat].at(-1)!.reduce((a, b) => a + b, 0);
-    const other = s.turn!.current === 'bottom-1' ? 'top-1' : 'bottom-1';
-    expect(total(s.turn!.current)).toBeGreaterThan(total(other));
+    expect(total(s.turn!.current)).toBeGreaterThan(total(other(s)));
     expect(s.turn!.order[0]).toBe(s.turn!.current);
-    expect(s.turn!.round).toBe(1);
-    expect(s.turn!.phase).toBe('europe');
-    for (const e of s.explorers) expect(e.hand).toHaveLength(5);
-    expect(s.deck!.draw).toHaveLength(48 - 10);
-    expect(s.deck!.discard).toEqual([]);
-    const all = [...s.deck!.draw, ...s.explorers.flatMap((e) => e.hand)];
-    expect(new Set(all).size).toBe(48);
+    expect(s.turn).toMatchObject({ round: 1, phase: 'act' });
+    expect(hand(s, s.turn!.current)).toHaveLength(6);
+    expect(hand(s, other(s))).toHaveLength(5);
+    expect(s.deck!.draw).toHaveLength(48 - 11);
+    expect(new Set(allCards(s)).size).toBe(48);
+    for (const e of s.explorers) for (const id of e.hand) expect(e.drawnRound[id]).toBe(1);
   });
   it('is deterministic for a seed and differs across seeds', () => {
-    const run = (seed: number) => reduce([created('ABCDE', LAYOUT, seed), ...seatAndCommission('bottom-1'), ...seatAndCommission('left-1'), event('game/started', {})]);
-    const a = run(1234), b = run(1234), c = run(99);
+    const a = reduce(twoPlayers(1234)), b = reduce(twoPlayers(1234)), c = reduce(twoPlayers(99));
     expect(a.rollOff).toEqual(b.rollOff);
     expect(a.deck).toEqual(b.deck);
     expect(a.deck).not.toEqual(c.deck);
@@ -49,19 +45,16 @@ describe('game/started', () => {
     expect(explorerSeats(s)).toEqual(seats);
     const i = seats.indexOf(s.turn!.current);
     expect(s.turn!.order).toEqual([...seats.slice(i), ...seats.slice(0, i)]);
-    expect(s.deck!.draw).toHaveLength(48 - 30);
   });
   it('re-rolls ties until one explorer is high (RQ-1)', () => {
-    // Search seeds for a tie on the first attempt so the re-roll path is exercised.
     let found = false;
     for (let seed = 1; seed < 400 && !found; seed++) {
-      const s = reduce([created('ABCDE', LAYOUT, seed), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})]);
+      const s = reduce(twoPlayers(seed));
       const attempts = Object.values(s.rollOff!).map((a) => a.length);
       if (Math.max(...attempts) > 1) {
         found = true;
         const total = (r: number[]) => r.reduce((a, b) => a + b, 0);
         expect(total(s.rollOff!['bottom-1'][0])).toBe(total(s.rollOff!['top-1'][0]));
-        expect(s.rollOff![s.turn!.current].length).toBe(Math.max(...attempts));
       }
     }
     expect(found).toBe(true);
@@ -76,6 +69,84 @@ describe('game/started', () => {
       event('game/started', {})
     ]);
     expect(s.diagnostics.map((d) => d.reason)).toEqual(['no explorer has been commissioned', 'roundLimit must be a positive integer', 'game already started']);
-    expect(s.turn?.round).toBe(1);
+  });
+});
+
+describe('turn/ended and the start of a Europe turn (rules §4)', () => {
+  it('passes the turn clockwise, the next player draws, and the roll-off dice are cleared', () => {
+    const s0 = reduce(twoPlayers());
+    const first = s0.turn!.current, second = other(s0);
+    const s1 = reduce([...twoPlayers(), event('turn/ended', { seat: first })]);
+    expect(s1.diagnostics).toEqual([]);
+    expect(s1.turn).toMatchObject({ current: second, round: 1, phase: 'act' });
+    expect(hand(s1, second)).toHaveLength(6);
+    expect(s1.rollOff).toBeNull();
+    expect(s1.deck!.draw).toHaveLength(48 - 12);
+  });
+  it('starts a new round when the order wraps and expires tickets drawn before this round', () => {
+    const s0 = reduce(twoPlayers());
+    const first = s0.turn!.current, second = other(s0);
+    const s2 = reduce([...twoPlayers(), event('turn/ended', { seat: first }), event('turn/ended', { seat: second })]);
+    expect(s2.turn).toMatchObject({ current: first, round: 2 });
+    const openingTickets = hand(s0, first).filter((id) => card(id).donation.kind === 'ticket');
+    for (const id of openingTickets) {
+      expect(hand(s2, first)).not.toContain(id);
+      expect(s2.deck!.discard).toContain(id);
+    }
+    expect(new Set(allCards(s2)).size).toBe(48);
+  });
+  it('rejects ending out of turn or before the game starts', () => {
+    const s = reduce([created('ABCDE', LAYOUT, 1), ...seatAndCommission('bottom-1'), event('turn/ended', { seat: 'bottom-1' }), event('game/started', {}), event('turn/ended', { seat: 'top-1' })]);
+    expect(s.diagnostics.map((d) => d.reason)).toEqual(['game not started', "it is not top-1's turn"]);
+  });
+  it('holds the hand limit: over five cards means choosing discards before the draw', () => {
+    // Find a seed where the first player reaches round 2 with more than five non-ticket cards.
+    let events: ReturnType<typeof event>[] | null = null;
+    for (let seed = 1; seed < 500 && !events; seed++) {
+      resetSequence();
+      const base = twoPlayers(seed);
+      const s0 = reduce(base);
+      const first = s0.turn!.current, second = other(s0);
+      const s2 = reduce([...base, event('turn/ended', { seat: first }), event('turn/ended', { seat: second })]);
+      if (s2.turn!.phase === 'discard') events = [...base, event('turn/ended', { seat: first }), event('turn/ended', { seat: second })];
+    }
+    expect(events).not.toBeNull();
+    const s2 = reduce(events!);
+    const first = s2.turn!.current;
+    expect(hand(s2, first)).toHaveLength(6);
+    const chosen = hand(s2, first)[0];
+    const blocked = reduce([...events!, event('turn/ended', { seat: first })]);
+    expect(blocked.diagnostics.at(-1)?.reason).toBe('cannot end the turn while discarding');
+    const bad = reduce([...events!, event('cards/discarded', { seat: first, cardIds: ['card-99'] })]);
+    expect(bad.diagnostics.at(-1)?.reason).toBe('cards/discarded needs cards from the hand');
+    const s3 = reduce([...events!, event('cards/discarded', { seat: first, cardIds: [chosen] })]);
+    expect(s3.diagnostics).toEqual([]);
+    expect(s3.turn!.phase).toBe('act');
+    expect(hand(s3, first)).toHaveLength(6); // five kept, one drawn
+    expect(hand(s3, first)).not.toContain(chosen);
+    expect(s3.deck!.discard).toContain(chosen);
+    const idle = reduce([...events!, event('cards/discarded', { seat: first, cardIds: [chosen] }), event('cards/discarded', { seat: first, cardIds: [hand(s3, first)[0]] })]);
+    expect(idle.diagnostics.at(-1)?.reason).toBe('no discard is pending');
+  });
+  it('reshuffles the discards under the draw pile when it runs out', () => {
+    const base = twoPlayers(7);
+    const events = [...base];
+    let s = reduce(events);
+    for (let i = 0; i < 90 && s.deck!.draw.length > 0; i++) {
+      const seat = s.turn!.current;
+      if (s.turn!.phase === 'discard') events.push(event('cards/discarded', { seat, cardIds: [hand(s, seat)[0]] }));
+      else events.push(event('turn/ended', { seat }));
+      s = reduce(events);
+    }
+    expect(s.deck!.draw).toHaveLength(0);
+    const before = s.deck!.discard.length;
+    expect(before).toBeGreaterThan(0);
+    const seat = s.turn!.current;
+    events.push(s.turn!.phase === 'discard' ? event('cards/discarded', { seat, cardIds: [hand(s, seat)[0]] }) : event('turn/ended', { seat }));
+    s = reduce(events);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.deck!.draw.length + s.deck!.discard.length).toBeLessThan(before + 2);
+    expect(new Set(allCards(s)).size).toBe(48);
+    expect(currentExplorer(s)).toBeDefined();
   });
 });

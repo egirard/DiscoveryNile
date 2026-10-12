@@ -9,7 +9,7 @@ const seated = () => [created(), event('seat/taken', { seat: 'bottom-1', uid: 't
 describe('explorer/commissioned', () => {
   it('creates an explorer in Europe for a taken seat, with its specialties in canonical order', () => {
     const s = reduce([...seated(), event('explorer/commissioned', { seat: 'bottom-1', specialties: ['zoology', 'medicine'] })]);
-    expect(s.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, hand: [] }]);
+    expect(s.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, hand: [], drawnRound: {} }]);
     expect(s.diagnostics).toEqual([]);
   });
   it('allows an ordinary explorer with no specialties and one with all four', () => {

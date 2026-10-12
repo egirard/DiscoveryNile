@@ -24,9 +24,15 @@ export interface ExplorerState {
   location: ExplorerLocation;
   /** Donation cards, face up. */
   hand: CardId[];
+  /** The round each card in hand was drawn in; free tickets expire at the owner's next turn. */
+  drawnRound: Record<string, number>;
 }
 
-export type Phase = 'europe';
+/**
+ * Where the current seat is in its turn. `discard`: over the hand limit, must choose discards
+ * before drawing. `act`: free to publish, sail or end the turn.
+ */
+export type Phase = 'discard' | 'act';
 
 export interface TurnState {
   /** Seats with explorers, clockwise from the first player. */

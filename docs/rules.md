@@ -24,7 +24,7 @@ Players are 19th-century explorers. Each raises money in Europe by drawing donat
 
 Each turn an explorer stays in Europe, in order: *(Rules: Starting the Game)*
 
-1. Discard every free ticket held (tickets cannot be saved; they are usable only on the turn after being drawn).
+1. Discard every free ticket held from before this round (a ticket drawn this turn, or dealt at the start, may be used to sail this turn; it expires at the owner's next turn, G-15 in open-questions.md).
 2. Discard down to five cards if above five.
 3. Draw one card.
 4. Optionally publish any unpublished hexes carrying the player's markers, drawing one extra card per hex published (§12).

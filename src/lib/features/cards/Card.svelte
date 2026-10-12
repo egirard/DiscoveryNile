@@ -7,20 +7,17 @@
   interface Props {
     id: CardId;
     seat: string;
+    /** When set, tapping the card performs this (used to choose discards). */
+    onselect?: (id: CardId) => void;
   }
-  let { id, seat }: Props = $props();
+  let { id, seat, onselect }: Props = $props();
   const c = $derived(lookup(id));
   const donation = $derived(c.donation);
   const port = $derived(donation.kind === 'ticket' ? BOARD.ports[donation.port].name : '');
+  const label = $derived(donation.kind === 'money' ? `$${donation.amount} donation` : donation.kind === 'ticket' ? `Free ticket to ${port}` : 'No donation');
 </script>
 
-<div
-  class="card {donation.kind}"
-  data-testid="card-{id}-{seat}"
-  data-card={id}
-  data-kind={donation.kind}
-  aria-label={donation.kind === 'money' ? `$${donation.amount} donation` : donation.kind === 'ticket' ? `Free ticket to ${port}` : 'No donation'}
->
+{#snippet face()}
   {#if donation.kind === 'money'}
     <span class="amount">${donation.amount}</span>
   {:else if donation.kind === 'ticket'}
@@ -33,7 +30,17 @@
     <span class="dash">–</span>
   {/if}
   <span class="number">{c.number}</span>
-</div>
+{/snippet}
+
+{#if onselect}
+  <button class="card selectable {donation.kind}" data-testid="card-{id}-{seat}" data-card={id} data-kind={donation.kind} aria-label="Discard: {label}" onclick={() => onselect?.(id)}>
+    {@render face()}
+  </button>
+{:else}
+  <div class="card {donation.kind}" data-testid="card-{id}-{seat}" data-card={id} data-kind={donation.kind} aria-label={label}>
+    {@render face()}
+  </div>
+{/if}
 
 <style>
   .card {
@@ -53,6 +60,11 @@
   }
   .card.ticket {
     background: #d7e6c4;
+  }
+  .card.selectable {
+    cursor: pointer;
+    border-color: #a8372a;
+    box-shadow: 0 0 0 2px #e7b4a8;
   }
   .amount {
     font-weight: 700;

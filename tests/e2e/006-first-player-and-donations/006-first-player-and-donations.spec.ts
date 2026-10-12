@@ -57,11 +57,13 @@ test.describe('006 - First player and donations', () => {
           await expect(page.getByTestId(`turn-marker-${loser}`)).toHaveAttribute('data-current', 'false');
           await expect(page.getByTestId(`seat-rail-${winner}`)).toHaveAttribute('data-current', 'true');
         } },
-        { spec: 'Each explorer holds five face-up donation cards and the draw pile holds the other 38', check: async () => {
-          await expect(page.getByTestId('hand-bottom-1')).toHaveAttribute('data-count', '5');
-          await expect(page.getByTestId('hand-top-1')).toHaveAttribute('data-count', '5');
-          await expect(page.locator('[data-testid^="card-"]')).toHaveCount(10);
-          await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '38');
+        { spec: 'Each explorer was dealt five face-up donation cards; the first player has already drawn a sixth; the draw pile holds the other 37', check: async () => {
+          const state = await page.evaluate(() => window.__TABLETOP__!.getState());
+          const first = state.turn!.current, second = first === 'bottom-1' ? 'top-1' : 'bottom-1';
+          await expect(page.getByTestId(`hand-${first}`)).toHaveAttribute('data-count', '6');
+          await expect(page.getByTestId(`hand-${second}`)).toHaveAttribute('data-count', '5');
+          await expect(page.locator('[data-testid^="card-"]')).toHaveCount(11);
+          await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '37');
           await expect(page.getByTestId('deck-discard')).toHaveAttribute('data-count', '0');
           await expect(page.getByTestId('start-game')).toHaveCount(0);
         } },
@@ -70,7 +72,7 @@ test.describe('006 - First player and donations', () => {
           const all = [...state.deck!.draw, ...state.explorers.flatMap((e) => e.hand)];
           expect(all).toHaveLength(48);
           expect(new Set(all).size).toBe(48);
-          expect(state.turn).toMatchObject({ round: 1, phase: 'europe' });
+          expect(state.turn).toMatchObject({ round: 1, phase: 'act' });
           expect(state.diagnostics).toEqual([]);
         } }
       ]
@@ -83,7 +85,7 @@ test.describe('006 - First player and donations', () => {
       description: 'After a reload the same roll-off, the same hands and the same first player are restored from the seed',
       verifications: [
         { spec: 'Hands, deck order, roll-off and turn are identical to before the reload', check: async () => {
-          await expect(page.getByTestId('hand-bottom-1')).toHaveAttribute('data-count', '5');
+          await expect(page.getByTestId(`hand-${before.turn!.current}`)).toHaveAttribute('data-count', '6');
           const after = await page.evaluate(() => window.__TABLETOP__!.getState());
           expect(after.explorers.map((e) => e.hand)).toEqual(before.explorers.map((e) => e.hand));
           expect(after.deck).toEqual(before.deck);
