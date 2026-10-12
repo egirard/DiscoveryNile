@@ -59,6 +59,12 @@ export function knowledgeOf(state: GameState): (id: HexId) => HexKnowledge | nul
   };
 }
 
+/** The specialties still owed to the hex the explorer stands on (rules §9: a turn each for zoology and geology). */
+export function researchPending(e: ExplorerState): ('zoology' | 'geology')[] {
+  if (!e.research || e.location.kind !== 'hex' || e.location.hex !== e.research.hex) return [];
+  return (['zoology', 'geology'] as const).filter((sp) => e.specialties.includes(sp) && !e.research!.done.includes(sp));
+}
+
 /** A mapped, unpublished desert hex without a river whose oasis this explorer has not found. */
 export function oasisSearchable(m: MappedHex, seat: string): boolean {
   return m.terrain === 'desert' && !m.river && !m.oasisKnownTo.includes(seat as SeatId);
@@ -101,8 +107,10 @@ function cataractAt(state: GameState, id: HexId): boolean {
 function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): { mode: Mode; cost: number; unknown: boolean; water: boolean } | string {
   const chart = e.chart!;
   if (sickCarried(chart, e.sick).halted) return 'the sick cannot all be carried: the expedition halts';
+  if (researchPending(e).length) return 'the naturalist must study this hex first';
   const water = waterLink(state, from, to);
-  const mode: Mode = state.turn!.movement?.mode ?? modeFor(chart, water);
+  const laden = { ...chart, food: chart.food + e.specimens.zoology + e.specimens.geology }; // specimens weigh a ration each (rules §9)
+  const mode: Mode = state.turn!.movement?.mode ?? modeFor(laden, water);
   const terrain = terrainOf(state, to);
   if (mode === 'canoe' && !water) return 'canoes must follow the water';
   if (terrain && !passable(mode, terrain, chart)) return `cannot enter ${terrain} ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}`;
@@ -233,7 +241,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
           if (found.result.rolls.length) {
             if (found.result.found) {
               const id = Object.keys(tribes).length + 1;
-              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {} } };
+              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
@@ -244,7 +252,10 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
           }
         }
       }
-      const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from };
+      // A zoologist or geologist must spend a turn studying every unpublished hex he enters (rules §9).
+      const naturalist = explorer.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain;
+      const research = naturalist ? { hex: target, done: [] as ('zoology' | 'geology')[] } : null;
+      const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from, research };
       const done = finish({ ...replaceExplorer(state, moved), map, tribes }, { ...movement, spent: movement.spent + cost });
       return phase === 'natives' ? { ...done, turn: { ...done.turn!, phase } } : done;
     }

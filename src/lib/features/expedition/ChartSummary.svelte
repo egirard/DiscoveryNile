@@ -9,8 +9,9 @@
     seat: string;
     chart: Chart;
     sick?: Sickness;
+    specimens?: { zoology: number; geology: number };
   }
-  let { seat, chart, sick }: Props = $props();
+  let { seat, chart, sick, specimens }: Props = $props();
   const present = $derived([...ITEMS, 'water' as const].filter((i) => chart[i] > 0));
   const sickCount = $derived(sick ? sick.guides + sick.bearers + sick.askaris + sick.animals + (sick.explorer ? 1 : 0) : 0);
 </script>
@@ -19,6 +20,13 @@
   {#each present as item (item)}
     <span class="item" data-testid="have-{item}-{seat}" data-count={chart[item]}><Icon name={item} size="1.2em" />{chart[item]}</span>
   {/each}
+  {#if specimens}
+    {#each ['zoology', 'geology'] as const as sp (sp)}
+      {#if specimens[sp] > 0}
+        <span class="item" data-testid="specimens-{sp}-{seat}" data-count={specimens[sp]} aria-label="{specimens[sp]} {sp} specimens"><Icon name={sp} size="1.2em" />{specimens[sp]}</span>
+      {/if}
+    {/each}
+  {/if}
   {#if sickCount}
     <span class="item sick" data-testid="sick-{seat}" data-count={sickCount} data-explorer={sick!.explorer} aria-label="{sickCount} sick"><Icon name="medicine" size="1.2em" />{sickCount}</span>
     {#if sickCarried(chart, sick!).halted}

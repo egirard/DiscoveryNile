@@ -20,7 +20,7 @@
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
-  import { PASSAGE_FARE, waterAvailable, WATER_STEP } from '$features/turn/reducer';
+  import { PASSAGE_FARE, waterAvailable, WATER_STEP, worksOwed } from '$features/turn/reducer';
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
@@ -29,7 +29,7 @@
   import NegotiationPanel from '$features/natives/NegotiationPanel.svelte';
   import TradePanel from '$features/natives/TradePanel.svelte';
   import type { Purchases } from '$features/expedition/prices';
-  import { moveTargets, standingHex } from '$features/exploration/reducer';
+  import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
   import type { HexId } from '$features/map/hex';
   import { SEAT_LAYOUT } from '$lib/game/config';
@@ -158,6 +158,9 @@
     if (!seat || !explorer || !explorer.chart) return null;
     return { seat, explorer, prices: gameState.turn.trade.prices };
   });
+  async function perform(seat: string, specialty: string) {
+    await game?.append('specialty/performed', { seat, specialty });
+  }
   async function offerChief(seat: string, payload: Record<string, unknown>) {
     await game?.append('natives/offered', { seat, ...payload });
   }
@@ -253,7 +256,7 @@
   {/if}
   {#if trading}
     <EdgePanel seat={trading.seat} {viewport} inset={railDepth + target * 0.4} testid="trade-edge-{trading.seat.id}">
-      <TradePanel seat={trading.seat.id} prices={trading.prices} chart={trading.explorer.chart!} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
+      <TradePanel seat={trading.seat.id} prices={trading.prices} chart={trading.explorer.chart!} works={trading.explorer.specialties.filter((sp) => sp === 'evangelism' || sp === 'medicine')} owed={worksOwed(gameState, trading.explorer)} onwork={(sp) => perform(trading!.seat.id, sp)} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
     </EdgePanel>
   {/if}
 
@@ -283,7 +286,7 @@
               {/each}
             </span>
             {#if explorer.chart}
-              <ChartSummary seat={seat.id} chart={explorer.chart} sick={explorer.sick} />
+              <ChartSummary seat={seat.id} chart={explorer.chart} sick={explorer.sick} specimens={explorer.specimens} />
             {:else}
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {/if}
@@ -293,6 +296,20 @@
                 <span class="movement" data-testid="movement-{seat.id}" data-mode={mv.mode} data-left={mv.halted ? 0 : mv.points - mv.spent} aria-label="{mv.mode}: {mv.halted ? 0 : mv.points - mv.spent} of {mv.points} movement points left">
                   <Icon name={mv.mode === 'canoe' ? 'canoes' : mv.mode === 'mounted' ? 'horses' : 'bearers'} size="1.2em" />
                   {#each Array(mv.points) as _, i (i)}<span class="pip" class:used={i < mv.spent || mv.halted}></span>{/each}
+                </span>
+              {/if}
+              {#if gameState.turn.phase === 'act' && !gameState.turn.moved && researchPending(explorer).length}
+                <span class="research" data-testid="research-{seat.id}">
+                  {#each researchPending(explorer) as sp (sp)}
+                    <button class="study" data-testid="research-{sp}-{seat.id}" aria-label="Spend the turn on {sp} in this hex" onclick={() => perform(seat.id, sp)}><Icon name={sp} size="1.3em" /></button>
+                  {/each}
+                </span>
+              {/if}
+              {#if explorer.location.kind === 'captive' && gameState.turn.phase === 'act' && explorer.specialties.some((sp) => sp === 'evangelism' || sp === 'medicine')}
+                <span class="research" data-testid="captive-works-{seat.id}">
+                  {#each explorer.specialties.filter((sp) => sp === 'evangelism' || sp === 'medicine') as sp (sp)}
+                    <button class="study" data-testid="specialty-{sp}-{seat.id}" aria-label="{sp === 'evangelism' ? 'Preach to your captors' : 'Treat your captors'}" onclick={() => perform(seat.id, sp)}><Icon name={sp} size="1.3em" /></button>
+                  {/each}
                 </span>
               {/if}
               {#if explorer.chart && waterAvailable(gameState, explorer)}
@@ -395,6 +412,22 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .research {
+    display: inline-flex;
+    gap: calc(var(--gap) * 0.4);
+    margin-left: var(--gap);
+  }
+  .study {
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    border: 3px solid var(--paper);
+    background: var(--accent);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
   }
   .water-controls {
     display: inline-flex;

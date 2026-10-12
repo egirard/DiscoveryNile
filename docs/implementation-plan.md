@@ -62,7 +62,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 019-negotiation-and-trade          landed
 020-tribe-attitude                 landed
 021-sickness-starvation-desertion  landed
-022-specialties-in-the-field
+022-specialties-in-the-field       landed
 023-caches-and-reorganisation
 024-return-to-europe
 025-publishing-and-points
@@ -209,9 +209,11 @@ Starvation order, sick men and carrying, recovery and death rolls, explorer resp
 
 - **As landed:** after the meal and the water, `starve` hands hunger to bearers, guides, askaris and the explorer in turn: hungry guides and askaris desert (askaris with muskets), hungry bearers desert unless an askari guards each, the sick cannot desert (G-68); `sicknessRound` on the `sickness` stream rolls the sick (−1 healthy doctor, +3 starving: ≤1 recovers, ≥5 dies, the explorer included) and then the starving well (4–6 fall sick); `sickCarried` halts movement when the sick outnumber animals, pairs of well bearers and canoe seats, with a halt mark at the rail. Scenario 021 (seed 863, hunting 1,1, sickness 4,5,6,1,2,3,4): `starving` → `halted` → `wasting`. Desertion stopping on a victory is not modelled (desertion is immediate, G-69).
 
-### 22. Specialties in the field — `022-specialties-in-the-field`
+### 22. Specialties in the field — `022-specialties-in-the-field` ✅ landed
 
 The turn spent on evangelism, medicine, zoology or geology instead of moving; results, poison attempts, specimens carried on the chart; the zoologist-geologist two-turn rule; captured specialists.
+
+- **As landed:** `specialty/performed` on the `specialty` stream: zoology and geology are owed to every unpublished hex entered (`research`, one turn each, movement barred until done, one attempt per specialty per hex), specimens counted on the explorer and weighed as rations; evangelism and medicine are offered on the trade panel once the chief permits and are owed before trading ends (G-71), moving the tribe's attitude, banking points in `goodWorks`, with the chief's and witch doctor's poison attempts; captives preach or treat from the rail without permission (medicine −1) and the attitude gained adds to their escape rolls. Scenario 022 (seed 18): `permission` → `preached` → `study-owed` → `specimen`; medicine and captivity are unit-tested.
 
 ### 23. Caches and reorganisation — `023-caches-and-reorganisation`
 

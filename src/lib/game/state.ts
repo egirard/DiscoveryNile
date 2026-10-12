@@ -29,7 +29,7 @@ export type ExplorerLocation =
   | { kind: 'port'; port: PortId }
   | { kind: 'hex'; hex: HexId }
   /** Held prisoner by a tribe (rules §8.4): an escape roll every turn; `had` is the chart at capture, for the survival table. */
-  | { kind: 'captive'; hex: HexId; tribe: number; had: Chart }
+  | { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number }
   | { kind: 'dead' };
 
 /** Who in the expedition is sick (rules §10–11). Consequences of sickness arrive with slice 021. */
@@ -64,6 +64,12 @@ export interface ExplorerState {
   cameFrom: HexId | null;
   /** Added to later poisoning rolls after a recovery (rules §8.5). */
   poisonBonus: number;
+  /** Specimens carried back for the zoologist's and geologist's points (rules §9); each weighs a ration. */
+  specimens: { zoology: number; geology: number };
+  /** Points earned in the field by evangelism and medicine (rules §9), scored in Europe. */
+  goodWorks: { evangelism: number; medicine: number };
+  /** The unpublished hex a naturalist entered and must study for a turn per specialty before moving on. */
+  research: { hex: HexId; done: ('zoology' | 'geology')[] } | null;
 }
 
 /** A tribe discovered in play (rules §7.7), numbered as its marker. */
@@ -79,6 +85,9 @@ export interface Tribe {
   negotiatedBy: SeatId[];
   /** Attitude earned towards one explorer only, such as for releasing every prisoner (rules §8.6). */
   regard: Partial<Record<SeatId, number>>;
+  /** Missionaries who have preached here and doctors who have treated here, once each (rules §9). */
+  preachedBy: SeatId[];
+  treatedBy: SeatId[];
 }
 
 /** A hex whose terrain has been determined in play. */
@@ -101,7 +110,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */

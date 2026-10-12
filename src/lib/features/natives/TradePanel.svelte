@@ -7,10 +7,14 @@
     seat: string;
     prices: Partial<Record<Item, number>>;
     chart: Chart;
+    /** Specialties the chief's permission lets the explorer practise here, and which are still owed (rules §9). */
+    works?: ('evangelism' | 'medicine')[];
+    owed?: ('evangelism' | 'medicine')[];
+    onwork?: (specialty: 'evangelism' | 'medicine') => void;
     ontrade: (item: Item, count: number, direction: 'buy' | 'sell') => void;
     ondone: () => void;
   }
-  let { seat, prices, chart, ontrade, ondone }: Props = $props();
+  let { seat, prices, chart, works = [], owed = [], onwork, ontrade, ondone }: Props = $props();
   const rows = $derived(Object.entries(prices) as [Item, number][]);
   const canBuy = (item: Item, price: number) => (item === 'food' ? chart.gifts >= 1 : chart.gifts >= price && (item !== 'askaris' || chart.muskets >= 1));
   const canSell = (item: Item, price: number) => SELLABLE.includes(item) && (item === 'food' ? chart.food >= price : chart[item] >= 1);
@@ -27,7 +31,13 @@
       <button data-testid="trade-buy-{item}-{seat}" aria-label="Buy {item === 'food' ? `${price} rations for one gift` : `one ${item.slice(0, -1)} for ${price} gifts`}" disabled={!canBuy(item, price)} onclick={() => ontrade(item, 1, 'buy')}>+</button>
     </div>
   {/each}
-  <button class="done" data-testid="trade-done-{seat}" onclick={ondone}><strong>Done trading</strong></button>
+  {#each works as w (w)}
+    <button class="work" data-testid="specialty-{w}-{seat}" disabled={!owed.includes(w)} onclick={() => onwork?.(w)}>
+      <Icon name={w} size="1.2em" />
+      <span class="text"><strong>{w === 'evangelism' ? 'Preach to the tribe' : 'Treat the tribe'}</strong><small>{owed.includes(w) ? 'One die: the tribe’s attitude, points, and perhaps poison' : 'Done here'}</small></span>
+    </button>
+  {/each}
+  <button class="done" data-testid="trade-done-{seat}" disabled={owed.length > 0} onclick={ondone}><strong>Done trading</strong></button>
 </div>
 
 <style>
@@ -77,6 +87,30 @@
   }
   .row button:disabled {
     opacity: 0.4;
+  }
+  .work {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--gap) * 0.6);
+    min-height: var(--target);
+    padding: calc(var(--gap) * 0.3) calc(var(--gap) * 0.6);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+  }
+  .work:disabled,
+  .done:disabled {
+    opacity: 0.4;
+  }
+  .text {
+    display: grid;
+    line-height: 1.15;
+  }
+  small {
+    font-size: calc(var(--target) * 0.22);
   }
   .done {
     min-height: var(--target);

@@ -7,7 +7,8 @@ import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
-import { oasisSearch, oasisSearchable, terrainOf } from '$features/exploration/reducer';
+import { oasisSearch, oasisSearchable, researchPending, terrainOf } from '$features/exploration/reducer';
+import { preach, study, treat, type TreatResult } from '$features/natives/specialties';
 import { hostilities, react, type ReactionResult } from '$features/natives/reaction';
 import { SELLABLE, attemptPoison, giveEverything, offerGifts, tradePrices } from '$features/natives/negotiation';
 import { consequencesOfDefeat, loot, resultsOfVictory, searchVillage } from '$features/natives/aftermath';
@@ -143,8 +144,8 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
 
 /** A captive's turn: one die less three on the consequences-of-defeat table (rules §8.4). */
 function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
-  const { hex, tribe, had } = explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart };
-  const r = consequencesOfDefeat(state.rng!, had, -3);
+  const { hex, tribe, had, goodwill } = explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number };
+  const r = consequencesOfDefeat(state.rng!, had, -3 + goodwill);
   const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? 'still held prisoner' : r.summary };
   const turn = { ...state.turn!, log: [...state.turn!.log, record], moved: true };
   if (r.fate === 'killed') {
@@ -208,7 +209,7 @@ function settle(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: He
     rng = d.rng;
     tribes = { ...tribes, [tribe.id]: { ...tribes[tribe.id], attitude: tribe.attitude - 1 - (d.fate === 'killed' ? 1 : 0) } };
     log.push({ kind: 'defeat', seat: explorer.seat, hex, rolls: d.rolls, outcome: d.summary });
-    const location: ExplorerState['location'] = d.fate === 'killed' ? { kind: 'dead' } : d.fate === 'prisoner' ? { kind: 'captive', hex, tribe: tribe.id, had: result.chart } : { kind: 'hex', hex };
+    const location: ExplorerState['location'] = d.fate === 'killed' ? { kind: 'dead' } : d.fate === 'prisoner' ? { kind: 'captive', hex, tribe: tribe.id, had: result.chart, goodwill: 0 } : { kind: 'hex', hex };
     const chart = d.fate === 'killed' || d.fate === 'prisoner' ? null : d.chart;
     return { ...replaceExplorer(next, { ...explorer, location, chart }), rng, tribes, turn: { ...turn, phase: 'act', log, moved: true } };
   }
@@ -237,6 +238,16 @@ function permitTrade(state: GameState, tribe: Tribe): GameState {
   const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: prices.rolls, outcome: 'the chief permits trade: ' + Object.entries(prices.prices).map(([item, price]) => (item === 'food' ? `${price} rations per gift` : `${item.slice(0, -1)} ${price}`)).join(', ') };
   const negotiatedBy = tribe.negotiatedBy.includes(explorer.seat) ? tribe.negotiatedBy : [...tribe.negotiatedBy, explorer.seat];
   return { ...state, rng: prices.rng, tribes: { ...state.tribes, [tribe.id]: { ...state.tribes[tribe.id], negotiatedBy } }, turn: { ...state.turn!, phase: 'trade', trade: { tribe: tribe.id, prices: prices.prices }, log: [...state.turn!.log, record] } };
+}
+
+/** Specialties the explorer still owes this tribe while the chief's permission stands (rules §9: "must"). */
+export function worksOwed(state: GameState, explorer: ExplorerState): ('evangelism' | 'medicine')[] {
+  if (!state.turn?.trade) return [];
+  const tribe = state.tribes[state.turn.trade.tribe];
+  const owed: ('evangelism' | 'medicine')[] = [];
+  if (explorer.specialties.includes('evangelism') && !tribe.preachedBy.includes(explorer.seat)) owed.push('evangelism');
+  if (explorer.specialties.includes('medicine') && !tribe.treatedBy.includes(explorer.seat)) owed.push('medicine');
+  return owed;
 }
 
 /** A guide hired in a hex adjacent to this one (rules §8.2: "a guide from an adjacent hex"). */
@@ -372,7 +383,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const map = m ? { ...state.map, [hex]: { ...m, markers: m.markers.filter((s) => s !== explorer.seat) } } : state.map;
         const port = PORTS.find((p) => p.hex === back);
         const location: ExplorerState['location'] = port ? { kind: 'port', port: port.id } : { kind: 'hex', hex: back };
-        return { ...replaceExplorer(state, { ...explorer, location, cameFrom: null }), map, turn };
+        return { ...replaceExplorer(state, { ...explorer, location, cameFrom: null, research: null }), map, turn };
       }
       // Policies 1, 3, 4 and 5 face the natives' reaction (rules §8.2) and perhaps a fight (§8.3).
       const tribe = state.tribes[state.map[hex].tribe!];
@@ -474,7 +485,56 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase !== 'trade') return 'no trade is open';
+      const owed = worksOwed(state, currentExplorer(state)!);
+      if (owed.length) return `the ${owed[0] === 'evangelism' ? 'missionary must preach' : 'doctor must treat the tribe'} first`;
       return { ...state, turn: { ...state.turn, phase: 'act' } };
+    }
+    case 'specialty/performed': {
+      const { seat, specialty } = event.payload as { seat?: string; specialty?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      const explorer = currentExplorer(state)!;
+      if (specialty !== 'zoology' && specialty !== 'geology' && specialty !== 'evangelism' && specialty !== 'medicine') return 'specialty/performed needs a specialty';
+      if (!explorer.specialties.includes(specialty)) return `the explorer is no ${specialty === 'zoology' ? 'zoologist' : specialty === 'geology' ? 'geologist' : specialty === 'evangelism' ? 'missionary' : 'doctor'}`;
+      if (specialty === 'zoology' || specialty === 'geology') {
+        if (state.turn.phase !== 'act') return 'not now';
+        if (state.turn.moved) return 'the turn is spent';
+        if (!researchPending(explorer).includes(specialty)) return 'nothing to study here';
+        const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
+        const camp = situationOf(state, explorer)!;
+        const r = study(state.rng!, specialty, camp.terrain!, camp.river, camp.oasis);
+        const specimens = { ...explorer.specimens, [specialty]: explorer.specimens[specialty] + (r.found ? 1 : 0) };
+        const research = { hex, done: [...explorer.research!.done, specialty as 'zoology' | 'geology'] };
+        const record: RollRecord = { kind: 'specialty', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.summary };
+        return { ...replaceExplorer(state, { ...explorer, specimens, research }), rng: r.rng, turn: { ...state.turn, moved: true, log: [...state.turn.log, record] } };
+      }
+      // Evangelism and medicine: with the chief's permission (the trade phase), or in captivity without it.
+      const captive = explorer.location.kind === 'captive';
+      if (!captive && state.turn.phase !== 'trade') return 'the chief has not permitted it';
+      const hex = (explorer.location as { kind: 'hex' | 'captive'; hex: HexId }).hex;
+      const tribe = state.tribes[captive ? (explorer.location as { tribe: number }).tribe : state.map[hex].tribe!];
+      const doneList = specialty === 'evangelism' ? tribe.preachedBy : tribe.treatedBy;
+      if (doneList.includes(explorer.seat)) return `the ${specialty === 'evangelism' ? 'missionary has preached' : 'doctor has treated'} here already`;
+      const work = specialty === 'evangelism' ? preach(state.rng!) : treat(state.rng!, captive);
+      let rng = work.rng;
+      const log: RollRecord[] = [...state.turn.log, { kind: 'specialty', seat: explorer.seat, hex, rolls: work.rolls, outcome: work.summary }];
+      const tribes = { ...state.tribes, [tribe.id]: { ...tribe, attitude: tribe.attitude + work.attitude, preachedBy: specialty === 'evangelism' ? [...tribe.preachedBy, explorer.seat] : tribe.preachedBy, treatedBy: specialty === 'medicine' ? [...tribe.treatedBy, explorer.seat] : tribe.treatedBy } };
+      const points = specialty === 'evangelism' ? Math.max(0, work.attitude) : (work as TreatResult).points;
+      const goodWorks = { ...explorer.goodWorks, [specialty]: explorer.goodWorks[specialty] + points };
+      let next: ExplorerState = { ...explorer, goodWorks };
+      if (captive && work.attitude > 0) next = { ...next, location: { ...(explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number }), goodwill: (explorer.location as { goodwill: number }).goodwill + work.attitude } };
+      const t = work as { explorerDies?: boolean; explorerSick?: boolean };
+      if (t.explorerDies) return { ...replaceExplorer(state, { ...next, location: { kind: 'dead' }, chart: null }), rng, tribes, turn: { ...state.turn, log, moved: true } };
+      if (t.explorerSick) next = { ...next, sick: { ...next.sick, explorer: true } };
+      // The chief's and the witch doctor's poison (rules §9), until one succeeds.
+      for (let i = 0; i < work.poisonAttempts; i++) {
+        const poison = attemptPoison(rng, next.poisonBonus);
+        rng = poison.rng;
+        log.push({ kind: 'poison', seat: explorer.seat, hex, rolls: poison.rolls, outcome: poison.summary });
+        if (poison.result === 'dies') return { ...replaceExplorer(state, { ...next, location: { kind: 'dead' }, chart: null }), rng, tribes, turn: { ...state.turn, log, moved: true } };
+        if (poison.result === 'recovers') next = { ...next, poisonBonus: next.poisonBonus + 1 };
+      }
+      return { ...replaceExplorer(state, next), rng, tribes, turn: { ...state.turn, log } };
     }
     case 'natives/spoils': {
       const { seat, choice } = event.payload as { seat?: string; choice?: unknown };
