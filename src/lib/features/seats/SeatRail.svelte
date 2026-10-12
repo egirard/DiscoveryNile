@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { SeatState } from '$lib/game/state';
   import { positionAlongEdge, rotationFor, type Seat } from '$lib/tabletop/seats';
   import Icon from '$lib/ui/Icon.svelte';
@@ -9,8 +10,10 @@
     qrImage?: string | null;
     qrUrl?: string | null;
     onjoin: (seat: Seat) => void;
+    /** What the taken rail shows beside the player: the explorer setup, the explorer, later the chart. */
+    content?: Snippet;
   }
-  let { seat, state, qrImage = null, qrUrl = null, onjoin }: Props = $props();
+  let { seat, state, qrImage = null, qrUrl = null, onjoin, content }: Props = $props();
 
   const taken = $derived(Boolean(state.uid));
   const rotation = $derived(rotationFor(seat.edge));
@@ -42,6 +45,7 @@
         <Icon name="player" />
         {#if state.name}<span class="name">{state.name}</span>{/if}
       </span>
+      {@render content?.()}
     {:else}
       <button class="join" data-testid="seat-join-{seat.id}" aria-label={`Take seat ${seat.id}`} onclick={() => onjoin(seat)}>
         <Icon name="sit" />

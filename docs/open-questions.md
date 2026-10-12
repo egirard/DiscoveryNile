@@ -13,3 +13,5 @@ Every educated guess made while rolling through `docs/implementation-plan.md` wi
 | G-7 | 003 | Partial hexes cut by the board edge (top row, left column, east edge) | Excluded unless more than half the hex is on the board | `tools/mapfit/build.py` |
 | G-8 | 004 | The rulebook's points table has no entry for mountain hexes | Mountain scores 0 on its own, literally as printed; see `RQ-14` | `scoring.ts` |
 | G-9 | 004 | Where a printed river meets the sea or leaves the board, how far to draw it | Extended one hex radius seaward from the mouth (and off-board for the Niger and Nile), with the drainage number placed just seaward | `HexBoard.svelte` |
+| G-10 | 005 | Seat colours are not in the rules (counters come in "one color group for each player") | Six fixed colours by seat: red, blue, green, yellow, purple, orange | `explorers/colours.ts` |
+| G-11 | 005 | Specialty iconography | Book (evangelism), medicine bottle (medicine), paw (zoology), crystal (geology), pith helmet (explorer); all original | `ui/Icon.svelte` |

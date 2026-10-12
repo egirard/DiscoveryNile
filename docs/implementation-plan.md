@@ -45,7 +45,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 002-phone-takes-a-seat             landed (template)
 003-africa-board-and-six-seats     landed
 004-known-africa                   landed
-005-commission-an-explorer
+005-commission-an-explorer         landed
 006-first-player-and-donations
 007-a-turn-in-europe
 008-sail-to-africa
@@ -98,7 +98,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 004:** `known-africa` (spot-check hexes: Khartoum is desert with two rivers entering, the Sudd is swamp, a chosen pre-printed cataract hex shows the cataract mark; blank-hex count 452 per the rules, `RQ-5`) → `drainage-numbers` (each river mouth shows its number).
 - **Unit tests:** manifest invariants (every river segment connects to a neighbour or a mouth, no river in lake/swamp/jungle-swamp, drainage numbers present for every pre-printed mouth, composite terrain only jungle-swamp or jungle-mountain, 452 blank hexes); `terrainPoints(hex)` from rules §12 for pre-printed hexes.
 
-### 5. Commission an explorer — `005-commission-an-explorer`
+### 5. Commission an explorer — `005-commission-an-explorer` ✅ landed
 
 - **Player sees:** after taking a seat, the rail offers four specialty toggles (evangelism, medicine, zoology, geology) and a confirm control; confirming puts an explorer token in that seat's colour on the rail's "Europe" area with its specialty badges. Other rails are unaffected.
 - **Introduced:** `explorer/commissioned`; `explorers[]` in state with `seat`, `specialties`, `location: 'europe'`; `ExplorerSetup.svelte` and `ExplorerToken.svelte`; specialty iconography.

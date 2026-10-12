@@ -16,3 +16,5 @@ Rules for new assets:
 - Prefer SVG; raster only for illustrated art.
 - Store the semantic identity (id, kind, value, label) of every piece in a manifest; render art from it. Art enhances semantics already in the DOM.
 - Add a row here in the same commit that adds the asset.
+
+| Specialty and explorer icons (book, bottle, paw, crystal, pith helmet) | `src/lib/ui/Icon.svelte` | Original SVG, drawn for this project | MIT (this repository) |

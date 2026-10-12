@@ -9,7 +9,11 @@
   import { seatsFor, type Seat } from '$lib/tabletop/seats';
   import { mmPerPx, pxFor, readDiagonalInches, screenGeometry } from '$lib/tabletop/screen';
   import HexBoard from '$features/map/HexBoard.svelte';
+  import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
+  import ExplorerToken from '$features/explorers/ExplorerToken.svelte';
+  import { explorerAt } from '$features/explorers/reducer';
   import { SEAT_LAYOUT } from '$lib/game/config';
+  import type { Specialty } from '$lib/game/state';
 
   const layout = SEAT_LAYOUT;
   const seats = seatsFor(layout);
@@ -34,6 +38,10 @@
 
   async function join(seat: Seat) {
     await game?.append('seat/taken', { seat: seat.id, uid: `table:${seat.id}` });
+  }
+
+  async function commission(seat: Seat, specialties: Specialty[]) {
+    await game?.append('explorer/commissioned', { seat: seat.id, specialties });
   }
 
   onMount(() => {
@@ -80,7 +88,16 @@
   </div>
 
   {#each seats as seat (seat.id)}
-    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} />
+    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join}>
+      {#snippet content()}
+        {@const explorer = explorerAt(gameState, seat.id)}
+        {#if explorer}
+          <ExplorerToken {explorer} />
+        {:else}
+          <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
+        {/if}
+      {/snippet}
+    </SeatRail>
   {/each}
 
   <div class="corner" data-e2e-status-area>
