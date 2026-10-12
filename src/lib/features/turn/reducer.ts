@@ -3,7 +3,7 @@ import type { ExplorerState, GameState, RollOff, RollRecord } from '$lib/game/st
 import type { HexId } from '$features/map/hex';
 import { dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
-import { BOARD, type PortId } from '$features/map/manifest';
+import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
@@ -57,7 +57,7 @@ function advance(state: GameState): GameState {
  * the explorer lands at the chosen port and this turn is the one the rules say is skipped.
  */
 function beginTurn(state: GameState, seat: SeatId): GameState {
-  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, movement: null, log: [] };
+  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, movement: null, policy: null, log: [] };
   state = { ...state, turn };
   let explorer = currentExplorer(state)!;
   if (explorer.location.kind === 'voyage') {
@@ -67,7 +67,9 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
   }
   if (explorer.location.kind === 'hex') {
     const rechecked = oasisRecheck(state, explorer);
-    return drawDisaster(rechecked, currentExplorer(rechecked)!);
+    const drawn = drawDisaster(rechecked, currentExplorer(rechecked)!);
+    // Remaining in a hex with natives: a policy is chosen again (rules §8.1).
+    return drawn.map[explorer.location.hex]?.tribe != null ? { ...drawn, turn: { ...drawn.turn!, phase: 'natives' } } : drawn;
   }
   if (explorer.location.kind !== 'europe') return state;
   const expired = explorer.hand.filter((id) => card(id).donation.kind === 'ticket' && (explorer.drawnRound[id] ?? 0) < turn.round);
@@ -88,7 +90,9 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   if (!inTheField(explorer)) return state;
   const camp = situationOf(state, explorer)!;
   const askaris = Math.max(0, explorer.chart!.askaris - explorer.sick.askaris);
+  // A defensive stand (policy 1) forbids hunting (rules §8.1): the die is still rolled but no game is taken.
   const h = hunt(state.rng!, camp, askaris, explorer.specialties.includes('zoology'));
+  if (state.turn!.policy === 1) h.result = { ...h.result, game: 0 };
   const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game);
   const water = drink(meal.chart, camp);
   const hex = (explorer.location as { hex: string }).hex as HexId;
@@ -163,7 +167,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
-        turn: { order, current: winner, round: 1, phase: 'act', moved: false, movement: null, log: [] },
+        turn: { order, current: winner, round: 1, phase: 'act', moved: false, movement: null, policy: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
           hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e
@@ -175,6 +179,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const { seat } = event.payload as { seat?: string };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase === 'natives') return 'choose a policy towards the natives first';
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
       return advance(eatAndHunt(state, currentExplorer(state)!));
     }
@@ -215,6 +220,28 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const after: GameState = { ...replaceExplorer(state, trimmed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...ids] } };
       if (trimmed.hand.length > HAND_LIMIT) return after;
       return drawOne({ ...after, turn: { ...turn, phase: 'act' } }, trimmed);
+    }
+    case 'natives/policy': {
+      const { seat, policy } = event.payload as { seat?: string; policy?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'natives') return 'no natives to face';
+      if (typeof policy !== 'number' || !Number.isInteger(policy) || policy < 1 || policy > 5) return 'natives/policy needs a policy from 1 to 5';
+      const explorer = currentExplorer(state)!;
+      const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
+      const turn = { ...state.turn, phase: 'act' as const, policy };
+      if (policy === 1) return { ...state, turn: { ...turn, moved: true } }; // defensive stand: no leaving, no hunting
+      if (policy === 2) {
+        // Immediate retreat: back where he came from; the marker comes off and the credit with it (G-53).
+        const back = explorer.cameFrom;
+        if (!back) return 'nowhere to retreat to';
+        const m = state.map[hex];
+        const map = m ? { ...state.map, [hex]: { ...m, markers: m.markers.filter((s) => s !== explorer.seat) } } : state.map;
+        const port = PORTS.find((p) => p.hex === back);
+        const location: ExplorerState['location'] = port ? { kind: 'port', port: port.id } : { kind: 'hex', hex: back };
+        return { ...replaceExplorer(state, { ...explorer, location, cameFrom: null }), map, turn };
+      }
+      return { ...state, turn }; // 3, 4, 5: the natives' reaction arrives with 017
     }
     case 'water/taken': {
       const { seat, rations } = event.payload as { seat?: string; rations?: unknown };

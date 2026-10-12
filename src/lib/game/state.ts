@@ -58,6 +58,17 @@ export interface ExplorerState {
   lastMeal: RollRecord | null;
   /** Hexes this explorer has passed through (plus the port of entry): "known" for movement and lost checks. */
   known: HexId[];
+  /** The hex (or port hex) the last step was made from: where a retreat goes (rules §8.1). */
+  cameFrom: HexId | null;
+}
+
+/** A tribe discovered in play (rules §7.7), numbered as its marker. */
+export interface Tribe {
+  id: number;
+  hex: HexId;
+  warriors: number;
+  /** Attitude level, starting at 0 (rules §8.6). */
+  attitude: number;
 }
 
 /** A hex whose terrain has been determined in play. */
@@ -65,6 +76,10 @@ export interface MappedHex {
   terrain: Terrain;
   /** Seats holding a coloured marker here (visited, unpublished). */
   markers: SeatId[];
+  /** The tribe marker on the hex, if natives were discovered. */
+  tribe: number | null;
+  /** Explorers who have rolled for natives here and found none (each rolls once, rules §7.7). */
+  nativesCheckedBy: SeatId[];
   /** River course through the hex, if any (rules §7.4). */
   river: RiverCourse | null;
   /** Desert only: an oasis was found, and by whom it is known (rules §7.4). */
@@ -76,7 +91,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -93,9 +108,10 @@ export interface RollRecord {
 
 /**
  * Where the current seat is in its turn. `discard`: over the hand limit, must choose discards
- * before drawing. `act`: free to publish, sail or end the turn.
+ * before drawing. `natives`: in a hex with natives, a policy must be chosen (rules §8.1).
+ * `act`: free to publish, sail or end the turn.
  */
-export type Phase = 'discard' | 'act';
+export type Phase = 'discard' | 'natives' | 'act';
 
 export interface TurnState {
   /** Seats with explorers, clockwise from the first player. */
@@ -107,6 +123,8 @@ export interface TurnState {
   moved: boolean;
   /** Mode and points for this turn, fixed by the first move. */
   movement: MovementBudget | null;
+  /** The policy chosen towards the natives this turn (rules §8.1), once chosen. */
+  policy: number | null;
   /** Rolls shown this turn. */
   log: RollRecord[];
 }
@@ -131,9 +149,11 @@ export interface GameState {
   deck: DeckState | null;
   /** Hexes mapped in play, by id. */
   map: Record<string, MappedHex>;
+  /** Tribes discovered, by marker number. */
+  tribes: Record<number, Tribe>;
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, diagnostics: [] };
 }

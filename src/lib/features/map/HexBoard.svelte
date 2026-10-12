@@ -182,6 +182,13 @@
       {#if m.peakFeet}
         <text class="height brown" data-testid="peak-{id}" transform="translate({c.x} {c.y - radius * 0.7}) {upright}" font-size={radius * 0.5}>{m.peakFeet / 100}</text>
       {/if}
+      {#if m.tribe != null}
+        {@const c = centre(id as HexId)}
+        <g class="tribe" data-testid="tribe-{id}" data-tribe={m.tribe} transform="translate({c.x} {c.y - radius * 0.55}) {upright}" aria-label="Tribe {m.tribe}">
+          <circle r={radius * 0.3} />
+          <text font-size={radius * 0.4}>{m.tribe}</text>
+        </g>
+      {/if}
       {#if m.markers.length}
         {@const c = centre(id as HexId)}
         <g class="markers" transform="translate({c.x} {c.y}) {upright}">
@@ -421,6 +428,18 @@
   .marker {
     stroke: #efe6cc;
     stroke-width: 1;
+  }
+  .tribe circle {
+    fill: #1c2a2e;
+    stroke: #efe6cc;
+    stroke-width: 1.5;
+  }
+  .tribe text {
+    fill: #efe6cc;
+    text-anchor: middle;
+    dominant-baseline: central;
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
   }
   .target {
     fill: #c9a24a;

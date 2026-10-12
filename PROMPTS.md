@@ -52,4 +52,4 @@ We can substitute in a non-random die sequence for the purpose of running unit t
 
 resume as per instructions in discovery-nile-wip-012
 
-`Outcome: Resumed the roll-through. 012 (movement rates), 013 (disaster cards), 014 (hunting and rations, with named PRNG streams) and 015 (water in the desert) landed and pushed; river overlays no longer swallow taps; G-32..50 logged.`
+`Outcome: Resumed the roll-through. 012 (movement rates), 013 (disaster cards), 014 (hunting and rations, with named PRNG streams), 015 (water in the desert) and 016 (natives discovered, policy chooser, retreat) landed and pushed; river overlays no longer swallow taps; G-32..54 logged.`

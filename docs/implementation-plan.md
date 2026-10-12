@@ -56,7 +56,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 013-disaster-cards                 landed
 014-hunting-and-rations            landed
 015-water-in-the-desert            landed
-016-natives-discovered-and-policy
+016-natives-discovered-and-policy  landed
 017-native-reaction-and-combat
 018-defeat-escape-and-victory
 019-negotiation-and-trade
@@ -173,9 +173,11 @@ Water rations picked up in watered hexes, weights, consumption per man and anima
 
 - **As landed:** `water/taken` (± ten rations per tap at the rail, anywhere but a dry desert hex) fills the chart's water, which already weighs four in the carrying summary; the evening in a dry desert hex (no river, no oasis known to this explorer) costs one per man and four per animal after the meal, men first in the rules' order, thirsty men dying and thirsty animals shot for their meat (G-48); a later explorer's own oasis check on entering a mapped desert hex, retried each turn while camped if the oasis exists, rolls on the `water` stream (G-49, unit-tested). Scenario 015 (seed 2, hunting 1,1): `water-taken` → `dry-camp` → `thirst`.
 
-### 16. Natives discovered and the explorer's policy — `016-natives-discovered-and-policy`
+### 16. Natives discovered and the explorer's policy — `016-natives-discovered-and-policy` ✅ landed
 
 Two-dice discovery per terrain (`RQ-6`), warriors as a capped product of three dice, a numbered tribe marker on the hex, the five-policy chooser at the rail with each policy's consequences explained, policy 2's retreat.
+
+- **As landed:** discovery rolls on the `natives` stream when an explorer first enters a mapped, unpublished hex with no known tribe (each explorer once per hex, G-51); tribes live in `state.tribes` with the marker number on the hex; entering or remaining in a hex with a tribe puts the turn in the `natives` phase until `natives/policy` is chosen on an edge panel (`PolicyChooser`); policy 1 holds the expedition and forbids hunting, policy 2 retreats to `cameFrom` and removes the marker (G-53), policies 3–5 wait for the reaction roll (017). Scenario 016 (seed 18, scripted main and natives dice): `natives-found` → `retreat` → `ignored`.
 
 ### 17. Native reaction and combat — `017-native-reaction-and-combat`
 

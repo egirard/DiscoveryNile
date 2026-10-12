@@ -11,6 +11,7 @@ import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
 import { budgetFor, coastal, modeFor, passable, type Mode, type MovementBudget } from './movement';
 import { d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
+import { discoverNatives } from '$features/natives/discovery';
 
 /** The hex an explorer stands on, if on the board. */
 export function standingHex(e: ExplorerState): HexId | null {
@@ -140,6 +141,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       const { seat, path } = event.payload as { seat?: string; path?: unknown };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase === 'natives') return 'choose a policy towards the natives first';
       if (state.turn.phase !== 'act') return 'cannot move while discarding';
       const explorer = currentExplorer(state)!;
       const from = standingHex(explorer);
@@ -186,7 +188,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         }
         map = {
           ...map,
-          [target]: { terrain, markers: [explorer.seat], river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? [explorer.seat] : [], peakFeet: water.result.peakFeet }
+          [target]: { terrain, markers: [explorer.seat], river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? [explorer.seat] : [], peakFeet: water.result.peakFeet, tribe: null, nativesCheckedBy: [] }
         };
       } else if (!hexAt(target)?.terrain && !map[target].markers.includes(explorer.seat)) {
         map = { ...map, [target]: { ...map[target], markers: [...map[target].markers, explorer.seat] } };
@@ -215,8 +217,33 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };
         log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : 'every canoe survives the cataract' });
       }
-      const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart };
-      return finish({ ...replaceExplorer(state, moved), map }, { ...movement, spent: movement.spent + cost });
+      // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once here.
+      let tribes = state.tribes;
+      let phase: 'act' | 'natives' = 'act';
+      const entered = map[target];
+      if (entered) {
+        if (entered.tribe != null) phase = 'natives';
+        else if (!entered.nativesCheckedBy.includes(explorer.seat)) {
+          const water = entered.river !== null || (entered.oasis && entered.oasisKnownTo.includes(explorer.seat));
+          const found = discoverNatives(rng, entered.terrain, water, target);
+          rng = found.rng;
+          if (found.result.rolls.length) {
+            if (found.result.found) {
+              const id = Object.keys(tribes).length + 1;
+              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0 } };
+              map = { ...map, [target]: { ...entered, tribe: id } };
+              phase = 'natives';
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
+            } else {
+              map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, explorer.seat] } };
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: 'no natives' });
+            }
+          }
+        }
+      }
+      const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from };
+      const done = finish({ ...replaceExplorer(state, moved), map, tribes }, { ...movement, spent: movement.spent + cost });
+      return phase === 'natives' ? { ...done, turn: { ...done.turn!, phase } } : done;
     }
     default:
       return state;

@@ -28,6 +28,10 @@
         <path d="M13 8l-5 5M8 8l5 5" />
       </svg>
     </span>
+  {:else if phase === 'natives'}
+    <span class="prompt" data-testid="policy-prompt-{seat}" aria-label="Natives in the hex: choose a policy on the panel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3" /><path d="M5 21v-3a7 7 0 0 1 14 0v3" /><path d="M12 11v4" /></svg>
+    </span>
   {:else if confirming}
     <button class="confirm" data-testid="confirm-end-turn-{seat}" aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>

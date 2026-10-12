@@ -36,8 +36,9 @@ test.describe('011 - Rivers, oases and cataracts', () => {
     );
 
     // Seed 593: bottom-1 sails to Mombasa on a ticket; walking west, c23r13 rises a river with a cataract,
-    // c22r13 has a 20,000 ft peak and its own source, and the river flows on through c21r13.
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=593');
+    // c22r13 has a 20,000 ft peak and its own source, and the river flows on through c21r13. The natives dice
+    // (two per hex entered, since 016) are scripted to sixes so no tribe interrupts the story.
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=593&dice-natives=6,6,6,6,6,6,6,6');
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();

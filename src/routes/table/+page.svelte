@@ -24,6 +24,7 @@
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
+  import PolicyChooser from '$features/natives/PolicyChooser.svelte';
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
@@ -119,6 +120,19 @@
     const explorer = gameState.turn ? explorerAt(gameState, gameState.turn.current) : undefined;
     return explorer ? moveTargets(gameState, explorer) : [];
   });
+  /** The seat choosing a policy towards natives right now. */
+  const facingNatives = $derived.by(() => {
+    if (gameState.turn?.phase !== 'natives') return null;
+    const seat = seats.find((s) => s.id === gameState.turn!.current);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer || explorer.location.kind !== 'hex') return null;
+    const id = gameState.map[explorer.location.hex]?.tribe;
+    const tribe = id != null ? gameState.tribes[id] : undefined;
+    return tribe ? { seat, explorer, tribe } : null;
+  });
+  async function choosePolicy(seat: string, policy: number) {
+    await game?.append('natives/policy', { seat, policy });
+  }
   async function takeWater(seat: string, rations: number) {
     await game?.append('water/taken', { seat, rations });
   }
@@ -179,6 +193,12 @@
   {#if outfitting}
     <EdgePanel seat={outfitting.seat} {viewport} inset={railDepth + target * 0.4} testid="outfit-panel-{outfitting.seat.id}">
       <ExpeditionChart seat={outfitting.seat.id} port={outfitting.port} budget={outfitting.explorer.money} onconfirm={(p) => outfit(outfitting!.seat, p)} />
+    </EdgePanel>
+  {/if}
+
+  {#if facingNatives}
+    <EdgePanel seat={facingNatives.seat} {viewport} inset={railDepth + target * 0.4} testid="policy-edge-{facingNatives.seat.id}">
+      <PolicyChooser seat={facingNatives.seat.id} tribe={facingNatives.tribe.id} warriors={facingNatives.tribe.warriors} onchoose={(policy) => choosePolicy(facingNatives!.seat.id, policy)} />
     </EdgePanel>
   {/if}
 
