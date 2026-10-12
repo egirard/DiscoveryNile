@@ -18,7 +18,8 @@ import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
-import { addScore, homecoming, valueOf } from '$features/scoring/score';
+import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
+import type { GameEnd } from '$lib/game/state';
 import { fmtPoints } from '$features/scoring/transits';
 import { perish } from '$features/explorers/fate';
 import { addCharts, alive, chartOf, holderOf, leaveParty, members, partyOf, subtractChart } from '$features/expedition/party';
@@ -57,18 +58,46 @@ function drawOne(state: GameState, explorer: ExplorerState): GameState {
   return { ...replaceExplorer(state, next), rng, deck: { draw: rest, discard } };
 }
 
-/** Hand the turn to the next seat clockwise; a new round starts when the order wraps. */
+/** Hand the turn to the next seat clockwise; a new round starts when the order wraps, and the agreed limit ends the game. */
 function advance(state: GameState): GameState {
-  const { order, current, round } = state.turn!;
-  const alive = (seat: SeatId) => state.explorers.some((e) => e.seat === seat && e.location.kind !== 'dead');
+  const { order, current, round, roundLimit } = state.turn!;
+  const living = (seat: SeatId) => state.explorers.some((e) => e.seat === seat && e.location.kind !== 'dead');
   let i = order.indexOf(current);
   let nextRound = round;
   for (let step = 0; step < order.length; step++) {
     if (i + 1 >= order.length) nextRound++;
     i = (i + 1) % order.length;
-    if (alive(order[i])) return beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: nextRound } }, order[i]);
+    if (roundLimit !== null && nextRound > roundLimit) return endGame(state, 'limit');
+    if (living(order[i])) return beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: nextRound } }, order[i]);
   }
-  return state; // no living explorer: the game's end arrives with 030 (G-62)
+  return state; // no living explorer: the players end the game by consensus (G-62)
+}
+
+/**
+ * The game's end (rules: Description of Game; RQ-10): every explorer in Europe publishes all he can, then every explorer
+ * retires; the standings are the seats' points and the highest wins (a tie is shared). The map stays for a continuation.
+ */
+export function endGame(state: GameState, reason: GameEnd['reason']): GameState {
+  let next: GameState = state;
+  const turn = state.turn!;
+  for (const e of state.explorers) {
+    if (e.location.kind === 'dead') continue;
+    let me = alive(next, e.seat)!;
+    if (me.location.kind === 'europe') {
+      for (const hex of publishable(next, me.seat)) {
+        const value = valueOf(next, hex, me.seat, turn.round);
+        const m = next.map[hex];
+        next = { ...addScore(next, me.seat, value.entries), map: { ...next.map, [hex]: { ...m, markers: [], publishedBy: me.seat } }, superlatives: [...next.superlatives, ...value.superlatives] };
+        me = alive(next, me.seat)!;
+      }
+    }
+    const where = me.location.kind === 'europe' ? 'retired in Europe at the end of the game' : me.location.kind === 'captive' ? 'retired in captivity at the end of the game' : 'retired in Africa at the end of the game';
+    next = perish(next, alive(next, me.seat)!, 'retired', where);
+  }
+  const standings = state.seats.filter((s) => s.uid).map((s) => ({ seat: s.id, points: scoreOf(next, s.id) })).sort((a, b) => b.points - a.points);
+  const top = standings[0]?.points ?? 0;
+  const winners = standings.filter((s) => s.points === top && standings.length > 0).map((s) => s.seat);
+  return { ...next, ended: { round: turn.round, reason, standings, winners }, endVotes: [] };
 }
 
 /**
@@ -313,8 +342,27 @@ export function waterAvailable(state: GameState, explorer: ExplorerState): boole
 
 export const WATER_STEP = 10;
 
+const TURN_EVENTS = new Set<string>(['game/started', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted']);
+
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
+  if (state.ended && TURN_EVENTS.has(event.type)) return 'the game is over';
   switch (event.type) {
+    case 'game/end-voted': {
+      // Ending by consensus (RQ-10): each seat with an explorer votes at its own edge; the last vote ends the game.
+      const { seat } = event.payload as { seat?: string };
+      if (!state.turn) return 'game not started';
+      const voters = explorerSeats(state);
+      if (!seat || !voters.includes(seat as SeatId)) return 'only a seat with an explorer votes';
+      const endVotes = state.endVotes.includes(seat as SeatId) ? state.endVotes.filter((s) => s !== seat) : [...state.endVotes, seat as SeatId];
+      if (voters.every((s) => endVotes.includes(s))) return endGame({ ...state, endVotes }, 'consensus');
+      return { ...state, endVotes };
+    }
+    case 'game/continued': {
+      // A new game on the same map (rules: Description of Game): what was published stays known, with its tribes and the
+      // records to beat; the scores start afresh and every seat commissions a new explorer.
+      if (!state.ended) return 'the game has not ended';
+      return { ...state, explorers: [], turn: null, deck: null, rollOff: null, scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
+    }
     case 'game/started': {
       if (state.turn) return 'game already started';
       if (state.rng === null) return 'game has no seed';
@@ -357,7 +405,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
-        turn: { order, current: winner, round: 1, phase: 'act', moved: false, movement: null, policy: null, trade: null, log: [] },
+        turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', moved: false, movement: null, policy: null, trade: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
           hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e

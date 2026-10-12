@@ -161,6 +161,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
   switch (event.type) {
     case 'expedition/moved': {
       const { seat, path } = event.payload as { seat?: string; path?: unknown };
+      if (state.ended) return 'the game is over';
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase === 'natives') return 'choose a policy towards the natives first';

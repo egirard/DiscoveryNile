@@ -11,6 +11,7 @@ export function explorerAt(state: GameState, seat: string): ExplorerState | unde
 export function reduceExplorers(state: GameState, event: GameEvent): GameState | string {
   switch (event.type) {
     case 'explorer/commissioned': {
+      if (state.ended) return 'the game is over';
       const { seat, specialties } = event.payload as { seat?: string; specialties?: unknown };
       const parsed = seat ? parseSeatId(seat) : null;
       if (!parsed) return 'explorer/commissioned needs a valid seat id';

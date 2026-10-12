@@ -16,6 +16,7 @@
   import { fallenAt } from '$features/explorers/fate';
   import RetirePanel from '$features/explorers/RetirePanel.svelte';
   import SplitPanel from '$features/expedition/SplitPanel.svelte';
+  import GameOver from '$features/turn/GameOver.svelte';
   import { chartOf, holderOf, moverOf, partyOf } from '$features/expedition/party';
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
@@ -73,11 +74,17 @@
     await game?.append('explorer/commissioned', { seat: seat.id, specialties });
   }
 
+  // The agreed length of the game (RQ-10): chosen beside the start control; null ends by consensus.
+  let roundLimit = $state<number | null>(null);
+  function limitBy(by: number) {
+    const next = (roundLimit ?? 0) + by;
+    roundLimit = next <= 0 ? null : next;
+  }
   async function start() {
-    await game?.append('game/started', {});
+    await game?.append('game/started', roundLimit ? { roundLimit } : {});
   }
 
-  const canStart = $derived(!gameState.turn && gameState.explorers.length > 0);
+  const canStart = $derived(!gameState.turn && !gameState.ended && gameState.explorers.some((e) => e.location.kind !== 'dead'));
 
   async function endTurn(seat: Seat) {
     await game?.append('turn/ended', { seat: seat.id });
@@ -296,9 +303,19 @@
   </div>
 
   {#if canStart}
-    <button class="start" data-testid="start-game" aria-label="Start the game" onclick={start}>
+    <button class="start" data-testid="start-game" aria-label="Start the game{roundLimit ? ` of ${roundLimit} rounds` : ''}" onclick={start}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
     </button>
+    <span class="limit" data-testid="round-limit" data-rounds={roundLimit ?? ''} data-e2e-fit>
+      <button data-testid="round-limit-less" aria-label="Fewer rounds" onclick={() => limitBy(-1)}>−</button>
+      <span class="rounds" aria-label={roundLimit ? `${roundLimit} rounds` : 'No round limit: the game ends by consensus'}>{roundLimit ?? '∞'}</span>
+      <button data-testid="round-limit-more" aria-label="One round more" onclick={() => limitBy(1)}>+</button>
+      <button data-testid="round-limit-more5" aria-label="Five rounds more" onclick={() => limitBy(5)}>+5</button>
+    </span>
+  {/if}
+
+  {#if gameState.ended}
+    <GameOver ended={gameState.ended} game={gameState.games + 1} oncontinue={() => game?.append('game/continued', {})} />
   {/if}
 
   {#if outfitting}
@@ -333,7 +350,8 @@
 
   {#if retiring}
     <EdgePanel seat={retiring.seat} {viewport} inset={railDepth + target * 0.4} testid="retire-edge-{retiring.seat.id}">
-      <RetirePanel seat={retiring.seat.id} where={retiring.where} onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} />
+      <RetirePanel seat={retiring.seat.id} where={retiring.where} voted={gameState.endVotes.includes(retiring.seat.id as SeatId)} votes={gameState.endVotes.length} voters={explorerSeats(gameState).length}
+        onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} onvote={() => game?.append('game/end-voted', { seat: retiring!.seat.id })} />
     </EdgePanel>
   {/if}
 
@@ -481,7 +499,9 @@
           {#if gameState.turn}
             <Tally seat={seat.id} points={scoreOf(gameState, seat.id as SeatId)} />
           {/if}
-          {#if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
+          {#if gameState.ended}
+            <!-- The game is over: the standings are in the middle of the table; nothing more is commissioned until it continues. -->
+          {:else if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
             <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
             <RollLog seat={seat.id} log={gameState.turn.log} />
             <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} />
@@ -546,6 +566,37 @@
   .start svg {
     width: 60%;
     fill: currentColor;
+  }
+  .limit {
+    position: absolute;
+    left: 50%;
+    top: calc(50% + var(--target) * 1.4);
+    translate: -50% 0;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--gap) * 0.5);
+    padding: calc(var(--gap) * 0.3) calc(var(--gap) * 0.6);
+    border-radius: 999px;
+    background: var(--ink);
+    border: 2px solid var(--accent);
+    color: var(--paper);
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.36);
+  }
+  .limit button {
+    min-width: calc(var(--target) * 0.9);
+    height: calc(var(--target) * 0.9);
+    border-radius: 999px;
+    border: 2px solid var(--paper);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+    cursor: pointer;
+  }
+  .limit .rounds {
+    min-width: 1.6em;
+    text-align: center;
   }
   .deck-area {
     position: absolute;

@@ -257,9 +257,11 @@ Pooling money, moving as one on the last member's turn, joining and splitting, s
 
 - **As landed:** a party (`state.parties`, `explorer.party`) has one chart, held by its leader (`expedition/party.ts`: `holderOf`, `moverOf`, `leaveParty`). In Europe `voyage/booked` takes `with`: companions pool their hands' cash (tickets are never pooled) and sail and land with the leader, whose turn lands everyone. The party moves on the turn of the member last in the order, as one: one lost check, one natives roll, markers and knowledge for every member, each naturalist owing his study. The leader's turn draws the disaster and feeds every explorer from the one chart; the fight is the party's, and a defeat sends each member to the consequences table and breaks the party up. `expedition/joined` merges a chart into another's party where they stand (not on policy 1 or 2); `expedition/split` leaves with a share chosen at the edge, the rest passing to the next member; death or sailing home leaves the men with the companions. Scenario 029 (seed 26): `pooled` → `landed-together` → `moved-as-one` → `split`.
 
-### 30. Game end and continuation — `030-game-end-and-continuation`
+### 30. Game end and continuation — `030-game-end-and-continuation` ✅ landed
 
 The optional round limit (`RQ-10`), ending by consensus, final retirement and publication, the winner, and starting a new game that continues the same map.
+
+- **As landed:** a round limit is chosen beside the start control (`game/started {roundLimit}`, kept on the turn); when the order would wrap past it, or when every seat with an explorer has voted on the retire panel (`game/end-voted`), `endGame` runs: every explorer in Europe publishes all he can (scoring as usual), every explorer retires (the usual erasure), and `state.ended` records the standings and the winner or winners. The table shows the standings in the middle with a continue control; `game/continued` keeps the map (published hexes, their tribes, the superlative records, the transits) and clears scores, explorers, deck and turn so the seats commission anew and start again. Scenario 030 (seed 26, five rounds): `round-limit` → `game-over` → `continued`.
 
 ### 31. Reload and undo — `031-reload-and-undo`
 

@@ -179,6 +179,8 @@ export interface TurnState {
   order: SeatId[];
   current: SeatId;
   round: number;
+  /** The agreed length of the game in rounds, or null to end by consensus (RQ-10). */
+  roundLimit: number | null;
   phase: Phase;
   /** The expedition's movement is over for this turn. */
   moved: boolean;
@@ -247,9 +249,22 @@ export interface GameState {
   transits: Transit[];
   /** Joint expeditions on the board, by id (rules §13). */
   parties: Record<number, Party>;
+  /** Seats that have voted to end the game by consensus (RQ-10); the game ends when every seat with an explorer has. */
+  endVotes: SeatId[];
+  /** The finished game: final standings, the winner (or winners, on a tie) and the round it ended in; null while play goes on. */
+  ended: GameEnd | null;
+  /** How many games have been played on this map (rules: each may start where the last left off). */
+  games: number;
   diagnostics: Diagnostic[];
 }
 
+export interface GameEnd {
+  round: number;
+  reason: 'limit' | 'consensus';
+  standings: { seat: SeatId; points: number }[];
+  winners: SeatId[];
+}
+
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, diagnostics: [] };
 }
