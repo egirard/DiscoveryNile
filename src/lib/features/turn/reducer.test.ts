@@ -209,3 +209,47 @@ describe('voyage/booked (rules §5)', () => {
     expect(s2.explorers.find((x) => x.seat === first)!.hand).toEqual([]);
   });
 });
+
+describe('expedition/outfitted (rules §5)', () => {
+  const cash = (s: GameState, seat: string) => hand(s, seat).reduce((sum, id) => sum + (card(id).donation.kind === 'money' ? (card(id).donation as { amount: number }).amount : 0), 0);
+  /** Seed 5: the first player (bottom-1) holds $1100 and tickets to Port Elizabeth and Durban. */
+  const landed = (port = 'port-elizabeth') => {
+    resetSequence();
+    const base = twoPlayers(5);
+    const s0 = reduce(base);
+    const first = s0.turn!.current, second = other(s0);
+    const ticket = hand(s0, first).find((id) => card(id).donation.kind === 'ticket' && (card(id).donation as { port: string }).port === port)!;
+    const events = [...base, event('voyage/booked', { seat: first, port, ticketCardId: ticket }), event('turn/ended', { seat: first }), event('turn/ended', { seat: second }), event('turn/ended', { seat: second })];
+    const s = reduce(events);
+    expect(s.turn).toMatchObject({ current: first, round: 3 });
+    expect(s.explorers.find((e) => e.seat === first)!.location).toEqual({ kind: 'port', port });
+    return { events, first, second, budget: cash(s0, first) };
+  };
+  const canoeExpedition = { canoes: 2, bearers: 16, guides: 1, askaris: 6, muskets: 4, gifts: 50, food: 125 };
+  it('records the chart and forfeits the unspent budget', () => {
+    const { events, first, budget } = landed();
+    expect(budget).toBe(1100);
+    const s = reduce([...events, event('expedition/outfitted', { seat: first, purchases: canoeExpedition })]);
+    expect(s.diagnostics).toEqual([]);
+    const e = s.explorers.find((x) => x.seat === first)!;
+    expect(e.chart).toEqual({ ...canoeExpedition, camels: 0, horses: 0, water: 0 });
+    expect(e.money).toBe(0);
+  });
+  it('sells horses at the Cape and refuses camels there; refuses overspending and bad counts', () => {
+    const { events, first } = landed();
+    expect(reduce([...events, event('expedition/outfitted', { seat: first, purchases: { horses: 2 } })]).diagnostics).toEqual([]);
+    expect(reduce([...events, event('expedition/outfitted', { seat: first, purchases: { camels: 1 } })]).diagnostics.at(-1)?.reason).toBe('camels are not sold at port-elizabeth');
+    expect(reduce([...events, event('expedition/outfitted', { seat: first, purchases: { askaris: 30 } })]).diagnostics.at(-1)?.reason).toBe('the expedition costs $1500; the budget is $1100');
+    expect(reduce([...events, event('expedition/outfitted', { seat: first, purchases: { food: -1 } })]).diagnostics.at(-1)?.reason).toBe('bad count for food');
+    expect(reduce([...events, event('expedition/outfitted', { seat: first, purchases: { food: 1.5 } })]).diagnostics.at(-1)?.reason).toBe('bad count for food');
+  });
+  it('rejects outfitting out of turn, away from a port, or twice', () => {
+    const { events, first, second } = landed();
+    expect(reduce([...events, event('expedition/outfitted', { seat: second, purchases: {} })]).diagnostics.at(-1)?.reason).toBe(`it is not ${second}'s turn`);
+    const twice = reduce([...events, event('expedition/outfitted', { seat: first, purchases: {} }), event('expedition/outfitted', { seat: first, purchases: {} })]);
+    expect(twice.diagnostics.at(-1)?.reason).toBe('the expedition is already outfitted');
+    resetSequence();
+    const inEurope = reduce([...twoPlayers(5), event('expedition/outfitted', { seat: 'bottom-1', purchases: {} })]);
+    expect(inEurope.diagnostics.at(-1)?.reason).toBe('the explorer is not at a port of entry');
+  });
+});

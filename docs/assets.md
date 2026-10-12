@@ -19,3 +19,4 @@ Rules for new assets:
 
 | Specialty and explorer icons (book, bottle, paw, crystal, pith helmet) | `src/lib/ui/Icon.svelte` | Original SVG, drawn for this project | MIT (this repository) |
 | Dice faces, card faces, ticket icon, pile stacks, start control | `src/lib/ui/DiceRoll.svelte`, `src/lib/features/cards/*.svelte`, table page | Original SVG and CSS | MIT (this repository) |
+| Item icons (compass, head-load, askari, camel, horse, canoe, musket, ration sack, gift, water, men) | `src/lib/ui/Icon.svelte` | Original SVG, drawn for this project | MIT (this repository) |

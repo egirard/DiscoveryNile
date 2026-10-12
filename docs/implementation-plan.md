@@ -49,7 +49,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 006-first-player-and-donations     landed
 007-a-turn-in-europe               landed
 008-sail-to-africa                 landed
-009-outfit-the-expedition
+009-outfit-the-expedition          landed
 010-first-step-into-the-unknown
 011-rivers-and-oases
 012-movement-rates
@@ -126,7 +126,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 008:** `choose-port` (chooser open; Mombasa shows $500; a ticketed port shows the ticket) → `booked` (tap; token in transit on the rail; budget shown) → `arrived` (end turns around the table; token on the port hex).
 - **Unit tests:** fare vs ticket (`RQ-2`); unaffordable ports; money after fare; the skipped turn.
 
-### 9. Outfit the expedition — `009-outfit-the-expedition`
+### 9. Outfit the expedition — `009-outfit-the-expedition` ✅ landed
 
 - **Player sees:** on arrival, the rail becomes the Expedition Organization Chart: a row per item with icon, price, minus/plus controls sized for fingers, a count, and a running budget; camels only at Khartoum, horses only at Capetown, Durban, Port Elizabeth; a capacity summary (men, rations carried, loads) updating live; a confirm that forfeits unspent money. After confirming, the chart is read-only and the token on the port hex shows the expedition is ready.
 - **Introduced:** `expedition/outfitted`; `chart` in explorer state; `priceList`, `availability(port)`, `capacity(chart)` (bearer loads, animal loads, canoe loads, paddlers) in `src/lib/features/expedition/`; `ExpeditionChart.svelte`.

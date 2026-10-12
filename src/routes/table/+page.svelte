@@ -20,6 +20,10 @@
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
   import { PASSAGE_FARE } from '$features/turn/reducer';
+  import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
+  import ChartSummary from '$features/expedition/ChartSummary.svelte';
+  import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
+  import type { Purchases } from '$features/expedition/prices';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
 
@@ -89,6 +93,17 @@
     sailingSeat = null;
     await game?.append('voyage/booked', { seat, port, ticketCardId: ticket ?? null });
   }
+  async function outfit(seat: Seat, purchases: Purchases) {
+    await game?.append('expedition/outfitted', { seat: seat.id, purchases });
+  }
+
+  /** The seat (if any) that is outfitting right now: current, at a port, not yet outfitted. */
+  const outfitting = $derived.by(() => {
+    const seat = seats.find((s) => s.id === gameState.turn?.current);
+    const explorer = seat ? explorerAt(gameState, seat.id) : undefined;
+    return seat && explorer && explorer.location.kind === 'port' && !explorer.chart && gameState.turn?.phase === 'act' ? { seat, explorer, port: explorer.location.port } : null;
+  });
+
   const boardTokens = $derived.by((): BoardToken[] =>
     gameState.explorers.filter((e) => e.location.kind === 'port').map((e) => ({ seat: e.seat, hex: BOARD.ports[(e.location as { port: PortId }).port].hex }))
   );
@@ -142,6 +157,12 @@
     </button>
   {/if}
 
+  {#if outfitting}
+    <EdgePanel seat={outfitting.seat} {viewport} inset={railDepth + target * 0.4} testid="outfit-panel-{outfitting.seat.id}">
+      <ExpeditionChart seat={outfitting.seat.id} port={outfitting.port} budget={outfitting.explorer.money} onconfirm={(p) => outfit(outfitting!.seat, p)} />
+    </EdgePanel>
+  {/if}
+
   {#if gameState.deck}
     <div class="deck-area" data-e2e-fit>
       <DeckStack deck={gameState.deck} />
@@ -167,7 +188,11 @@
                 <Card {id} seat={seat.id} onselect={discarding ? (c) => discard(seat, c) : undefined} />
               {/each}
             </span>
-            <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
+            {#if explorer.chart}
+              <ChartSummary seat={seat.id} chart={explorer.chart} />
+            {:else}
+              <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
+            {/if}
             {#if mine}
               <TurnControls
                 seat={seat.id}

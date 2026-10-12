@@ -2,6 +2,7 @@ import type { SeatId } from '$lib/tabletop/seats';
 import type { RngState } from './random';
 import type { CardId } from '$features/cards/deck';
 import type { PortId } from '$features/map/manifest';
+import type { Chart } from '$features/expedition/prices';
 
 export interface SeatState {
   id: SeatId;
@@ -33,6 +34,8 @@ export interface ExplorerState {
   drawnRound: Record<string, number>;
   /** Expedition budget once passage is booked: the hand's money less the fare, until it is spent. */
   money: number;
+  /** The Expedition Organization Chart, once outfitted at a port. */
+  chart: Chart | null;
 }
 
 /**

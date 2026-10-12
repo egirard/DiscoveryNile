@@ -3,6 +3,7 @@ import type { ExplorerState, GameState, RollOff } from '$lib/game/state';
 import { dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
 import { BOARD, type PortId } from '$features/map/manifest';
+import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 
 export const OPENING_HAND = 5;
@@ -167,6 +168,27 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const after: GameState = { ...replaceExplorer(state, trimmed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...ids] } };
       if (trimmed.hand.length > HAND_LIMIT) return after;
       return drawOne({ ...after, turn: { ...turn, phase: 'act' } }, trimmed);
+    }
+    case 'expedition/outfitted': {
+      const { seat, purchases } = event.payload as { seat?: string; purchases?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      const explorer = currentExplorer(state)!;
+      if (explorer.location.kind !== 'port') return 'the explorer is not at a port of entry';
+      if (explorer.chart) return 'the expedition is already outfitted';
+      if (!purchases || typeof purchases !== 'object') return 'expedition/outfitted needs purchases';
+      const p = purchases as Record<string, unknown>;
+      const bought = {} as Purchases;
+      for (const item of ITEMS) {
+        const n = p[item] ?? 0;
+        if (typeof n !== 'number' || !Number.isInteger(n) || n < 0) return `bad count for ${item}`;
+        if (n > 0 && !availableAt(item, explorer.location.port)) return `${item} are not sold at ${explorer.location.port}`;
+        bought[item] = n;
+      }
+      const total = cost(bought);
+      if (total > explorer.money) return `the expedition costs $${total}; the budget is $${explorer.money}`;
+      // Whatever is not spent on the expedition is lost (rules §5).
+      return replaceExplorer(state, { ...explorer, chart: { ...bought, water: 0 }, money: 0 });
     }
     default:
       return state;
