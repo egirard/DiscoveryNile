@@ -55,7 +55,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 012-movement-rates                 landed
 013-disaster-cards                 landed
 014-hunting-and-rations            landed
-015-water-in-the-desert
+015-water-in-the-desert            landed
 016-natives-discovered-and-policy
 017-native-reaction-and-combat
 018-defeat-escape-and-victory
@@ -167,9 +167,11 @@ End-of-turn hunting roll with terrain modifiers, consumption per man and per hor
 
 - **As landed:** on `turn/ended` in the field (G-44) one die on the new `hunting` PRNG stream, modified by the camp, feeds the explorer and the well askaris' bag to the men first, then the stores; horses eat four in the desert; horses then camels are shot for ten when the stores run short; men left hungry are counted for 021. The die and the meal stay at the rail as `lastMeal` until the explorer's next turn; the food count simply changes (no animation yet, G-47). Scenario 014 (seed 863, `dice-hunting=4,1`): `fair-hunting` → `no-game`; shooting animals is unit-tested. Named PRNG streams (G-45) keep earlier scenarios' stories intact.
 
-### 15. Water in the desert — `015-water-in-the-desert`
+### 15. Water in the desert — `015-water-in-the-desert` ✅ landed
 
 Water rations picked up in watered hexes, weights, consumption per man and animal, the oasis search, thirst order and deaths.
+
+- **As landed:** `water/taken` (± ten rations per tap at the rail, anywhere but a dry desert hex) fills the chart's water, which already weighs four in the carrying summary; the evening in a dry desert hex (no river, no oasis known to this explorer) costs one per man and four per animal after the meal, men first in the rules' order, thirsty men dying and thirsty animals shot for their meat (G-48); a later explorer's own oasis check on entering a mapped desert hex, retried each turn while camped if the oasis exists, rolls on the `water` stream (G-49, unit-tested). Scenario 015 (seed 2, hunting 1,1): `water-taken` → `dry-camp` → `thirst`.
 
 ### 16. Natives discovered and the explorer's policy — `016-natives-discovered-and-policy`
 

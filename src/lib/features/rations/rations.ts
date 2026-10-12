@@ -8,7 +8,61 @@ import { d6, type RngState } from '$lib/game/random';
 export interface Camp {
   terrain: Terrain | null;
   river: boolean;
+  /** An oasis here, known to this explorer. */
   oasis: boolean;
+}
+
+/** A desert hex with neither river nor (known) oasis: the only place water must be carried (rules §5, §11). */
+export function dryDesert(camp: Camp): boolean {
+  return camp.terrain === 'desert' && !camp.river && !camp.oasis;
+}
+
+/** Water rations one turn in the dry desert costs: one per man, four per horse or camel (G-48). */
+export function waterPerTurn(chart: Chart): number {
+  return 1 + chart.guides + chart.bearers + chart.askaris + 4 * (chart.horses + chart.camels);
+}
+
+export interface DrinkResult {
+  chart: Chart;
+  drank: number;
+  /** Men and animals left without water die (rules §11); thirsty animals are shot for their meat (G-48). */
+  died: { guides: number; bearers: number; askaris: number; horses: number; camels: number };
+  explorerThirsty: boolean;
+  summary: string;
+}
+
+/**
+ * The evening's water in a dry desert hex: men drink first (the explorer, askaris, bearers, then guides
+ * go without in reverse), then horses and camels; anyone without water dies.
+ */
+export function drink(chart: Chart, camp: Camp): DrinkResult | null {
+  if (!dryDesert(camp)) return null;
+  const next = { ...chart };
+  let water = next.water;
+  const died = { guides: 0, bearers: 0, askaris: 0, horses: 0, camels: 0 };
+  const take = (n: number) => { const t = Math.min(water, n); water -= t; return t; };
+  const explorerDrank = take(1);
+  for (const type of ['askaris', 'bearers', 'guides'] as const) {
+    const got = take(next[type]);
+    died[type] = next[type] - got;
+    next[type] = got;
+  }
+  for (const a of ['horses', 'camels'] as const) {
+    const got = Math.floor(take(4 * next[a]) / 4);
+    died[a] = next[a] - got;
+    next[a] = got;
+  }
+  const drank = next.water - water;
+  next.water = water;
+  const meat = 10 * (died.horses + died.camels);
+  next.food += meat;
+  const parts = [`drank ${drank} water${water ? `, ${water} left` : ''}`];
+  const lost = (['guides', 'bearers', 'askaris'] as const).filter((t) => died[t]).map((t) => `${died[t]} ${died[t] === 1 ? t.slice(0, -1) : t}`);
+  if (lost.length) parts.push(`${lost.join(', ')} died of thirst`);
+  const shot = (['horses', 'camels'] as const).filter((a) => died[a]).map((a) => `${died[a]} ${died[a] === 1 ? a.slice(0, -1) : a}`);
+  if (shot.length) parts.push(`${shot.join(' and ')} shot for want of water (${meat} rations)`);
+  if (!explorerDrank) parts.push('the explorer is struck down by thirst');
+  return { chart: next, drank, died, explorerThirsty: !explorerDrank, summary: parts.join(', ') };
 }
 
 /** Terrain modifiers to the hunting die (rules §11): composites add their parts, a river or oasis adds 2 once. */

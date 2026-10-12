@@ -1,5 +1,7 @@
 import type { GameEvent } from '$lib/game/events';
-import type { ExplorerState, GameState, RollRecord } from '$lib/game/state';
+import type { ExplorerState, GameState, MappedHex, RollRecord } from '$lib/game/state';
+import type { SeatId } from '$lib/tabletop/seats';
+import type { Roll } from '$features/map/generate';
 import { BOARD, hexAt, isLand, type Terrain } from '$features/map/manifest';
 import { generateTerrain, lostCheck, terrainLookup } from '$features/map/generate';
 import { directionTo, neighbours, opposite, type Direction, type HexId } from '$features/map/hex';
@@ -7,7 +9,7 @@ import { printedCourse, resolveWater, riverDirection, isWater, type HexKnowledge
 import { RIVERS } from '$features/map/manifest';
 import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
 import { budgetFor, coastal, modeFor, passable, type Mode, type MovementBudget } from './movement';
-import { d6 } from '$lib/game/random';
+import { d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
 
 /** The hex an explorer stands on, if on the board. */
@@ -53,6 +55,18 @@ export function knowledgeOf(state: GameState): (id: HexId) => HexKnowledge | nul
     if (printed) return { terrain: printed, mapped: true, river: printedCourse(id), needsContinuation: needsContinuation(state, id) };
     return { terrain: null, mapped: false, river: null, needsContinuation: false };
   };
+}
+
+/** A mapped, unpublished desert hex without a river whose oasis this explorer has not found. */
+export function oasisSearchable(m: MappedHex, seat: string): boolean {
+  return m.terrain === 'desert' && !m.river && !m.oasisKnownTo.includes(seat as SeatId);
+}
+
+/** One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). */
+export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[] } {
+  const r = d6(rng, 'water');
+  const found = m.oasis && r.value % 2 === 0;
+  return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }] };
 }
 
 export interface MoveTarget {
@@ -176,6 +190,13 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         };
       } else if (!hexAt(target)?.terrain && !map[target].markers.includes(explorer.seat)) {
         map = { ...map, [target]: { ...map[target], markers: [...map[target].markers, explorer.seat] } };
+      }
+      // A later explorer makes his own oasis check on first entering a mapped, river-less desert hex (G-49).
+      if (!newlyMapped && map[target] && oasisSearchable(map[target], explorer.seat)) {
+        const search = oasisSearch(rng, map[target], explorer.seat);
+        rng = search.rng;
+        map = { ...map, [target]: search.hex };
+        log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' });
       }
       const known = explorer.known.includes(target) ? explorer.known : [...explorer.known, target];
 

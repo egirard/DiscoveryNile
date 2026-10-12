@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
 import { NO_SICKNESS } from '$lib/game/state';
 import { rngScripted } from '$lib/game/random';
-import { feed, hunt, huntingModifiers, rationsPerHunter, type Camp } from './rations';
+import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, waterPerTurn, type Camp } from './rations';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
 const veldt: Camp = { terrain: 'veldt', river: false, oasis: false };
@@ -53,5 +53,34 @@ describe('the meal', () => {
     expect(starving).toMatchObject({ hungryMen: 12 });
     expect(starving.chart.food).toBe(0);
     expect(starving.summary).toContain('12 men go hungry');
+  });
+});
+
+describe('water in the desert (rules §5, §11)', () => {
+  const dry: Camp = { terrain: 'desert', river: false, oasis: false };
+  const caravan = chart({ askaris: 2, bearers: 10, camels: 3, food: 40, water: 30 });
+  it('is only needed in a dry desert hex and costs one per man and four per animal', () => {
+    expect(dryDesert(dry)).toBe(true);
+    expect(dryDesert({ ...dry, river: true })).toBe(false);
+    expect(dryDesert({ ...dry, oasis: true })).toBe(false);
+    expect(dryDesert(veldt)).toBe(false);
+    expect(waterPerTurn(caravan)).toBe(13 + 12);
+    expect(drink(caravan, veldt)).toBeNull();
+  });
+  it('everyone drinks when there is enough', () => {
+    const d = drink(caravan, dry)!;
+    expect(d.chart.water).toBe(5);
+    expect(d.died).toEqual({ guides: 0, bearers: 0, askaris: 0, horses: 0, camels: 0 });
+    expect(d.summary).toBe('drank 25 water, 5 left');
+  });
+  it('short of water, guides then bearers then askaris go without and die; thirsty animals are shot for meat', () => {
+    const d = drink({ ...caravan, water: 5 }, dry)!;
+    expect(d.chart).toMatchObject({ askaris: 2, bearers: 2, camels: 0, water: 0, food: 70 });
+    expect(d.died).toMatchObject({ bearers: 8, camels: 3 });
+    expect(d.explorerThirsty).toBe(false);
+    expect(d.summary).toBe('drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
+    const alone = drink({ ...caravan, water: 0 }, dry)!;
+    expect(alone.explorerThirsty).toBe(true);
+    expect(alone.summary).toContain('the explorer is struck down by thirst');
   });
 });

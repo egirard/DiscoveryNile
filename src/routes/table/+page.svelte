@@ -20,7 +20,7 @@
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
-  import { PASSAGE_FARE } from '$features/turn/reducer';
+  import { PASSAGE_FARE, waterAvailable, WATER_STEP } from '$features/turn/reducer';
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
@@ -119,6 +119,9 @@
     const explorer = gameState.turn ? explorerAt(gameState, gameState.turn.current) : undefined;
     return explorer ? moveTargets(gameState, explorer) : [];
   });
+  async function takeWater(seat: string, rations: number) {
+    await game?.append('water/taken', { seat, rations });
+  }
   async function move(hex: HexId) {
     const seat = gameState.turn?.current;
     if (seat) await game?.append('expedition/moved', { seat, path: [hex] });
@@ -217,6 +220,14 @@
                   {#each Array(mv.points) as _, i (i)}<span class="pip" class:used={i < mv.spent || mv.halted}></span>{/each}
                 </span>
               {/if}
+              {#if explorer.chart && waterAvailable(gameState, explorer)}
+                <span class="water-controls" data-testid="water-controls-{seat.id}">
+                  <button class="water" data-testid="take-water-{seat.id}" aria-label="Take {WATER_STEP} water rations" onclick={() => takeWater(seat.id, WATER_STEP)}><Icon name="water" size="1.2em" /><span class="sign">+</span></button>
+                  {#if explorer.chart.water > 0}
+                    <button class="water" data-testid="pour-water-{seat.id}" aria-label="Pour out {Math.min(WATER_STEP, explorer.chart.water)} water rations" onclick={() => takeWater(seat.id, -Math.min(WATER_STEP, explorer.chart!.water))}><Icon name="water" size="1.2em" /><span class="sign">−</span></button>
+                  {/if}
+                </span>
+              {/if}
               <RollLog seat={seat.id} log={gameState.turn.log} />
               <TurnControls
                 seat={seat.id}
@@ -309,6 +320,27 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .water-controls {
+    display: inline-flex;
+    gap: calc(var(--gap) * 0.4);
+    margin-left: var(--gap);
+  }
+  .water {
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    border: 2px solid var(--paper);
+    background: #2d72c9;
+    color: var(--paper);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.4);
+    cursor: pointer;
   }
   .movement {
     display: inline-flex;

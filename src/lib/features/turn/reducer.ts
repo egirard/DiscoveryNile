@@ -7,7 +7,8 @@ import { BOARD, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
-import { feed, hunt } from '$features/rations/rations';
+import { oasisSearch, oasisSearchable } from '$features/exploration/reducer';
+import { drink, dryDesert, feed, hunt } from '$features/rations/rations';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -64,7 +65,10 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
     return advance(landed);
   }
-  if (explorer.location.kind === 'hex') return drawDisaster(state, explorer);
+  if (explorer.location.kind === 'hex') {
+    const rechecked = oasisRecheck(state, explorer);
+    return drawDisaster(rechecked, currentExplorer(rechecked)!);
+  }
   if (explorer.location.kind !== 'europe') return state;
   const expired = explorer.hand.filter((id) => card(id).donation.kind === 'ticket' && (explorer.drawnRound[id] ?? 0) < turn.round);
   if (expired.length) {
@@ -86,10 +90,34 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   const askaris = Math.max(0, explorer.chart!.askaris - explorer.sick.askaris);
   const h = hunt(state.rng!, camp, askaris, explorer.specialties.includes('zoology'));
   const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game);
+  const water = drink(meal.chart, camp);
   const hex = (explorer.location as { hex: string }).hex as HexId;
-  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls: h.result.rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: meal.summary };
-  return { ...replaceExplorer(state, { ...explorer, chart: meal.chart, lastMeal }), rng: h.rng };
+  const outcome = water ? `${meal.summary}; ${water.summary}` : meal.summary;
+  const sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
+  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls: h.result.rolls, modifiers: h.result.modifiers, total: h.result.total, outcome };
+  return { ...replaceExplorer(state, { ...explorer, chart: water?.chart ?? meal.chart, sick, lastMeal }), rng: h.rng };
 }
+
+/** Camped in a mapped desert hex whose oasis exists but is unknown to him, the explorer tries again each turn (rules §7.4). */
+function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
+  if (explorer.location.kind !== 'hex') return state;
+  const hex = explorer.location.hex;
+  const m = state.map[hex];
+  if (!m || !m.oasis || !oasisSearchable(m, explorer.seat)) return state;
+  const search = oasisSearch(state.rng!, m, explorer.seat);
+  const record: RollRecord = { kind: 'water', seat: explorer.seat, hex, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' };
+  return { ...state, rng: search.rng, map: { ...state.map, [hex]: search.hex }, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
+}
+
+/** Water is free wherever there is water: anywhere but a dry desert hex (rules §5). */
+export function waterAvailable(state: GameState, explorer: ExplorerState): boolean {
+  if (!explorer.chart) return false;
+  if (explorer.location.kind === 'port') return true;
+  const camp = situationOf(state, explorer);
+  return !!camp && !dryDesert(camp);
+}
+
+export const WATER_STEP = 10;
 
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   switch (event.type) {
@@ -187,6 +215,18 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const after: GameState = { ...replaceExplorer(state, trimmed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...ids] } };
       if (trimmed.hand.length > HAND_LIMIT) return after;
       return drawOne({ ...after, turn: { ...turn, phase: 'act' } }, trimmed);
+    }
+    case 'water/taken': {
+      const { seat, rations } = event.payload as { seat?: string; rations?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      const explorer = currentExplorer(state)!;
+      if (!explorer.chart) return 'the expedition is not outfitted';
+      if (typeof rations !== 'number' || !Number.isInteger(rations) || rations === 0) return 'water/taken needs a whole number of rations';
+      if (rations > 0 && !waterAvailable(state, explorer)) return 'there is no water here';
+      const water = explorer.chart.water + rations;
+      if (water < 0) return `only ${explorer.chart.water} water rations to pour out`;
+      return replaceExplorer(state, { ...explorer, chart: { ...explorer.chart, water } });
     }
     case 'expedition/outfitted': {
       const { seat, purchases } = event.payload as { seat?: string; purchases?: unknown };
