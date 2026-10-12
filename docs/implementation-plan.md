@@ -57,7 +57,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 014-hunting-and-rations            landed
 015-water-in-the-desert            landed
 016-natives-discovered-and-policy  landed
-017-native-reaction-and-combat
+017-native-reaction-and-combat     landed
 018-defeat-escape-and-victory
 019-negotiation-and-trade
 020-tribe-attitude
@@ -179,9 +179,11 @@ Two-dice discovery per terrain (`RQ-6`), warriors as a capped product of three d
 
 - **As landed:** discovery rolls on the `natives` stream when an explorer first enters a mapped, unpublished hex with no known tribe (each explorer once per hex, G-51); tribes live in `state.tribes` with the marker number on the hex; entering or remaining in a hex with a tribe puts the turn in the `natives` phase until `natives/policy` is chosen on an edge panel (`PolicyChooser`); policy 1 holds the expedition and forbids hunting, policy 2 retreats to `cameFrom` and removes the marker (G-53), policies 3–5 wait for the reaction roll (017). Scenario 016 (seed 18, scripted main and natives dice): `natives-found` → `retreat` → `ignored`.
 
-### 17. Native reaction and combat — `017-native-reaction-and-combat`
+### 17. Native reaction and combat — `017-native-reaction-and-combat` ✅ landed
 
 Three-dice reaction with all modifiers shown, hide-or-attack, surprise, volley, melee rounds as a visible exchange of casualty dice.
+
+- **As landed:** `natives/react` in `natives/reaction.ts` resolves rules §8.2–8.3 on the `combat` stream for policies 1, 3, 4 and 5 (G-55): reaction dice with modifiers, strength (hide or attack), surprise with the mounted and desert adjustments, the volley, then alternating strikes until victory or defeat; askari losses go to the chart and warrior losses to the tribe, which keeps its survivors; the rail shows the reaction and every combat die with a narrated note. Defeat's consequences and victory's spoils wait for 018 (G-57). Scenario 017 (seed 18, scripted combat dice): `the-fight` → `they-hide`.
 
 ### 18. Defeat, escape and victory — `018-defeat-escape-and-victory`
 

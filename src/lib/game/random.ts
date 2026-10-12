@@ -33,7 +33,7 @@ export function shuffle<T>(items: readonly T[], random: Random): T[] {
 // rule added later never shifts the rolls of an earlier one, so a scenario's story survives.
 
 /** The stream a roll belongs to. */
-export type Stream = 'main' | 'hunting' | 'water' | 'natives';
+export type Stream = 'main' | 'hunting' | 'water' | 'natives' | 'combat';
 
 export interface RngObject {
   seed: number;

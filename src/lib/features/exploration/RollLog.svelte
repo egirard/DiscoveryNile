@@ -32,6 +32,8 @@
           <span class="note" data-testid="meal-note-{seat}">{r.outcome}</span>
         {:else if r.kind === 'natives'}
           <span class="note" data-testid="natives-note-{seat}">{r.outcome}</span>
+        {:else if r.kind === 'reaction' || r.kind === 'combat'}
+          <span class="note" data-testid="{r.kind}-note-{seat}">{r.outcome}</span>
         {/if}
         {#if r.modifiers?.length}
           <span class="mods">{r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : `${m.value}`)).filter(Boolean).join(' ')}</span>

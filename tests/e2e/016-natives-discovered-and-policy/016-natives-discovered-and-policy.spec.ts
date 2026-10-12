@@ -42,7 +42,8 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
     // Seed 18 (found by search under this script): bottom-1 holds a free ticket to Mombasa and $905. Main dice: roll-off 6,6,6,6 / 1,1,1,1, then the
     // step into c24r12: lost check 6 (found), terrain direction 2 (copies Mombasa's veldt), water 1 (no source). Natives
     // dice: 1,2 (3: natives on the veldt) then warriors 3,4,5, the 5 capped at distance 1 from Mombasa → 12 warriors.
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1');
+    // Combat dice 1,1,1: the natives are not hostile when ignored (since 017).
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1&dice-combat=1,1,1');
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
@@ -118,6 +119,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
           await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'act', policy: 4, moved: false });
+          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('not hostile (3 within 5)');
           expect(s.diagnostics).toEqual([]);
         } }
       ]

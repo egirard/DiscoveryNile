@@ -10,7 +10,8 @@ const seatAndCommission = (seat: string) => [event('seat/taken', { seat, uid: `t
 // Seed 18 (shared with scenario 016; found by search under this script): bottom-1 holds a free ticket to Mombasa and $905. Main dice: roll-off 6,6,6,6 / 1,1,1,1,
 // then the step into c24r12: lost check 6 (found), terrain direction 2 (copies Mombasa's veldt), water 1 (no source).
 // Natives dice: 1,2 (3: natives on the veldt), warriors 3,4,5 capped at distance 1 → 12. Hunting: no game.
-const SCRIPT = { main: [6, 6, 6, 6, 1, 1, 1, 1, 6, 2, 1], natives: [1, 2, 3, 4, 5], hunting: [6, 6] };
+// Combat dice 1,1,1 twice: the natives are not hostile to either policy that faces them.
+const SCRIPT = { main: [6, 6, 6, 6, 1, 1, 1, 1, 6, 2, 1], natives: [1, 2, 3, 4, 5], hunting: [6, 6], combat: [1, 1, 1, 1, 1, 1] };
 const FOOT = { askaris: 5, bearers: 6, food: 100 };
 
 function intoTheVeldt() {
@@ -61,6 +62,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(s.map['c24r12'].markers).toEqual(['bottom-1']);
     const ignore = reduce([...again, event('natives/policy', { seat: 'bottom-1', policy: 4 })]);
     expect(ignore.turn).toMatchObject({ phase: 'act', policy: 4, moved: false });
+    expect(ignore.turn!.log.at(-1)).toMatchObject({ kind: 'reaction', outcome: 'not hostile (3 within 5)' });
   });
   it('policy 1 holds the expedition in place and forbids hunting; staying in the hex asks again next turn', () => {
     const { events, pass } = intoTheVeldt();

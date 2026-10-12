@@ -7,7 +7,11 @@ import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
 import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
-import { oasisSearch, oasisSearchable } from '$features/exploration/reducer';
+import { oasisSearch, oasisSearchable, terrainOf } from '$features/exploration/reducer';
+import { react } from '$features/natives/reaction';
+import { distanceToNearestPort } from '$features/natives/discovery';
+import { modeFor } from '$features/exploration/movement';
+import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt } from '$features/rations/rations';
 
 export const OPENING_HAND = 5;
@@ -111,6 +115,11 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
   const search = oasisSearch(state.rng!, m, explorer.seat);
   const record: RollRecord = { kind: 'water', seat: explorer.seat, hex, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' };
   return { ...state, rng: search.rng, map: { ...state.map, [hex]: search.hex }, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
+}
+
+/** A guide hired in a hex adjacent to this one (rules §8.2: "a guide from an adjacent hex"). */
+function guideFromAdjacent(explorer: ExplorerState, hex: HexId): boolean {
+  return Object.entries(explorer.chart?.guideHomes ?? {}).some(([home, n]) => n > 0 && directionTo(hex, home as HexId) !== null);
 }
 
 /** Water is free wherever there is water: anywhere but a dry desert hex (rules §5). */
@@ -230,7 +239,6 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const explorer = currentExplorer(state)!;
       const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
       const turn = { ...state.turn, phase: 'act' as const, policy };
-      if (policy === 1) return { ...state, turn: { ...turn, moved: true } }; // defensive stand: no leaving, no hunting
       if (policy === 2) {
         // Immediate retreat: back where he came from; the marker comes off and the credit with it (G-53).
         const back = explorer.cameFrom;
@@ -241,7 +249,22 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const location: ExplorerState['location'] = port ? { kind: 'port', port: port.id } : { kind: 'hex', hex: back };
         return { ...replaceExplorer(state, { ...explorer, location, cameFrom: null }), map, turn };
       }
-      return { ...state, turn }; // 3, 4, 5: the natives' reaction arrives with 017
+      // Policies 1, 3, 4 and 5 face the natives' reaction (rules §8.2) and perhaps a fight (§8.3).
+      const tribe = state.tribes[state.map[hex].tribe!];
+      const result = react(state.rng!, {
+        policy, distanceToPort: distanceToNearestPort(hex), warriors: tribe.warriors, chart: explorer.chart!,
+        localKnowledge: guideFromAdjacent(explorer, hex), attitude: tribe.attitude,
+        inDesert: terrainOf(state, hex) === 'desert', mounted: modeFor(explorer.chart!, false) === 'mounted'
+      });
+      const log: RollRecord[] = [
+        ...turn.log,
+        { kind: 'reaction', seat: explorer.seat, hex, rolls: result.reaction.rolls, modifiers: result.reaction.modifiers, total: result.reaction.total, outcome: result.reaction.hostile ? `hostile (${result.reaction.total} over ${result.reaction.target})` : `not hostile (${result.reaction.total} within ${result.reaction.target})` }
+      ];
+      if (result.combat.length) log.push({ kind: 'combat', seat: explorer.seat, hex, rolls: result.combat, outcome: result.summary });
+      const tribes = { ...state.tribes, [tribe.id]: { ...tribe, warriors: result.warriors, attitude: tribe.attitude - (result.outcome === 'defeat' ? 1 : 0) } };
+      const next = { ...replaceExplorer(state, { ...explorer, chart: result.chart }), rng: result.rng, tribes, turn: { ...turn, log, moved: turn.moved || policy === 1 } };
+      // Defeat's consequences and victory's spoils arrive with 018; the explorer stays put meanwhile (G-57).
+      return next;
     }
     case 'water/taken': {
       const { seat, rations } = event.payload as { seat?: string; rations?: unknown };
