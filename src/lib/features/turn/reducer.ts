@@ -19,6 +19,7 @@ import { modeFor } from '$features/exploration/movement';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
 import { addScore, homecoming, valueOf } from '$features/scoring/score';
+import { fmtPoints } from '$features/scoring/transits';
 import { perish } from '$features/explorers/fate';
 
 export const OPENING_HAND = 5;
@@ -372,7 +373,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const raised = handValue(explorer.hand);
       if (raised < fare) return `passage costs $${fare}; only $${raised} raised`;
       // The whole hand becomes the expedition budget; any ticket not used is lost with it.
-      const sailed: ExplorerState = { ...explorer, hand: [], drawnRound: {}, money: raised - fare, location: { kind: 'voyage', port: port as PortId } };
+      const sailed: ExplorerState = { ...explorer, hand: [], drawnRound: {}, money: raised - fare, location: { kind: 'voyage', port: port as PortId }, transit: null };
       return { ...replaceExplorer(state, sailed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...explorer.hand] } };
     }
     case 'cards/discarded': {
@@ -615,7 +616,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (m.publishedBy) return `${hex} is already published`;
       if (!m.markers.includes(explorer.seat)) return `no marker of ${seat} on ${hex}`;
       const value = valueOf(state, hex as HexId, explorer.seat, state.turn.round);
-      const record: RollRecord = { kind: 'published', seat: explorer.seat, hex: hex as HexId, rolls: [], outcome: `${hex} published (${value.parts.join(', ')}): ${value.points} point${value.points === 1 ? '' : 's'}, a card drawn` };
+      const record: RollRecord = { kind: 'published', seat: explorer.seat, hex: hex as HexId, rolls: [], outcome: `${hex} published (${value.parts.join(', ')}): ${fmtPoints(value.points)} point${value.points === 1 ? '' : 's'}, a card drawn` };
       const published: GameState = { ...addScore(state, explorer.seat, value.entries), map: { ...state.map, [hex]: { ...m, markers: [], publishedBy: explorer.seat } }, superlatives: [...state.superlatives, ...value.superlatives], turn: { ...state.turn, log: [...state.turn.log, record] } };
       return drawOne(published, explorer);
     }

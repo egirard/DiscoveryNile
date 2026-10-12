@@ -75,6 +75,18 @@ export interface ExplorerState {
   research: { hex: HexId; done: ('zoology' | 'geology')[] } | null;
   /** Set when the explorer is out of play (location 'dead'): how, when, and the obituary for the rail (rules §12). */
   fate: { kind: 'died' | 'retired'; round: number; cause: string } | null;
+  /** A crossing of the continent completed on this trip (rules §12, Epic Transits): its route hexes earn a bonus when published. */
+  transit: Transit | null;
+}
+
+export interface Transit {
+  crossing: 'khartoum-cape' | 'khartoum-east' | 'khartoum-west' | 'west-east';
+  /** First, second, third or fourth to complete this crossing: 1, ½, ⅓ or ¼ point per route hex published. */
+  order: number;
+  route: HexId[];
+  from: PortId;
+  to: PortId;
+  seat: SeatId;
 }
 
 /** A tribe discovered in play (rules §7.7), numbered as its marker. */
@@ -129,7 +141,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -173,7 +185,7 @@ export interface TurnState {
 
 /** Points scored by a seat (rules §12): once scored they are never lost, whatever becomes of the explorer. */
 export interface ScoreEntry {
-  kind: 'hex' | 'tribe' | 'specimens' | 'works' | 'superlative';
+  kind: 'hex' | 'tribe' | 'specimens' | 'works' | 'superlative' | 'transit';
   /** What was scored: a hex id, a tribe number, or the specialty. */
   detail: string;
   points: number;
@@ -222,9 +234,11 @@ export interface GameState {
   scores: Partial<Record<SeatId, ScoreEntry[]>>;
   /** Superlative discoveries in the order published; later ranks are measured against them. */
   superlatives: SuperlativeRecord[];
+  /** Crossings of the continent completed, in order (rules §12, Epic Transits). */
+  transits: Transit[];
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], diagnostics: [] };
 }

@@ -339,7 +339,8 @@
           {#if gameState.turn}
             {@const mine = gameState.turn.current === seat.id}
             {@const discarding = mine && gameState.turn.phase === 'discard'}
-            <span class="hand" data-testid="hand-{seat.id}" data-count={explorer.hand.length}>
+            <!-- A hand swollen by publication (a card per hex) overlaps its cards so the rail still fits; the limit applies next turn. -->
+            <span class="hand" class:crowded={explorer.hand.length > 7} style="--overlap:{explorer.hand.length > 7 ? Math.min(0.85, 0.4 + (explorer.hand.length - 7) * 0.06) : 0}" data-testid="hand-{seat.id}" data-count={explorer.hand.length}>
               {#each explorer.hand as id (id)}
                 <Card {id} seat={seat.id} onselect={discarding ? (c) => discard(seat, c) : undefined} />
               {/each}
@@ -516,6 +517,12 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .hand.crowded {
+    gap: 0;
+  }
+  .hand.crowded > :global(:not(:first-child)) {
+    margin-left: calc(var(--target) * -1 * var(--overlap));
   }
   .reorganise {
     width: var(--target);

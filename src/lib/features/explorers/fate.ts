@@ -37,6 +37,7 @@ export function perish(state: GameState, explorer: ExplorerState, kind: Fate['ki
     drawnRound: {},
     specimens: { zoology: 0, geology: 0 },
     goodWorks: { evangelism: 0, medicine: 0 },
+    transit: null,
     fate: { kind, round: state.turn?.round ?? 0, cause }
   };
   const explorers = state.explorers.map((e) => {

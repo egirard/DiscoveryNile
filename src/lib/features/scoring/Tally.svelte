@@ -5,13 +5,16 @@
     seat: string;
     points: number;
   }
+  import { fmtPoints } from './transits';
   let { seat, points }: Props = $props();
-  const gates = $derived(Math.floor(points / 5));
-  const rest = $derived(points % 5);
+  // Fractions (epic transit bonuses) count in the label; the marks show whole points.
+  const whole = $derived(Math.floor(points + 1e-9));
+  const gates = $derived(Math.floor(whole / 5));
+  const rest = $derived(whole % 5);
 </script>
 
 {#if points > 0}
-  <span class="tally" data-testid="score-{seat}" data-points={points} aria-label="{points} point{points === 1 ? '' : 's'}">
+  <span class="tally" data-testid="score-{seat}" data-points={fmtPoints(points)} aria-label="{fmtPoints(points)} point{points === 1 ? '' : 's'}">
     {#each Array(gates) as _, i (i)}
       <svg class="gate" viewBox="0 0 24 20" aria-hidden="true"><path d="M4 2v16M9 2v16M14 2v16M19 2v16" /><path d="M1 16L23 4" /></svg>
     {/each}

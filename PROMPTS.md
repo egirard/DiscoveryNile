@@ -58,4 +58,4 @@ resume as per instructions in discovery-nile-wip-012
 
 continue implementation
 
-`Outcome (in progress): 025 (publishing and points), 026 (death and retirement) and 027 (superlatives: peaks, waterfalls, lakes, river sources ranked at publication) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..90 and RQ-15 logged.`
+`Outcome (in progress): 025 (publishing and points), 026 (death and retirement), 027 (superlatives) and 028 (epic transits, with a recorded trek replayed) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..94 and RQ-15..16 logged.`

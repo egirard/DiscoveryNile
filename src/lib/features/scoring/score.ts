@@ -6,6 +6,7 @@ import type { SeatId } from '$lib/tabletop/seats';
 import type { HexId } from '$features/map/hex';
 import { terrainPoints } from '$features/map/scoring';
 import { superlativesOf } from './superlatives';
+import { TRANSIT_BONUS, fmtPoints } from './transits';
 import type { SuperlativeRecord } from '$lib/game/state';
 
 export interface Publication {
@@ -43,6 +44,13 @@ export function valueOf(state: GameState, hex: HexId, seat: SeatId, round: numbe
   const superlatives = superlativesOf(state, hex, seat, round);
   parts.push(...superlatives.parts);
   entries.push(...superlatives.entries);
+  // An epic transit's route hex earns its bonus as it is published (rules §12).
+  const explorer = state.explorers.find((e) => e.seat === seat && e.location.kind !== 'dead');
+  if (explorer?.transit?.route.includes(hex)) {
+    const bonus = TRANSIT_BONUS[explorer.transit.order - 1];
+    entries.push({ kind: 'transit', detail: `${explorer.transit.crossing} ${hex}`, points: bonus, round });
+    parts.push(`epic transit (${fmtPoints(bonus)})`);
+  }
   return { points: entries.reduce((sum, e) => sum + e.points, 0), parts, entries, superlatives: superlatives.records };
 }
 

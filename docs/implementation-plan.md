@@ -245,9 +245,11 @@ Highest mountain, highest waterfall, largest lake (`RQ-8`), longest river with t
 
 - **As landed:** `scoring/superlatives.ts` ranks each superlative at the moment its hex is published against the records published before it (`state.superlatives`): a peak over 15,000 ft (8/4/2/1), a waterfall of 400 ft or more (4/2/1), a lake measured as its connected lake hexes and scored once by its first published hex (RQ-8, 4/2/1), and a river source measured from the sea along the shortest course through every river hex the table knows, plus the Nile's 25 and the Niger's 23 hexes beyond the board, ranked among the rivers known in 1820 (Niger 23, Orange 12, Senegal 10, Gambia 7) and the sources published so far (16/8/4/2/1); a source whose river has not been followed to the sea cannot be measured yet. A new record takes first place; points once scored stay (RQ-15). The publish note names what scored. Scenario 027 (seed 210): `peak-mapped` → `published`.
 
-### 28. Epic transits — `028-epic-transits`
+### 28. Epic transits — `028-epic-transits` ✅ landed
 
 Detecting the four crossings, route uniqueness, bonus computation, the north-east exclusion.
+
+- **As landed:** `scoring/transits.ts` recognises a crossing when an expedition steps onto a port across the continent from its port of entry (the route is every hex passed through on the trip, from `known`); the pre-printed hexes at the north-east edge (columns 22 and beyond, rows up to 11) bar it, the route must differ from every earlier route on that crossing, and four explorers at most may score one. The explorer carries the `transit` (and `state.transits` keeps them in order); each route hex he publishes earns 1, ½, ⅓ or ¼ point by his order (RQ-16), shown in the publish note and counted in the tally with its fraction. Scenario 028 (seed 43) replays a trek recorded in `trek.json` through the table's event log up to the last step onto Khartoum: `crossing` → `route-published`.
 
 ### 29. Joint expeditions — `029-joint-expeditions`
 

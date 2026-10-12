@@ -43,6 +43,8 @@ When a scenario needs particular outcomes, `dice=6,6,6,6,1,1,1,1,6` scripts the 
 
 Never monkey-patch `Date.now` or `Math.random` from a test; the application must accept a seed by design (see [state-and-persistence.md](state-and-persistence.md)).
 
+A journey too long to tap through (a crossing of the continent, scenario 028) may be **replayed from a recorded event log**: the events are produced by a deterministic search in a unit-test harness, committed beside the scenario as JSON with the seed and dice scripts they assume, and appended through `window.__TABLETOP__.append` before the steps begin. Every replayed event is one a player could send, so the reducer validates them as it would at the table; the scenario still performs the steps it proves through the interface.
+
 ### 4. No arbitrary delays, no retries
 
 `waitForTimeout`, `setTimeout`, and polling loops are forbidden. Wait for a semantic condition:

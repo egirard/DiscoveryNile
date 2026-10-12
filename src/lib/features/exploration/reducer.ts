@@ -13,6 +13,7 @@ import { d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
 import { sickCarried } from '$features/rations/rations';
+import { completeTransit, portAt } from '$features/scoring/transits';
 
 /** The hex an explorer stands on, if on the board. */
 export function standingHex(e: ExplorerState): HexId | null {
@@ -263,8 +264,17 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       // A zoologist or geologist must spend a turn studying every unpublished hex he enters (rules §9).
       const naturalist = explorer.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain && !map[target]?.publishedBy;
       const research = naturalist ? { hex: target, done: [] as ('zoology' | 'geology')[] } : null;
-      const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from, research };
-      const done = finish({ ...replaceExplorer(state, moved), map, tribes }, { ...movement, spent: movement.spent + cost });
+      let moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from, research };
+      // Stepping onto a port across the continent from the port of entry completes an epic transit (rules §12).
+      let transits = state.transits;
+      const port = portAt(target);
+      const crossing = port ? completeTransit({ ...state, map }, moved, port) : null;
+      if (crossing) {
+        moved = { ...moved, transit: crossing.transit };
+        transits = [...transits, crossing.transit];
+        log.push({ kind: 'transit', seat: explorer.seat, hex: target, rolls: [], outcome: crossing.note });
+      }
+      const done = finish({ ...replaceExplorer(state, moved), map, tribes, transits }, { ...movement, spent: movement.spent + cost });
       return phase === 'natives' ? { ...done, turn: { ...done.turn!, phase } } : done;
     }
     default:
