@@ -51,7 +51,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 008-sail-to-africa                 landed
 009-outfit-the-expedition          landed
 010-first-step-into-the-unknown    landed
-011-rivers-and-oases
+011-rivers-and-oases               landed
 012-movement-rates
 013-disaster-cards
 014-hunting-and-rations
@@ -140,7 +140,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 010:** `targets-shown` (from Mombasa, adjacent blank hexes highlighted, known hexes not) → `lost` (seed chosen so the first attempt is lost; dice and modifiers shown; token unmoved) → `mapped` (next turn succeeds; terrain rendered; marker on hex; state `map[hex].terrain` set) → `persists-after-reload`.
 - **Unit tests:** lost check per leaving terrain (`d6−1`, `−2`, `−3`, `−5`), sick −1; terrain copy from the first then second direction roll; random table with notes A and B; composite rolls (`RQ-4`); determinism: same seed, same hex.
 
-### 11. Rivers, oases and cataracts — `011-rivers-and-oases`
+### 11. Rivers, oases and cataracts — `011-rivers-and-oases` ✅ landed (oases and the per-explorer oasis rule are unit-tested; the scenario shows sources, a cataract, a peak and a continuation)
 
 - **Player sees:** a newly mapped hex may now show a river crossing it, a source dot, an oasis in desert, a cataract mark, and, when tall enough, a recorded waterfall or peak height; the expedition's lost check shows "downstream: no roll" when following a river.
 - **Introduced:** river generation cases 1–3, the Drainage Basin Rule with the mouth numbers from 004, lake-joining and salt-lake rules, per-explorer oasis knowledge, cataract and height rolls (§7.4–7.5); river rendering across hex edges.

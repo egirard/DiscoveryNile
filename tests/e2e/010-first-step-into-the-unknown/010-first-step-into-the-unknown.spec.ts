@@ -112,7 +112,7 @@ test.describe('010 - First step into the unknown', () => {
           await expect(page.getByTestId('marker-c24r12-bottom-1')).toBeAttached();
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
           const s = await state(page);
-          expect(s.map['c24r12']).toEqual({ terrain: 'veldt', markers: ['bottom-1'] });
+          expect(s.map['c24r12']).toMatchObject({ terrain: 'veldt', markers: ['bottom-1'] });
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.known).toEqual(['c25r12', 'c24r12']);
         } }
       ]

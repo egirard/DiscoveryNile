@@ -91,6 +91,14 @@
     return { x: m.x + (dx / len) * radius * 1.15 + (dy / len) * radius * 0.9, y: m.y + (dy / len) * radius * 1.15 - (dx / len) * radius * 0.9 };
   }
 
+  /** Unit vector from a hex centre toward the midpoint of the edge in direction d (pointy-top). */
+  const EDGE: Record<number, [number, number]> = { 1: [0.5, -0.866], 2: [1, 0], 3: [0.5, 0.866], 4: [-0.5, 0.866], 5: [-1, 0], 6: [-0.5, -0.866] };
+  function segment(c: { x: number; y: number }, d: number): string {
+    const [ux, uy] = EDGE[d];
+    const k = radius * 0.87;
+    return `${c.x.toFixed(1)},${c.y.toFixed(1)} ${(c.x + ux * k).toFixed(1)},${(c.y + uy * k).toFixed(1)}`;
+  }
+
   const symbolFor: Record<string, string[]> = {
     desert: [],
     veldt: ['veldt'],
@@ -148,6 +156,32 @@
       {/if}
     {/each}
     {#each Object.entries(mapped) as [id, m] (id)}
+      {@const c = centre(id as HexId)}
+      {#if m.river}
+        <g data-testid="course-{id}" class="course" data-in={m.river.in.join(',')} data-out={m.river.out ?? ''} data-source={m.river.source} data-cataract={m.river.cataract}>
+          {#each [...m.river.in, ...(m.river.out !== null ? [m.river.out] : [])] as d (d)}
+            <polyline class="river-bank" points={segment(c, d)} />
+            <polyline class="river" points={segment(c, d)} />
+          {/each}
+          {#if m.river.source}
+            <circle class="source" cx={c.x} cy={c.y} r={radius * 0.22} />
+          {/if}
+          {#if m.river.cataract}
+            <g class="cataract" data-testid="cataract-{id}" transform="translate({c.x} {c.y}) {upright} scale({radius})">
+              <circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" />
+            </g>
+          {/if}
+          {#if m.river.waterfallFeet}
+            <text class="height blue" data-testid="waterfall-{id}" transform="translate({c.x} {c.y + radius * 0.95}) {upright}" font-size={radius * 0.5}>{m.river.waterfallFeet}</text>
+          {/if}
+        </g>
+      {/if}
+      {#if m.oasis}
+        <circle data-testid="oasis-{id}" class="oasis" cx={c.x} cy={c.y} r={radius * 0.24} />
+      {/if}
+      {#if m.peakFeet}
+        <text class="height brown" data-testid="peak-{id}" transform="translate({c.x} {c.y - radius * 0.7}) {upright}" font-size={radius * 0.5}>{m.peakFeet / 100}</text>
+      {/if}
       {#if m.markers.length}
         {@const c = centre(id as HexId)}
         <g class="markers" transform="translate({c.x} {c.y}) {upright}">
@@ -344,6 +378,31 @@
   .token circle {
     stroke: #efe6cc;
     stroke-width: 2;
+  }
+  .source {
+    fill: #2d72c9;
+    stroke: #efe6cc;
+    stroke-width: 1;
+  }
+  .oasis {
+    fill: #2d72c9;
+    stroke: #efe6cc;
+    stroke-width: 1.5;
+  }
+  .height {
+    text-anchor: middle;
+    dominant-baseline: central;
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: #efe6cc;
+    stroke-width: 2px;
+  }
+  .height.blue {
+    fill: #2d72c9;
+  }
+  .height.brown {
+    fill: #6b3a2c;
   }
   .hex.explored {
     stroke: #1c2a2e;

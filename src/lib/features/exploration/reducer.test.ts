@@ -96,7 +96,7 @@ describe('expedition/moved into a blank hex', () => {
     expect(s.map['c24r12']).toBeDefined();
     expect(s.map['c24r12'].markers).toEqual([first]);
     const e = s.explorers.find((x) => x.seat === first)!;
-    if (s.turn!.log[1].outcome.includes('impassable')) {
+    if (s.turn!.log.some((l) => l.outcome.includes('impassable'))) {
       expect(e.location).toEqual({ kind: 'port', port: 'mombasa' });
     } else {
       expect(e.location).toEqual({ kind: 'hex', hex: 'c24r12' });

@@ -6,6 +6,7 @@ import type { Chart } from '$features/expedition/prices';
 import type { HexId } from '$features/map/hex';
 import type { Terrain } from '$features/map/manifest';
 import type { Modifier, Roll } from '$features/map/generate';
+import type { RiverCourse } from '$features/map/rivers';
 
 export interface SeatState {
   id: SeatId;
@@ -49,11 +50,18 @@ export interface MappedHex {
   terrain: Terrain;
   /** Seats holding a coloured marker here (visited, unpublished). */
   markers: SeatId[];
+  /** River course through the hex, if any (rules §7.4). */
+  river: RiverCourse | null;
+  /** Desert only: an oasis was found, and by whom it is known (rules §7.4). */
+  oasis: boolean;
+  oasisKnownTo: SeatId[];
+  /** Recorded only over 15,000 ft (rules §7.5). */
+  peakFeet: number | null;
 }
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain';
+  kind: 'lost-check' | 'terrain' | 'water';
   seat: SeatId;
   hex: HexId;
   rolls: Roll[];
