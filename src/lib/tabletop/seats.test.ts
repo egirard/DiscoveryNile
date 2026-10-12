@@ -36,3 +36,13 @@ describe('positionAlongEdge', () => {
     expect(positionAlongEdge({ id: 'bottom-2', edge: 'bottom', index: 2, count: 2 })).toBe(0.75);
   });
 });
+
+describe('two seats on one edge (DiscoveryNile layout)', () => {
+  it('yields six seats and places the bottom pair at a quarter and three quarters', () => {
+    const seats = seatsFor({ bottom: 2, top: 2, left: 1, right: 1 });
+    expect(seats.map((s) => s.id)).toEqual(['bottom-1', 'bottom-2', 'right-1', 'top-1', 'top-2', 'left-1']);
+    expect(positionAlongEdge(seats[0])).toBe(0.25);
+    expect(positionAlongEdge(seats[1])).toBe(0.75);
+    expect(positionAlongEdge(seats[2])).toBe(0.5);
+  });
+});

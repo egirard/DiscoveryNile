@@ -35,3 +35,7 @@ Licence: MIT. Ignore licence discrepancies wam the sole author.
 Done for phase 1 means: template docs importe, including docs/vision.md, a docs/rules.mdsummary, and a chosen state backend (local only for now); LICENSE present; rules reference vendored, pinned andocumented; docs/implementation-plan.md writdocs/implementation-plan-guide.md, coveringthe game to a playable end-to-end state, with the first ten slices specified in detail and the rest as titled headings, so a coding agent can be handed sld tests green.
 
 `Outcome: Created public repo egirard/DiscoveryNile from a squashed TabletopTemplate import; renamed, verify-only CI, rules reference pinned (6ee4718a) and vendored, docs/rules.md (13 RQs), vision, plan 003–032 with issue 003; seed verified green locally after supplying the template's missing diagnostics client.`
+
+## 4. 2026-10-12
+
+I've reviewed the development plan and I'd like you to roll through the every step.  If there are unresolved or open questions, please make an educated guess and also log them for review at the conclusion.

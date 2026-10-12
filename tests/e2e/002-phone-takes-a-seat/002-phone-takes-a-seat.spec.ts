@@ -17,8 +17,8 @@ test.describe('002 - Phone takes a seat', () => {
     await table.step('qr-at-every-seat', {
       description: 'Every empty seat shows a QR code linking to its hand page',
       verifications: [
-        { spec: 'Four QR links are shown', check: async () => {
-          await expect(page.locator('[data-testid^="seat-qr-"]')).toHaveCount(4);
+        { spec: 'Six QR links are shown', check: async () => {
+          await expect(page.locator('[data-testid^="seat-qr-"]')).toHaveCount(6);
         } },
         { spec: 'The top seat QR links to the hand page for session ABCDE and seat top-1', check: async () => {
           await expect(page.getByTestId('seat-qr-top-1')).toHaveAttribute('href', /\/hand\/\?session=ABCDE&seat=top-1$/);
@@ -54,8 +54,8 @@ test.describe('002 - Phone takes a seat', () => {
           expect(state.seats.find((s) => s.id === 'top-1')?.name).toBe('Bo');
           expect(state.diagnostics).toEqual([]);
         } },
-        { spec: 'The other three seats still offer QR codes', check: async () => {
-          await expect(page.locator('[data-testid^="seat-qr-"]')).toHaveCount(3);
+        { spec: 'The other five seats still offer QR codes', check: async () => {
+          await expect(page.locator('[data-testid^="seat-qr-"]')).toHaveCount(5);
         } }
       ]
     });

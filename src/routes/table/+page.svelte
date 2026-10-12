@@ -6,11 +6,12 @@
   import type { GameState } from '$lib/game/state';
   import { initialState } from '$lib/game/state';
   import SeatRail from '$features/seats/SeatRail.svelte';
-  import { DEFAULT_LAYOUT, seatsFor, type Seat } from '$lib/tabletop/seats';
+  import { seatsFor, type Seat } from '$lib/tabletop/seats';
   import { mmPerPx, pxFor, readDiagonalInches, screenGeometry } from '$lib/tabletop/screen';
-  import Icon from '$lib/ui/Icon.svelte';
+  import HexBoard from '$features/map/HexBoard.svelte';
+  import { SEAT_LAYOUT } from '$lib/game/config';
 
-  const layout = DEFAULT_LAYOUT;
+  const layout = SEAT_LAYOUT;
   const seats = seatsFor(layout);
 
   let game = $state<Game | null>(null);
@@ -23,6 +24,9 @@
   const k = $derived(mmPerPx(diagonal, viewport.w, viewport.h));
   const target = $derived(pxFor(12, k));
   const qrSize = $derived(pxFor(30, k, 96));
+  const railDepth = $derived(target * 2.6);
+  const boardW = $derived(Math.max(200, viewport.w - 2 * railDepth - 2 * target));
+  const boardH = $derived(Math.max(200, viewport.h - 2 * railDepth - 2 * target));
 
   function seatState(seat: Seat) {
     return gameState.seats.find((s) => s.id === seat.id) ?? { id: seat.id, uid: null, name: null };
@@ -69,19 +73,21 @@
   data-e2e-layout
   data-testid="table"
   data-e2e-no-scroll
-  style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.6}px; --rail-depth:{target * 2.6}px; --gap:{target * 0.3}px"
+  style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.45}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <Icon name="table" size="min(20vw, 20vh)" />
-    <span class="code" data-testid="room-code" aria-label="Room code">{gameState.gameId ?? ''}</span>
+    <HexBoard width={boardW} height={boardH} />
   </div>
 
   {#each seats as seat (seat.id)}
     <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} />
   {/each}
 
-  <div class="status" role="status" data-status={status} data-e2e-status-area aria-label="Connection status">
-    <span class="dot"></span>
+  <div class="corner" data-e2e-status-area>
+    <div class="status" role="status" data-status={status} aria-label="Connection status">
+      <span class="dot"></span>
+    </div>
+    <span class="code" data-testid="room-code" aria-label="Room code">{gameState.gameId ?? ''}</span>
   </div>
   <p class="build" data-testid="build-marker">{__GIT_HASH__.slice(0, 7)}</p>
 </main>
@@ -112,18 +118,22 @@
     gap: 1rem;
     pointer-events: none;
   }
+  .corner {
+    position: absolute;
+    left: 0.5rem;
+    bottom: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
   .code {
     letter-spacing: 0.3em;
-    font-size: min(3vw, 3vh);
+    font-size: 0.8rem;
     opacity: 0.6;
   }
   .status {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% calc(min(20vw, 20vh) + 2rem);
-    width: 1rem;
-    height: 1rem;
+    width: 0.8rem;
+    height: 0.8rem;
   }
   .dot {
     display: block;

@@ -2,23 +2,23 @@ import { test, expect } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 test.describe('001 - App shell and seats', () => {
-  test('the table loads with four empty seats, a player takes the bottom seat, and it survives a reload', async ({ page }, testInfo) => {
+  test('the table loads with six empty seats, a player takes the bottom seat, and it survives a reload', async ({ page }, testInfo) => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'App shell and seats',
-      'The table opens with a seat on each edge. A player at the bottom edge takes a seat; the rail shows them, faces them, and is still there after the table reloads.'
+      'The table opens with six seats: two on each long edge, one on each short edge. A player at the bottom edge takes a seat; the rail shows them, faces them, and is still there after the table reloads.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
 
     await steps.step('empty-table', {
-      description: 'The table shows four empty seats around the board',
+      description: 'The table shows six empty seats around the board',
       verifications: [
-        { spec: 'Four seat rails are visible, one per edge', check: async () => {
-          await expect(page.locator('[data-testid^="seat-rail-"]')).toHaveCount(4);
+        { spec: 'Six seat rails are visible: two on each long edge, one on each short edge', check: async () => {
+          await expect(page.locator('[data-testid^="seat-rail-"]')).toHaveCount(6);
         } },
         { spec: 'Every seat offers a join control and none is taken', check: async () => {
-          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(4);
+          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(6);
           await expect(page.locator('[data-taken="true"]')).toHaveCount(0);
         } },
         { spec: 'The pinned room code and the build marker are shown', check: async () => {
@@ -41,8 +41,8 @@ test.describe('001 - App shell and seats', () => {
           await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'true');
           await expect(page.getByTestId('seat-name-bottom-1')).toBeVisible();
         } },
-        { spec: 'The other three seats are still free', check: async () => {
-          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(3);
+        { spec: 'The other five seats are still free', check: async () => {
+          await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(5);
         } },
         { spec: 'The bottom rail is upright (0°) and the top rail is turned around (180°)', check: async () => {
           await expect(page.getByTestId('seat-rail-bottom-1').locator('.face')).toHaveCSS('rotate', '0deg');

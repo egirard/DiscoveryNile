@@ -43,7 +43,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 ```
 001-app-shell-and-seats            landed (template)
 002-phone-takes-a-seat             landed (template)
-003-africa-board-and-six-seats
+003-africa-board-and-six-seats     landed
 004-known-africa
 005-commission-an-explorer
 006-first-player-and-donations
@@ -81,12 +81,13 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 
 Scenario 001 proves the shell, four seats, a room code, a build marker and persistence across reload. Scenario 002 proves a phone can take a seat over the relay. Both stay green; 003 changes the seat count and 001's baselines change with it, intentionally.
 
-### 3. The table shows Africa with six seats — `003-africa-board-and-six-seats`
+### 3. The table shows Africa with six seats — `003-africa-board-and-six-seats` ✅ landed
 
 - **Player sees:** a hex grid in the shape of the board (land hexes only; sea is background) filling the centre of the table, the 13 ports of entry marked with a port icon and an omnidirectional label, and six seat rails: two on the bottom edge, two on the top, one left, one right. Room code and build marker as before.
 - **Introduced:** `src/lib/features/map/manifest.ts` with the grid (which `c<col>r<row>` ids exist), port hexes, and the directional convention; `src/lib/features/map/hex.ts` (`neighbour(id, direction)`, `distance`, pixel placement for pointy-top hexes); `HexBoard.svelte` rendering the grid from the manifest, sized from the viewport so the whole board fits with the rails; `DEFAULT_LAYOUT` becomes the six-seat layout in `game/created`.
 - **Scenario 003:** `empty-board` (board present, the manifest's land hexes rendered, 13 port markers, 6 rails, no seat taken) → `bottom-seat-taken` (tap `seat-join-bottom-1`; rail taken; the board unchanged) → `persists-after-reload`.
-- **Unit tests:** `neighbour` for all six directions on even and odd rows; `distance`; manifest invariants (13 ports, every port hex exists); `seatsFor` with two seats on one edge.
+- **Unit tests:** `neighbour` for all six directions on even and odd rows; `distance`; manifest invariants (13 ports, every port hex exists, 626 land and 447 blank hexes per `RQ-5`, river adjacency, drainage numbers); `seatsFor` with two seats on one edge.
+- **As landed:** the board is transcribed with `tools/mapfit/` (lattice fit, colour classification, hand overrides) into `board.json`; terrain and rivers are already in the data and are drawn in 004. On a landscape table the map is rotated with north to the left so hexes stay touch-sized.
 - **Baselines changed:** 001 (six rails instead of four), explained in the commit.
 - Issue spec: [`.github/ISSUES/003-africa-board-and-six-seats.md`](../.github/ISSUES/003-africa-board-and-six-seats.md).
 
