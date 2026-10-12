@@ -30,12 +30,19 @@ export interface OpenGameOptions {
   onIntent?: (intent: Intent, game: Game) => void;
 }
 
-/** `?dice=6,1,3` scripts the first dice of the game (E2E and demonstrations); recorded in the scenario. */
-function readDice(search: string): number[] | null {
-  const raw = new URLSearchParams(search).get('dice');
-  if (!raw) return null;
-  const values = raw.split(',').map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 6);
-  return values.length ? values : null;
+/**
+ * `?dice=6,1,3` scripts the first dice of the game's main stream and `?dice-hunting=4,1` those of
+ * another stream (E2E and demonstrations); recorded in the scenario.
+ */
+function readDice(search: string): Record<string, number[]> | null {
+  const out: Record<string, number[]> = {};
+  for (const [key, raw] of new URLSearchParams(search)) {
+    const m = /^dice(?:-([a-z]+))?$/.exec(key);
+    if (!m) continue;
+    const values = raw.split(',').map(Number).filter((n) => Number.isInteger(n) && n >= 1 && n <= 6);
+    if (values.length) out[m[1] ?? 'main'] = values;
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 function readSeed(search: string): number | null {
@@ -65,8 +72,9 @@ export async function openGame(options: OpenGameOptions): Promise<Game> {
   }
   setCurrentLocalGame(gameId);
   // Drop one-shot parameters so a reload resumes this game instead of creating another.
-  if (query.has('new') || query.has('seed') || query.has('gameId') || query.has('dice')) {
-    for (const k of ['new', 'seed', 'gameId', 'dice']) query.delete(k);
+  const oneShot = [...query.keys()].filter((k) => ['new', 'seed', 'gameId'].includes(k) || k.startsWith('dice'));
+  if (oneShot.length) {
+    for (const k of oneShot) query.delete(k);
     const rest = query.toString();
     history.replaceState(history.state, '', `${location.pathname}${rest ? `?${rest}` : ''}`);
   }

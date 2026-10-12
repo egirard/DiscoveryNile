@@ -14,7 +14,7 @@ Deliver *Source of the Nile* as a sequence of independently playable slices on a
 - **Seats:** six, laid out `{ bottom: 2, top: 2, left: 1, right: 1 }`. One explorer per seat at a time; a seat may commission a new explorer when its explorer dies or retires.
 - **Screens:** the `table` project at 1920×1080 stands for 27"; `table-4k` at 3840×2160 for 55" and runs for the responsive scenario only.
 - **Map:** a pointy-top hex grid transcribed from the pinned board photograph into `src/lib/features/map/manifest.ts`. Hex ids are offset coordinates `c<col>r<row>`; the six neighbour directions are numbered 1 to 6 clockwise from north-east exactly as the board's directional indicator (1 NE, 2 E, 3 SE, 4 SW, 5 W, 6 NW), so a die roll *is* a direction. Original iconography; nothing from the photograph is shipped.
-- **Randomness:** every die roll is drawn from the seeded PRNG (`src/lib/game/random.ts`) in the order the rules resolve them. The PRNG state lives in `GameState` and advances inside the reducer, so events carry choices and never outcomes, and a replay reproduces every roll. Rolls are rendered as dice at the acting seat with their modifiers (rules.md D-1).
+- **Randomness:** every die roll is drawn from the seeded PRNG (`src/lib/game/random.ts`) in the order the rules resolve them. The PRNG state lives in `GameState` and advances inside the reducer, so events carry choices and never outcomes, and a replay reproduces every roll. Rolls are rendered as dice at the acting seat with their modifiers (rules.md D-1). Since 014 the PRNG has named streams derived from the seed (`main` for the roll-off, deck, exploration and disasters; one per later rule, starting with `hunting`), so a rule added later never shifts the rolls of an earlier one and scenario stories survive; dice scripts are per stream (`?dice=` and `?dice-hunting=`).
 - **Rules authority:** [rules-reference.md](rules-reference.md), pinned at commit `6ee4718a`. Ambiguities become `RQ-n` entries in [rules.md](rules.md) and are cited from tests.
 - **Deployment:** CI verifies only; GitHub Pages is disabled ([ci-and-deployment.md](ci-and-deployment.md)).
 - **Browser:** current Chrome.
@@ -54,7 +54,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 011-rivers-and-oases               landed
 012-movement-rates                 landed
 013-disaster-cards                 landed
-014-hunting-and-rations
+014-hunting-and-rations            landed
 015-water-in-the-desert
 016-natives-discovered-and-policy
 017-native-reaction-and-combat
@@ -161,9 +161,11 @@ Draw at the start of each African turn outside ports and Cape Colony; applicabil
 
 - **As landed:** every card's disaster face is a case in `disasters/resolve.ts` over the seeded dice; sickness is tallied per type on the explorer (`sick`) for 021 to act on; the explorer struck "instead" is recorded as sick until 026 models death; cards that need combat (16 unpaid, 29), the defeat table (46) or the poisoning table (18) record what happened and hand over to 017–019; missionary attitude against bad omens waits for 022. Scenario 013 (seed 863, dice-scripted rhino): `disaster-strikes` → `no-effect` → `rhino-charges`. Guesses G-37..43.
 
-### 14. Hunting and rations — `014-hunting-and-rations`
+### 14. Hunting and rations — `014-hunting-and-rations` ✅ landed
 
 End-of-turn hunting roll with terrain modifiers, consumption per man and per horse in desert, animals shot for food, surplus discarded; the chart updates with an animation at the rail. `RQ-7`.
+
+- **As landed:** on `turn/ended` in the field (G-44) one die on the new `hunting` PRNG stream, modified by the camp, feeds the explorer and the well askaris' bag to the men first, then the stores; horses eat four in the desert; horses then camels are shot for ten when the stores run short; men left hungry are counted for 021. The die and the meal stay at the rail as `lastMeal` until the explorer's next turn; the food count simply changes (no animation yet, G-47). Scenario 014 (seed 863, `dice-hunting=4,1`): `fair-hunting` → `no-game`; shooting animals is unit-tested. Named PRNG streams (G-45) keep earlier scenarios' stories intact.
 
 ### 15. Water in the desert — `015-water-in-the-desert`
 

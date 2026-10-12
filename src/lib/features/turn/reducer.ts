@@ -1,11 +1,13 @@
 import type { GameEvent } from '$lib/game/events';
-import type { ExplorerState, GameState, RollOff } from '$lib/game/state';
+import type { ExplorerState, GameState, RollOff, RollRecord } from '$lib/game/state';
+import type { HexId } from '$features/map/hex';
 import { dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
 import { BOARD, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
-import { drawDisaster } from '$features/disasters/draw';
+import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
+import { feed, hunt } from '$features/rations/rations';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -77,6 +79,18 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
 
 export { replaceExplorer };
 
+/** Hunting and the meal at the end of a turn in the field (rules §11): recorded on the explorer for its rail. */
+function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
+  if (!inTheField(explorer)) return state;
+  const camp = situationOf(state, explorer)!;
+  const askaris = Math.max(0, explorer.chart!.askaris - explorer.sick.askaris);
+  const h = hunt(state.rng!, camp, askaris, explorer.specialties.includes('zoology'));
+  const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game);
+  const hex = (explorer.location as { hex: string }).hex as HexId;
+  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls: h.result.rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: meal.summary };
+  return { ...replaceExplorer(state, { ...explorer, chart: meal.chart, lastMeal }), rng: h.rng };
+}
+
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   switch (event.type) {
     case 'game/started': {
@@ -134,7 +148,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
-      return advance(state);
+      return advance(eatAndHunt(state, currentExplorer(state)!));
     }
     case 'voyage/booked': {
       const { seat, port, ticketCardId } = event.payload as { seat?: string; port?: string; ticketCardId?: unknown };

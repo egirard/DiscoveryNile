@@ -54,6 +54,8 @@ export interface ExplorerState {
   money: number;
   /** The Expedition Organization Chart, once outfitted at a port. */
   chart: Chart | null;
+  /** The end-of-turn hunt and meal (rules §11), shown at the rail until the explorer's next turn. */
+  lastMeal: RollRecord | null;
   /** Hexes this explorer has passed through (plus the port of entry): "known" for movement and lost checks. */
   known: HexId[];
 }
@@ -74,7 +76,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */

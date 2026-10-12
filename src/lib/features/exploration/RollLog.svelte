@@ -28,6 +28,8 @@
         {/if}
         {#if r.kind === 'disaster' && r.applies}
           <span class="note" data-testid="disaster-note-{seat}">{r.outcome}</span>
+        {:else if r.kind === 'hunting'}
+          <span class="note" data-testid="meal-note-{seat}">{r.outcome}</span>
         {/if}
         {#if r.modifiers?.length}
           <span class="mods">{r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : `${m.value}`)).filter(Boolean).join(' ')}</span>

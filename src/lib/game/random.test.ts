@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRandom, shuffle, rngFromSeed, rngScripted, nextRandom, dice, shuffleWith } from './random';
+import { createRandom, shuffle, rngFromSeed, rngScripted, nextRandom, dice, d6, shuffleWith } from './random';
 
 describe('createRandom', () => {
   it('produces the same sequence for the same seed', () => {
@@ -63,6 +63,24 @@ describe('scripted dice', () => {
     expect(r.values.slice(0, 3)).toEqual([6, 1, 3]);
     expect(r.values.slice(3)).toEqual(dice(rngFromSeed(1234), 2).values);
     expect(shuffleWith([1, 2, 3, 4], rngScripted(7, [6, 6])).items).toEqual(shuffleWith([1, 2, 3, 4], rngFromSeed(7)).items);
-    expect((rngScripted(1, [0, 9, 2.7]) as { script: number[] }).script).toEqual([1, 6, 2]);
+    expect((rngScripted(1, [0, 9, 2.7]) as { scripts: { main: number[] } }).scripts.main).toEqual([1, 6, 2]);
+  });
+});
+
+describe('named streams', () => {
+  it('rolls on another stream without moving the main one, deterministically per seed', () => {
+    const s = rngFromSeed(5);
+    const h = d6(s, 'hunting');
+    expect(nextRandom(h.state).value).toBe(nextRandom(s).value); // main untouched
+    expect(d6(rngFromSeed(5), 'hunting').value).toBe(h.value);
+    expect(dice(rngFromSeed(5), 50, 'hunting').values).not.toEqual(dice(rngFromSeed(5), 50).values);
+    const again = d6(h.state, 'hunting');
+    expect(again.value).toBe(dice(rngFromSeed(5), 2, 'hunting').values[1]);
+  });
+  it('scripts are per stream', () => {
+    const s = rngScripted(9, { main: [6], hunting: [2, 3] });
+    expect(d6(s).value).toBe(6);
+    expect(dice(s, 3, 'hunting').values.slice(0, 2)).toEqual([2, 3]);
+    expect(d6(d6(s).state).value).toBe(d6(rngFromSeed(9)).value);
   });
 });

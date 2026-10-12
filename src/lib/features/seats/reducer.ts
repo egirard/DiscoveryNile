@@ -15,9 +15,12 @@ export function reduceSeats(state: GameState, event: GameEvent): GameState | str
       // Every roll in the game derives from this seed (docs/rules.md D-1). A game created without
       // one falls back to a hash of its room code so replay stays deterministic.
       const seedValue = typeof seed === 'number' && Number.isFinite(seed) ? seed : hashCode(gameId);
-      // A scripted die sequence (tests, scenarios) is consumed before the generator takes over.
-      const script = Array.isArray(dice) && dice.every((d) => typeof d === 'number') ? (dice as number[]) : null;
-      const rng = script && script.length ? rngScripted(seedValue, script) : rngFromSeed(seedValue);
+      // Scripted dice (tests, scenarios) are consumed before the generator takes over: a list for the
+      // main stream, or a map of stream name to list.
+      const isList = (v: unknown): v is number[] => Array.isArray(v) && v.every((d) => typeof d === 'number');
+      const script = isList(dice) ? (dice.length ? dice : null)
+        : dice && typeof dice === 'object' && Object.values(dice).every(isList) && Object.values(dice).some((v) => (v as number[]).length) ? (dice as Record<string, number[]>) : null;
+      const rng = script ? rngScripted(seedValue, script) : rngFromSeed(seedValue);
       return { ...state, gameId, hostUid: event.actorUid, seats: seatStates, rng };
     }
     // The occupant is `payload.uid` when the host appends on behalf of a table tap or a phone

@@ -53,7 +53,7 @@ export function reduceOne(state: GameState, event: GameEvent): GameState; // pur
 ```
 
 - Pure and total: same input, same output, no exceptions for bad events (they become diagnostics in state).
-- Randomness comes only from the seeded PRNG in `src/lib/game/random.ts`, keyed by the seed committed in an event. `Math.random()` and `Date.now()` do not appear in game logic.
+- Randomness comes only from the seeded PRNG in `src/lib/game/random.ts`, keyed by the seed committed in an event, on named streams so that a rule added later does not shift earlier rolls. `Math.random()` and `Date.now()` do not appear in game logic.
 - The reducer lives in `src/lib/game/` with per-feature cases in `src/lib/features/<feature>/reducer.ts`.
 - Every reducer case has unit tests (see [unit-test-guidelines.md](unit-test-guidelines.md)).
 

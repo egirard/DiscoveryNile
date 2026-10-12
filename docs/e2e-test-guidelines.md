@@ -39,7 +39,7 @@ await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');   // fresh game, pinned
 
 Room codes are random in normal use, so a scenario always pins one with `gameId=`; the application drops these one-shot parameters from the URL after use so a reload resumes the same game.
 
-When a scenario needs particular outcomes, `dice=6,6,6,6,1,1,1,1,6` scripts the first die rolls of the game in the order the rules resolve them; after the script the seeded generator takes over. Shuffles never read the script. The script is committed with `game/created`, so replay reproduces it, and the scenario records what each value drives in a comment next to the `goto`.
+When a scenario needs particular outcomes, `dice=6,6,6,6,1,1,1,1,6` scripts the first die rolls of the game's main PRNG stream in the order the rules resolve them, and `dice-hunting=4,1` those of another stream (one per rule added since 014, see [implementation-plan.md](implementation-plan.md), Randomness); after the script the seeded generator takes over. Shuffles never read a script. The scripts are committed with `game/created`, so replay reproduces them, and the scenario records what each value drives in a comment next to the `goto`.
 
 Never monkey-patch `Date.now` or `Math.random` from a test; the application must accept a seed by design (see [state-and-persistence.md](state-and-persistence.md)).
 

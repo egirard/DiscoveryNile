@@ -17,10 +17,13 @@ export function situationOf(state: GameState, e: ExplorerState): Situation | nul
   return { terrain: terrainOf(state, hex), river: courseAt(state, hex) !== null, oasis: !!m?.oasis && m.oasisKnownTo.includes(e.seat), sea: coastal(hex) };
 }
 
-/** Whether this explorer draws a disaster card at the start of its turn. */
-export function drawsDisaster(e: ExplorerState): boolean {
+/** Camped in a hex outside a port of entry and Cape Colony: disasters are drawn, hunting and meals happen (G-44). */
+export function inTheField(e: ExplorerState): boolean {
   return e.location.kind === 'hex' && !!e.chart && !inCapeColony(e.location.hex);
 }
+
+/** Whether this explorer draws a disaster card at the start of its turn. */
+export const drawsDisaster = inTheField;
 
 export function drawDisaster(state: GameState, e: ExplorerState): GameState {
   if (!drawsDisaster(e) || !state.deck) return state;

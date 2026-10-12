@@ -225,6 +225,8 @@
                 onsail={explorer.location.kind === 'europe' ? () => (sailingSeat = sailingSeat === seat.id ? null : seat.id) : null}
                 sailing={sailingSeat === seat.id}
               />
+            {:else if explorer.lastMeal}
+              <RollLog seat={seat.id} log={[explorer.lastMeal]} />
             {/if}
           {/if}
         {:else}

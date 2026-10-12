@@ -82,7 +82,7 @@ test.describe('013 - Disaster cards', () => {
           const s = await state(page);
           expect(s.turn).toMatchObject({ current: 'bottom-1', round: 4, moved: false });
           expect(s.deck!.discard).toContain('card-1');
-          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ askaris: 4, bearers: 15, food: 100 });
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ askaris: 4, bearers: 15 });
           expect(s.diagnostics).toEqual([]);
         } }
       ]
