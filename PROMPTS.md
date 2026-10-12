@@ -53,3 +53,9 @@ We can substitute in a non-random die sequence for the purpose of running unit t
 resume as per instructions in discovery-nile-wip-012
 
 `Outcome: Resumed the roll-through. 012 (movement rates), 013 (disaster cards), 014 (hunting and rations, with named PRNG streams), 015 (water in the desert), 016 (natives discovered, policy chooser, retreat), 017 (native reaction and combat), 018 (defeat, captivity, escape, victory spoils), 019 (negotiation, poisoning, trade), 020 (tribe attitude and regard), 021 (sickness, starvation, desertion), 022 (specialties in the field), 023 (caches and reorganisation) and 024 (return to Europe) landed and pushed; river overlays no longer swallow taps; the rail's roll log wraps; G-32..77 logged. Paused before 025 for context.`
+
+## 7. 2026-10-12
+
+continue implementation
+
+`Outcome (in progress): 025 (publishing and points: claim on the board, stolen hexes, tally at the rail, the published map known to all) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..82 logged.`

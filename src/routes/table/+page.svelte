@@ -32,9 +32,12 @@
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
+  import Tally from '$features/scoring/Tally.svelte';
+  import { publishable, scoreOf } from '$features/scoring/score';
   import type { HexId } from '$features/map/hex';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
+  import type { SeatId } from '$lib/tabletop/seats';
 
   const layout = SEAT_LAYOUT;
   const seats = seatsFor(layout);
@@ -166,9 +169,22 @@
     const explorer = seat && explorerAt(gameState, seat.id);
     const hex = explorer && standingHex(explorer);
     if (!seat || !explorer || !explorer.chart || !hex || explorer.location.kind === 'captive') return null;
-    const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && c.seat === seat.id && c.round < gameState.turn!.round);
+    // One's own caches, and anyone's in a published hex (RQ-3).
+    const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && (c.seat === seat.id || !!gameState.map[hex]?.publishedBy) && c.round < gameState.turn!.round);
     return { seat, explorer, caches };
   });
+  // Publishing: the current seat, in Europe, opens the claim on the board; a tap on a marker hex publishes it.
+  let publishingSeat = $state<string | null>(null);
+  const publishTargets = $derived.by((): HexId[] => {
+    if (!publishingSeat || gameState.turn?.current !== publishingSeat || gameState.turn.phase !== 'act') return [];
+    const explorer = explorerAt(gameState, publishingSeat);
+    if (!explorer || explorer.location.kind !== 'europe') return [];
+    return publishable(gameState, publishingSeat as SeatId);
+  });
+  async function publish(hex: HexId) {
+    const seat = publishingSeat;
+    if (seat) await game?.append('hex/published', { seat, hex });
+  }
   async function perform(seat: string, specialty: string) {
     await game?.append('specialty/performed', { seat, specialty });
   }
@@ -232,7 +248,7 @@
   style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} />
+    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
   </div>
 
   {#if canStart}
@@ -310,7 +326,13 @@
             {:else}
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {/if}
+            <Tally seat={seat.id} points={scoreOf(gameState, seat.id as SeatId)} />
             {#if mine}
+              {#if explorer.location.kind === 'europe' && gameState.turn.phase === 'act' && publishable(gameState, seat.id as SeatId).length}
+                <button class="reorganise" data-testid="publish-{seat.id}" aria-label="Publish discoveries: choose the hexes on the map" aria-pressed={publishingSeat === seat.id} onclick={() => (publishingSeat = publishingSeat === seat.id ? null : seat.id)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z" /><path d="M15 3v4h4" /><path d="M8 12h8M8 16h8" /></svg>
+                </button>
+              {/if}
               {#if gameState.turn.movement}
                 {@const mv = gameState.turn.movement}
                 <span class="movement" data-testid="movement-{seat.id}" data-mode={mv.mode} data-left={mv.halted ? 0 : mv.points - mv.spent} aria-label="{mv.mode}: {mv.halted ? 0 : mv.points - mv.spent} of {mv.points} movement points left">

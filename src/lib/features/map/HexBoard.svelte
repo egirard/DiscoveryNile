@@ -34,8 +34,11 @@
     /** Cache markers left on the board (rules §5). */
     caches?: Cache[];
     onhex?: (hex: HexId) => void;
+    /** Hexes the explorer in Europe may publish now (rules §12): a tap claims one. */
+    publishable?: HexId[];
+    onpublish?: (hex: HexId) => void;
   }
-  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex }: Props = $props();
+  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
   const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
   const SQ3 = Math.sqrt(3);
@@ -141,8 +144,10 @@
         data-row={h.row}
         data-terrain={t ?? 'blank'}
         data-mapped={h.id in mapped}
+        data-published={mapped[h.id]?.publishedBy ?? undefined}
         class="hex {t ?? 'blank'}"
         class:explored={h.id in mapped}
+        class:published={Boolean(mapped[h.id]?.publishedBy)}
         points={hexPoints(c.x, c.y, radius * 0.96)}
       />
     {/each}
@@ -224,6 +229,21 @@
         aria-label="Move to {t.hex} {t.mode}, {t.cost} movement point{t.cost === 1 ? '' : 's'}{t.unknown ? ' (unknown: risk of becoming lost)' : ''}"
         onclick={() => onhex?.(t.hex)}
         onkeydown={(e) => e.key === 'Enter' && onhex?.(t.hex)}
+      />
+    {/each}
+    {#each publishable as hex (hex)}
+      {@const c = centre(hex)}
+      <circle
+        class="target publish"
+        r={radius * 0.98}
+        cx={c.x}
+        cy={c.y}
+        role="button"
+        tabindex="0"
+        data-testid="publish-target-{hex}"
+        aria-label="Publish {hex}"
+        onclick={() => onpublish?.(hex)}
+        onkeydown={(e) => e.key === 'Enter' && onpublish?.(hex)}
       />
     {/each}
     {#each RIVERS as r (r.id)}
@@ -401,6 +421,10 @@
     stroke: #efe6cc;
     stroke-width: 3px;
   }
+  /* Tokens sit over the targets; a tap on a hex another explorer stands in must still reach its target. */
+  .token {
+    pointer-events: none;
+  }
   .token circle {
     stroke: #efe6cc;
     stroke-width: 2;
@@ -433,6 +457,10 @@
   .hex.explored {
     stroke: #1c2a2e;
     stroke-width: 1.4;
+  }
+  /* A published hex is inked for good: a heavier outline than a hex still only claimed by markers. */
+  .hex.published {
+    stroke-width: 3;
   }
   .marker {
     stroke: #efe6cc;
@@ -471,6 +499,12 @@
   }
   .target.unknown {
     stroke-dasharray: 4 3;
+  }
+  .target.publish {
+    fill: #efe6cc;
+    fill-opacity: 0.5;
+    stroke: #1c2a2e;
+    stroke-width: 3;
   }
   .anchor {
     fill: none;

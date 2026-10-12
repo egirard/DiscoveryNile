@@ -90,6 +90,8 @@ export interface Tribe {
   /** Missionaries who have preached here and doctors who have treated here, once each (rules §9). */
   preachedBy: SeatId[];
   treatedBy: SeatId[];
+  /** Explorers who have defeated this tribe in a fight (one point when the hex is published, rules §12). */
+  defeatedBy: SeatId[];
 }
 
 /** Goods buried or hidden on a hex under one of the explorer's cache markers (rules §5, RQ-3). */
@@ -107,6 +109,8 @@ export interface MappedHex {
   terrain: Terrain;
   /** Seats holding a coloured marker here (visited, unpublished). */
   markers: SeatId[];
+  /** The seat that published the hex (rules §12); a published hex is known to every explorer. */
+  publishedBy: SeatId | null;
   /** The tribe marker on the hex, if natives were discovered. */
   tribe: number | null;
   /** Explorers who have rolled for natives here and found none (each rolls once, rules §7.7). */
@@ -122,7 +126,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -164,6 +168,15 @@ export interface TurnState {
   log: RollRecord[];
 }
 
+/** Points scored by a seat (rules §12): once scored they are never lost, whatever becomes of the explorer. */
+export interface ScoreEntry {
+  kind: 'hex' | 'tribe' | 'specimens' | 'works';
+  /** What was scored: a hex id, a tribe number, or the specialty. */
+  detail: string;
+  points: number;
+  round: number;
+}
+
 export interface DeckState {
   draw: CardId[];
   discard: CardId[];
@@ -188,9 +201,11 @@ export interface GameState {
   tribes: Record<number, Tribe>;
   /** Caches left on the board, by marker number. */
   caches: Record<number, Cache>;
+  /** Points scored, by seat, in the order they were scored (rules §12). */
+  scores: Partial<Record<SeatId, ScoreEntry[]>>;
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, diagnostics: [] };
 }

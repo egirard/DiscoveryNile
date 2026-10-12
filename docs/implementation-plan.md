@@ -227,9 +227,11 @@ Reaching a port, dismissing the expedition, sailing home, back in Europe next tu
 
 - **As landed:** `expedition/returned` at a port of entry (landed there or standing on its hex) clears the chart and sets a `homeward` location; the explorer is in Europe at the start of his next turn and the Europe turn draws as usual; markers, known hexes, specimens and good works remain for 025. Standing on a port's hex now counts as being in port for disasters and meals (G-76). Scenario 024 (seed 863): `homeward` → `back-in-europe`.
 
-### 25. Publishing and points — `025-publishing-and-points`
+### 25. Publishing and points — `025-publishing-and-points` ✅ landed
 
 Choosing hexes to publish in Europe, stealing contested hexes, extra cards per hex, points per hex, tribe and specimen, the published map becoming known to all, scores at each rail as countable marks.
+
+- **As landed:** in Europe a publish control at the rail opens the claim on the board: every hex under the seat's marker is offered and a tap sends `hex/published` for it. The hex records `publishedBy`, every marker on it comes off, its points (terrain and water from `map/scoring.ts`, the tribe discovered and, for its victor, defeated) go to `state.scores[seat]`, one donation card is drawn, and the rail notes what was counted. Each rail shows its score as tally marks (`scoring/Tally.svelte`), drawn only once a point exists. A published hex is known to all: no lost check or unknown-hex cost, no natives roll, no marker, no naturalist's turn, its oasis and its caches open to everyone (RQ-3), and a +1 on reactions with policies 3 and 5; published hexes south of the Orange or draining into it join Cape Colony (G-81). Specimens and good works score on landing in Europe (G-79). A halted expedition can no longer move by a direct event. Scenario 025 (seed 26): `contested` → `published` → `stolen`.
 
 ### 26. Death and retirement — `026-death-and-retirement`
 

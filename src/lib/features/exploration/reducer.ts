@@ -26,9 +26,14 @@ export function terrainOf(state: GameState, id: HexId): Terrain | null {
   return state.map[id]?.terrain ?? hexAt(id)?.terrain ?? null;
 }
 
-/** A hex is unknown to an explorer unless pre-printed or passed through (published hexes come later). */
-export function unknownTo(e: ExplorerState, id: HexId): boolean {
-  return hexAt(id)?.terrain == null && !e.known.includes(id);
+/** A hex is unknown to an explorer unless pre-printed, published, or passed through by him (rules §6). */
+export function unknownTo(state: GameState, e: ExplorerState, id: HexId): boolean {
+  return hexAt(id)?.terrain == null && !state.map[id]?.publishedBy && !e.known.includes(id);
+}
+
+/** The hex's oasis is known to this explorer: he found it, or the hex is published (rules §7.4). */
+export function oasisKnownTo(m: MappedHex | undefined, seat: string): boolean {
+  return !!m && m.oasis && (m.publishedBy !== null || m.oasisKnownTo.includes(seat as SeatId));
 }
 
 /** The river course through a hex as the table knows it: generated, else pre-printed. */
@@ -67,7 +72,7 @@ export function researchPending(e: ExplorerState): ('zoology' | 'geology')[] {
 
 /** A mapped, unpublished desert hex without a river whose oasis this explorer has not found. */
 export function oasisSearchable(m: MappedHex, seat: string): boolean {
-  return m.terrain === 'desert' && !m.river && !m.oasisKnownTo.includes(seat as SeatId);
+  return m.terrain === 'desert' && !m.river && !m.publishedBy && !m.oasisKnownTo.includes(seat as SeatId);
 }
 
 /** One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). */
@@ -116,7 +121,7 @@ function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): {
   if (terrain && !passable(mode, terrain, chart)) return `cannot enter ${terrain} ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}`;
   if (mode === 'canoe' && cataractAt(state, to) && chart.bearers < 8) return 'fewer than eight bearers cannot portage the cataract';
   const budget = state.turn!.movement ?? budgetFor(mode, chart);
-  const unknown = unknownTo(e, to);
+  const unknown = unknownTo(state, e, to);
   let cost = unknown ? budget.unknownCost : 1;
   if (mode === 'canoe' && terrain === 'swamp') cost *= 2;
   if (budget.halted) return 'the expedition is lost for this turn';
@@ -164,6 +169,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       if (directionTo(from, target) === null) return `${target} is not adjacent to ${from}`;
       const plan = stepPlan(state, explorer, from, target);
       if (typeof plan === 'string') return plan;
+      if (state.turn.moved) return 'the expedition cannot move again this turn'; // halted by a disaster, a stand, or the voyage home
       const { mode, cost } = plan;
       const chart = explorer.chart;
       let movement: MovementBudget = state.turn.movement ?? budgetFor(mode, chart);
@@ -199,9 +205,10 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         }
         map = {
           ...map,
-          [target]: { terrain, markers: [explorer.seat], river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? [explorer.seat] : [], peakFeet: water.result.peakFeet, tribe: null, nativesCheckedBy: [] }
+          [target]: { terrain, markers: [explorer.seat], publishedBy: null, river: water.result.river, oasis: water.result.oasis, oasisKnownTo: water.result.oasis ? [explorer.seat] : [], peakFeet: water.result.peakFeet, tribe: null, nativesCheckedBy: [] }
         };
-      } else if (!hexAt(target)?.terrain && !map[target].markers.includes(explorer.seat)) {
+      } else if (!hexAt(target)?.terrain && !map[target].publishedBy && !map[target].markers.includes(explorer.seat)) {
+        // Entering another explorer's unpublished hex places a marker too (rules §7.6); a published hex takes none.
         map = { ...map, [target]: { ...map[target], markers: [...map[target].markers, explorer.seat] } };
       }
       // A later explorer makes his own oasis check on first entering a mapped, river-less desert hex (G-49).
@@ -228,20 +235,21 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };
         log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : 'every canoe survives the cataract' });
       }
-      // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once here.
+      // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once
+      // here, unless the hex is published (then the world knows there are none).
       let tribes = state.tribes;
       let phase: 'act' | 'natives' = 'act';
       const entered = map[target];
       if (entered) {
         if (entered.tribe != null) phase = 'natives';
-        else if (!entered.nativesCheckedBy.includes(explorer.seat)) {
-          const water = entered.river !== null || (entered.oasis && entered.oasisKnownTo.includes(explorer.seat));
+        else if (!entered.publishedBy && !entered.nativesCheckedBy.includes(explorer.seat)) {
+          const water = entered.river !== null || oasisKnownTo(entered, explorer.seat);
           const found = discoverNatives(rng, entered.terrain, water, target);
           rng = found.rng;
           if (found.result.rolls.length) {
             if (found.result.found) {
               const id = Object.keys(tribes).length + 1;
-              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [] } };
+              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
@@ -253,7 +261,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         }
       }
       // A zoologist or geologist must spend a turn studying every unpublished hex he enters (rules §9).
-      const naturalist = explorer.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain;
+      const naturalist = explorer.specialties.some((sp) => sp === 'zoology' || sp === 'geology') && !hexAt(target)?.terrain && !map[target]?.publishedBy;
       const research = naturalist ? { hex: target, done: [] as ('zoology' | 'geology')[] } : null;
       const moved: ExplorerState = { ...explorer, location: { kind: 'hex', hex: target }, known, chart: nextChart, cameFrom: from, research };
       const done = finish({ ...replaceExplorer(state, moved), map, tribes }, { ...movement, spent: movement.spent + cost });

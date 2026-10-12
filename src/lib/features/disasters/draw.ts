@@ -5,7 +5,7 @@ import type { ExplorerState, GameState, RollRecord } from '$lib/game/state';
 import { card, type CardId } from '$features/cards/deck';
 import { shuffleWith } from '$lib/game/random';
 import { coastal } from '$features/exploration/movement';
-import { courseAt, terrainOf } from '$features/exploration/reducer';
+import { courseAt, oasisKnownTo, terrainOf } from '$features/exploration/reducer';
 import { inCapeColony } from './cape-colony';
 import { PORTS } from '$features/map/manifest';
 import { resolveDisaster, type Situation } from './resolve';
@@ -15,19 +15,19 @@ export function situationOf(state: GameState, e: ExplorerState): Situation | nul
   if (e.location.kind !== 'hex') return null;
   const hex = e.location.hex;
   const m = state.map[hex];
-  return { terrain: terrainOf(state, hex), river: courseAt(state, hex) !== null, oasis: !!m?.oasis && m.oasisKnownTo.includes(e.seat), sea: coastal(hex) };
+  return { terrain: terrainOf(state, hex), river: courseAt(state, hex) !== null, oasis: oasisKnownTo(m, e.seat), sea: coastal(hex) };
 }
 
 /** Camped in a hex outside a port of entry and Cape Colony: disasters are drawn, hunting and meals happen (G-44). */
-export function inTheField(e: ExplorerState): boolean {
-  return e.location.kind === 'hex' && !!e.chart && !inCapeColony(e.location.hex) && !PORTS.some((p) => p.hex === (e.location as { hex: string }).hex);
+export function inTheField(e: ExplorerState, map: GameState['map'] = {}): boolean {
+  return e.location.kind === 'hex' && !!e.chart && !inCapeColony(e.location.hex, map) && !PORTS.some((p) => p.hex === (e.location as { hex: string }).hex);
 }
 
 /** Whether this explorer draws a disaster card at the start of its turn. */
 export const drawsDisaster = inTheField;
 
 export function drawDisaster(state: GameState, e: ExplorerState): GameState {
-  if (!drawsDisaster(e) || !state.deck) return state;
+  if (!drawsDisaster(e, state.map) || !state.deck) return state;
   let { draw, discard } = state.deck;
   let rng = state.rng!;
   if (draw.length === 0) {

@@ -18,6 +18,7 @@ import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
+import { addScore, homecoming, valueOf } from '$features/scoring/score';
 
 export const OPENING_HAND = 5;
 export const HAND_LIMIT = 5;
@@ -82,8 +83,16 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
   }
   if (explorer.location.kind === 'homeward') {
     // Back in Europe the turn after leaving Africa (rules §12); the Europe turn then runs as usual.
-    explorer = { ...explorer, location: { kind: 'europe' } };
-    state = replaceExplorer(state, explorer);
+    // Specimens and the specialties' good works score on landing (G-79).
+    const landed = BOARD.ports[explorer.location.port].hex;
+    const brought = homecoming(explorer, turn.round);
+    explorer = { ...explorer, location: { kind: 'europe' }, specimens: { zoology: 0, geology: 0 }, goodWorks: { evangelism: 0, medicine: 0 } };
+    state = addScore(replaceExplorer(state, explorer), seat, brought);
+    if (brought.length) {
+      const points = brought.reduce((sum, e) => sum + e.points, 0);
+      const record: RollRecord = { kind: 'published', seat, hex: landed, rolls: [], outcome: `home with ${brought.map((e) => e.detail).join(' and ')}: ${points} point${points === 1 ? '' : 's'}` };
+      state = { ...state, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
+    }
   }
   if (explorer.location.kind === 'captive') return escapeAttempt(state, explorer);
   if (explorer.location.kind === 'hex') {
@@ -112,7 +121,7 @@ export { replaceExplorer };
 
 /** Hunting and the meal at the end of a turn in the field (rules §11): recorded on the explorer for its rail. */
 function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
-  if (!inTheField(explorer)) return state;
+  if (!inTheField(explorer, state.map)) return state;
   const camp = situationOf(state, explorer)!;
   const askaris = Math.max(0, explorer.chart!.askaris - explorer.sick.askaris);
   // A defensive stand (policy 1) forbids hunting (rules §8.1): the die is still rolled but no game is taken.
@@ -195,7 +204,7 @@ function lootVillage(state: GameState, explorer: ExplorerState, tribe: Tribe): G
 function reactionInput(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: HexId, policy: number) {
   return {
     policy, distanceToPort: distanceToNearestPort(hex), warriors: tribe.warriors, chart: explorer.chart!,
-    localKnowledge: guideFromAdjacent(explorer, hex) || tribe.negotiatedBy.includes(explorer.seat), attitude: tribe.attitude, regard: tribe.regard[explorer.seat] ?? 0,
+    localKnowledge: guideFromAdjacent(explorer, hex) || tribe.negotiatedBy.includes(explorer.seat) || !!state.map[hex]?.publishedBy, attitude: tribe.attitude, regard: tribe.regard[explorer.seat] ?? 0,
     inDesert: terrainOf(state, hex) === 'desert', mounted: modeFor(explorer.chart!, false) === 'mounted'
   };
 }
@@ -224,7 +233,8 @@ function settle(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: He
     rng = v.rng;
     log.push({ kind: 'victory', seat: explorer.seat, hex, rolls: v.rolls, outcome: v.summary });
     const chart = { ...result.chart, bearers: result.chart.bearers + v.prisoners, camels: result.chart.camels + (terrainOf(state, hex) === 'desert' ? v.prisoners : 0) };
-    tribes = { ...tribes, [tribe.id]: { ...tribes[tribe.id], warriors: result.warriors - v.prisoners } };
+    const defeatedBy = tribe.defeatedBy.includes(explorer.seat) ? tribe.defeatedBy : [...tribe.defeatedBy, explorer.seat];
+    tribes = { ...tribes, [tribe.id]: { ...tribes[tribe.id], warriors: result.warriors - v.prisoners, defeatedBy } };
     next = { ...replaceExplorer(next, { ...explorer, chart }), rng, tribes, turn: { ...turn, phase: 'act', log } };
     const after = currentExplorer(next)!;
     if (v.villageFound) return spoilsOrLoot(next, after, tribes[tribe.id], v.prisoners, policy, tribe.warriors);
@@ -576,6 +586,24 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex: BOARD.ports[port].hex, rolls: [], outcome: `the expedition is dismissed at ${BOARD.ports[port].name}; passage home is free` };
       return { ...replaceExplorer(state, { ...explorer, location: { kind: 'homeward', port }, chart: null, lastMeal: null, research: null, cameFrom: null }), turn: { ...state.turn, moved: true, log: [...state.turn.log, record] } };
     }
+    case 'hex/published': {
+      // In Europe (rules §12): claim a hex under one's marker, even one mapped by another; every marker comes off,
+      // the hex is known to all, its points are scored and one donation card is drawn.
+      const { seat, hex } = event.payload as { seat?: string; hex?: unknown };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'act') return 'not now';
+      const explorer = currentExplorer(state)!;
+      if (explorer.location.kind !== 'europe') return 'hexes are published in Europe';
+      if (typeof hex !== 'string' || !state.map[hex]) return 'hex/published needs a hex mapped in play';
+      const m = state.map[hex];
+      if (m.publishedBy) return `${hex} is already published`;
+      if (!m.markers.includes(explorer.seat)) return `no marker of ${seat} on ${hex}`;
+      const value = valueOf(state, hex as HexId, explorer.seat, state.turn.round);
+      const record: RollRecord = { kind: 'published', seat: explorer.seat, hex: hex as HexId, rolls: [], outcome: `${hex} published (${value.parts.join(', ')}): ${value.points} point${value.points === 1 ? '' : 's'}, a card drawn` };
+      const published: GameState = { ...addScore(state, explorer.seat, value.entries), map: { ...state.map, [hex]: { ...m, markers: [], publishedBy: explorer.seat } }, turn: { ...state.turn, log: [...state.turn.log, record] } };
+      return drawOne(published, explorer);
+    }
     case 'expedition/reorganised': {
       // Any turn (rules §5): cache goods under a marker, dismiss men, turn animals loose or eat them.
       const { seat, action, item, count } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown };
@@ -630,7 +658,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const cache = typeof cacheId === 'number' ? state.caches[cacheId] : undefined;
       if (!cache) return 'no such cache';
       if (!hex || explorer.location.kind === 'captive' || cache.hex !== hex) return 'the cache is not here';
-      if (cache.seat !== explorer.seat) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
+      if (cache.seat !== explorer.seat && !state.map[hex]?.publishedBy) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
       if (cache.round >= state.turn.round) return 'a cache is dug up on a later turn';
       // Returning to a cache: on a 1 or 2 it has disappeared (rules §5).
       const r = d6(state.rng!, 'cache');

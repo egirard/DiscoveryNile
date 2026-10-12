@@ -59,7 +59,7 @@ describe('water/taken and the desert camp', () => {
 });
 
 describe('a later explorer\'s oasis search (rules §7.4)', () => {
-  const hex = (oasis: boolean): MappedHex => ({ terrain: 'desert', markers: ['bottom-1'], river: null, oasis, oasisKnownTo: oasis ? ['bottom-1'] : [], peakFeet: null, tribe: null, nativesCheckedBy: [] });
+  const hex = (oasis: boolean): MappedHex => ({ terrain: 'desert', markers: ['bottom-1'], river: null, oasis, oasisKnownTo: oasis ? ['bottom-1'] : [], peakFeet: null, tribe: null, nativesCheckedBy: [], publishedBy: null });
   it('rolls on the water stream: an even roll finds an oasis that exists; nothing is found where there is none', () => {
     expect(oasisSearchable(hex(true), 'top-1')).toBe(true);
     expect(oasisSearchable(hex(true), 'bottom-1')).toBe(false);

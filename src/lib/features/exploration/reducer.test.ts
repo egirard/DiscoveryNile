@@ -45,7 +45,7 @@ describe('expedition/moved from a port (rules §7)', () => {
     const targets = moveTargets(s, e);
     expect(targets.map((t) => t.hex).sort()).toEqual(['c13r35', 'c13r36', 'c14r35', 'c15r36']);
     expect(targets.every((t) => !t.unknown && t.mode === 'foot' && t.cost === 1)).toBe(true); // the Cape is pre-printed
-    expect(unknownTo(e, 'c12r20')).toBe(true);
+    expect(unknownTo(s, e, 'c12r20')).toBe(true);
   });
   it('on foot moves two known hexes without a roll and no more that turn', () => {
     const { events, first } = landedAt(5, 'port-elizabeth');

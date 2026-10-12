@@ -36,7 +36,7 @@ test.describe('024 - Return to Europe', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Return to Europe',
-      'To publish, an explorer must get back to Europe. At any port of entry (landed there, or standing on its hex) the rail offers the voyage home: the men are dismissed with the supplies as their bonus, the chart is cleared, and the government pays the passage. The explorer is at sea for the rest of the round and back in Europe at the start of his next turn, when the Europe turn resumes with a card drawn. His markers, known hexes, specimens and good works stay with him for publishing.'
+      'To publish, an explorer must get back to Europe. At any port of entry (landed there, or standing on its hex) the rail offers the voyage home: the men are dismissed with the supplies as their bonus, the chart is cleared, and the government pays the passage. The explorer is at sea for the rest of the round and back in Europe at the start of his next turn, when the Europe turn resumes with a card drawn. His markers, known hexes, specimens and good works stay with him for publishing (025).'
     );
 
     // Seed 863 as in scenarios 013, 014, 021 and 023: bottom-1 pays passage to Mombasa and keeps $700. Hunting 1,1.
@@ -82,9 +82,9 @@ test.describe('024 - Return to Europe', () => {
     await passTurn(page);
 
     await steps.step('back-in-europe', {
-      description: 'The next turn opens in Europe: a donation card is drawn, the sail control is back, and the markers left in Africa wait to be published',
+      description: 'The next turn opens in Europe: a donation card is drawn, the sail control is back, and the hexes he walked stay known to him',
       verifications: [
-        { spec: 'The explorer is in Europe with one card and the sail control; the marker on c25r11 remains', check: async () => {
+        { spec: 'The explorer is in Europe with one card and the sail control; c25r11 (pre-printed veldt, so never marked) stays known to him', check: async () => {
           await expect(page.getByTestId('explorer-token-bottom-1')).toHaveAttribute('data-location', 'europe');
           await expect(page.getByTestId('hand-bottom-1')).toHaveAttribute('data-count', '1');
           await expect(page.getByTestId('sail-bottom-1')).toBeVisible();
