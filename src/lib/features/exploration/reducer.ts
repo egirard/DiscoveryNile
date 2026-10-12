@@ -231,7 +231,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
           if (found.result.rolls.length) {
             if (found.result.found) {
               const id = Object.keys(tribes).length + 1;
-              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null } };
+              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });

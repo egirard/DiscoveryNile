@@ -2,7 +2,7 @@ import type { SeatId } from '$lib/tabletop/seats';
 import type { RngState } from './random';
 import type { CardId } from '$features/cards/deck';
 import type { PortId } from '$features/map/manifest';
-import type { Chart } from '$features/expedition/prices';
+import type { Chart, Item } from '$features/expedition/prices';
 import type { HexId } from '$features/map/hex';
 import type { Terrain } from '$features/map/manifest';
 import type { Modifier, Roll } from '$features/map/generate';
@@ -62,6 +62,8 @@ export interface ExplorerState {
   known: HexId[];
   /** The hex (or port hex) the last step was made from: where a retreat goes (rules §8.1). */
   cameFrom: HexId | null;
+  /** Added to later poisoning rolls after a recovery (rules §8.5). */
+  poisonBonus: number;
 }
 
 /** A tribe discovered in play (rules §7.7), numbered as its marker. */
@@ -73,6 +75,8 @@ export interface Tribe {
   attitude: number;
   /** After a victory whose village was not found: the explorer may search again while he stays (rules §8.4). */
   pending: { by: SeatId; prisoners: number; policy: number; original: number } | null;
+  /** Explorers who have negotiated with this tribe (+1 on later contacts with policies 3 and 5). */
+  negotiatedBy: SeatId[];
 }
 
 /** A hex whose terrain has been determined in play. */
@@ -95,7 +99,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -113,10 +117,11 @@ export interface RollRecord {
 /**
  * Where the current seat is in its turn. `discard`: over the hand limit, must choose discards
  * before drawing. `natives`: in a hex with natives, a policy must be chosen (rules §8.1).
- * `spoils`: a village found after a victory, prisoners to release or keep (rules §8.4). `act`: free to
+ * `spoils`: a village found after a victory, prisoners to release or keep (rules §8.4). `negotiate`: a
+ * calm chief awaits the explorer's gifts (§8.5); `trade`: permission granted, prices rolled. `act`: free to
  * publish, sail or end the turn.
  */
-export type Phase = 'discard' | 'natives' | 'spoils' | 'act';
+export type Phase = 'discard' | 'natives' | 'spoils' | 'negotiate' | 'trade' | 'act';
 
 export interface TurnState {
   /** Seats with explorers, clockwise from the first player. */
@@ -130,6 +135,8 @@ export interface TurnState {
   movement: MovementBudget | null;
   /** The policy chosen towards the natives this turn (rules §8.1), once chosen. */
   policy: number | null;
+  /** Trade permitted this turn: the tribe and the prices rolled (rules §8.5). */
+  trade: { tribe: number; prices: Partial<Record<Item, number>> } | null;
   /** Rolls shown this turn. */
   log: RollRecord[];
 }

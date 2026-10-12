@@ -59,7 +59,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 016-natives-discovered-and-policy  landed
 017-native-reaction-and-combat     landed
 018-defeat-escape-and-victory      landed
-019-negotiation-and-trade
+019-negotiation-and-trade          landed
 020-tribe-attitude
 021-sickness-starvation-desertion
 022-specialties-in-the-field
@@ -191,9 +191,11 @@ Consequences of defeat, captivity with per-turn escape rolls, the Escape Surviva
 
 - **As landed:** `natives/aftermath.ts` resolves the consequences-of-defeat table (killed, held prisoner, escapes alone or with a musket, nine rations and survival rolls limited to what the expedition had), captivity as a location with an escape roll at −3 every turn, and the results of victory: prisoners (joining as bearers), the village search with a retry each turn while the explorer stays, and looting a die per warrior met; `natives/spoils` on an edge panel chooses release (attitude +3) or keep and loot. A killed explorer's seat is skipped in the turn order (G-62); desertion stopping waits for 021. Scenario 018 (seed 18, scripted combat dice): `village-found` → `looted` → `captured` → `escaped`. The rail's roll log now wraps into rows.
 
-### 19. Negotiation and trade — `019-negotiation-and-trade`
+### 19. Negotiation and trade — `019-negotiation-and-trade` ✅ landed
 
 Gift offers, insulted chiefs and poisoning, "give everything", trade prices rolled per item per turn, hiring natives, buying and selling across turns.
+
+- **As landed:** a calm reaction to policy 3 or 5 opens the `negotiate` phase and a panel at the edge: offer gifts (`natives/offered`, gifts × the larger of two dice against the warriors), give everything but the men (three dice of gifts back), or decline; an insulted chief keeps the gifts (G-64) and reconsiders through the same hide-or-attack and fight as a hostile reaction, poisoning the explorer when too weak to attack (dies, recovers with a bonus, or fails). A satisfied chief rolls a price per item for sale here (animals in the desert, canoes on water, rations per gift, bearers, guides, askaris plus a musket) and the `trade` phase's panel buys and sells one at a time (`natives/traded`, `natives/done`); prior negotiation counts as local knowledge on later contacts. Scenario 019 (seed 18, scripted combat dice): `chief-satisfied` → `traded` → `given-everything`; the insult and poison path is unit-tested.
 
 ### 20. Tribe attitude — `020-tribe-attitude`
 

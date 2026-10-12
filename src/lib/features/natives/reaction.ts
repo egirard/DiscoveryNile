@@ -45,8 +45,6 @@ export function reactionModifiers(input: ReactionInput): Modifier[] {
 }
 
 export function react(rng: RngState, input: ReactionInput): ReactionResult {
-  const chart = { ...input.chart };
-  let warriors = input.warriors;
   const three = dice(rng, 3, 'combat');
   rng = three.state;
   const modifiers = reactionModifiers(input);
@@ -54,6 +52,15 @@ export function react(rng: RngState, input: ReactionInput): ReactionResult {
   const total = three.values.reduce((a, b) => a + b, 0);
   const hostile = target < total;
   const reaction = { rolls: three.values.map((value) => ({ label: 'reaction', value })), modifiers, target, total, hostile };
+  if (!hostile) return { rng, reaction, combat: [], outcome: 'calm', summary: 'the natives are not hostile', chart: { ...input.chart }, warriors: input.warriors };
+  const h = hostilities(rng, input);
+  return { ...h, reaction };
+}
+
+/** Hostile natives: strong enough to attack, or do they hide? Then the fight (rules §8.2–8.3). Also an insulted chief's second thoughts (§8.5). */
+export function hostilities(rng: RngState, input: ReactionInput): Omit<ReactionResult, 'reaction'> {
+  const chart = { ...input.chart };
+  let warriors = input.warriors;
   const combat: Roll[] = [];
   const roll = (label: string) => {
     const r = d6(rng, 'combat');
@@ -61,8 +68,7 @@ export function react(rng: RngState, input: ReactionInput): ReactionResult {
     combat.push({ label, value: r.value });
     return r.value;
   };
-  const done = (outcome: Outcome, summary: string): ReactionResult => ({ rng, reaction, combat, outcome, summary, chart, warriors });
-  if (!hostile) return done('calm', 'the natives are not hostile');
+  const done = (outcome: Outcome, summary: string): Omit<ReactionResult, 'reaction'> => ({ rng, combat, outcome, summary, chart, warriors });
 
   // Hostile: strong enough to attack? d6 × askaris ÷ policy against the warriors.
   const strength = Math.floor((roll('strength') * chart.askaris) / input.policy);

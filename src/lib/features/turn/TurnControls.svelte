@@ -36,6 +36,10 @@
     <span class="prompt" data-testid="spoils-prompt-{seat}" aria-label="The village is found: deal with the prisoners on the panel">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11" /><path d="M10 20v-6h4v6" /></svg>
     </span>
+  {:else if phase === 'negotiate' || phase === 'trade'}
+    <span class="prompt" data-testid="{phase}-prompt-{seat}" aria-label={phase === 'negotiate' ? 'The chief awaits gifts: negotiate on the panel' : 'Trade on the panel, then finish'}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18" /><path d="M7 8l-4 4 4 4" /><path d="M17 8l4 4-4 4" /></svg>
+    </span>
   {:else if confirming}
     <button class="confirm" data-testid="confirm-end-turn-{seat}" aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>

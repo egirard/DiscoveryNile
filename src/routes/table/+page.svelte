@@ -26,6 +26,8 @@
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
   import PolicyChooser from '$features/natives/PolicyChooser.svelte';
   import SpoilsChooser from '$features/natives/SpoilsChooser.svelte';
+  import NegotiationPanel from '$features/natives/NegotiationPanel.svelte';
+  import TradePanel from '$features/natives/TradePanel.svelte';
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
@@ -140,6 +142,28 @@
     const tribe = id != null ? gameState.tribes[id] : undefined;
     return tribe?.pending ? { seat, prisoners: tribe.pending.prisoners } : null;
   });
+  const negotiating = $derived.by(() => {
+    if (gameState.turn?.phase !== 'negotiate') return null;
+    const seat = seats.find((s) => s.id === gameState.turn!.current);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer || explorer.location.kind !== 'hex' || !explorer.chart) return null;
+    const id = gameState.map[explorer.location.hex]?.tribe;
+    const tribe = id != null ? gameState.tribes[id] : undefined;
+    return tribe ? { seat, explorer, tribe } : null;
+  });
+  const trading = $derived.by(() => {
+    if (gameState.turn?.phase !== 'trade' || !gameState.turn.trade) return null;
+    const seat = seats.find((s) => s.id === gameState.turn!.current);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer || !explorer.chart) return null;
+    return { seat, explorer, prices: gameState.turn.trade.prices };
+  });
+  async function offerChief(seat: string, payload: Record<string, unknown>) {
+    await game?.append('natives/offered', { seat, ...payload });
+  }
+  async function trade(seat: string, item: string, count: number, direction: 'buy' | 'sell') {
+    await game?.append('natives/traded', { seat, item, count, direction });
+  }
   async function chooseSpoils(seat: string, choice: 'release' | 'keep') {
     await game?.append('natives/spoils', { seat, choice });
   }
@@ -218,6 +242,18 @@
   {#if dealingSpoils}
     <EdgePanel seat={dealingSpoils.seat} {viewport} inset={railDepth + target * 0.4} testid="spoils-edge-{dealingSpoils.seat.id}">
       <SpoilsChooser seat={dealingSpoils.seat.id} prisoners={dealingSpoils.prisoners} onchoose={(choice) => chooseSpoils(dealingSpoils!.seat.id, choice)} />
+    </EdgePanel>
+  {/if}
+
+  {#if negotiating}
+    <EdgePanel seat={negotiating.seat} {viewport} inset={railDepth + target * 0.4} testid="negotiation-edge-{negotiating.seat.id}">
+      <NegotiationPanel seat={negotiating.seat.id} tribe={negotiating.tribe.id} warriors={negotiating.tribe.warriors} gifts={negotiating.explorer.chart!.gifts}
+        onoffer={(gifts) => offerChief(negotiating!.seat.id, { gifts })} oneverything={() => offerChief(negotiating!.seat.id, { everything: true })} ondecline={() => offerChief(negotiating!.seat.id, { decline: true })} />
+    </EdgePanel>
+  {/if}
+  {#if trading}
+    <EdgePanel seat={trading.seat} {viewport} inset={railDepth + target * 0.4} testid="trade-edge-{trading.seat.id}">
+      <TradePanel seat={trading.seat.id} prices={trading.prices} chart={trading.explorer.chart!} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
     </EdgePanel>
   {/if}
 
