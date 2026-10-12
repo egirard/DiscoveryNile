@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOARD, LAND_HEXES, PORTS, RIVERS, blankHexes, hexAt, isLand } from './manifest';
+import { BOARD, LAND_HEXES, PORTS, RIVERS, blankHexes, hasRiver, hexAt, isCataract, isLand, riverEdges, riverMouths, riversAt } from './manifest';
 import { directionTo, parseHexId } from './hex';
 
 describe('board manifest', () => {
@@ -78,5 +78,23 @@ describe('pre-printed rivers', () => {
     const nile = RIVERS.find((r) => r.id === 'white-nile')!;
     expect(nile.path[0]).toBe('c20r1');
     expect(hexAt(nile.path.at(-1)!)?.terrain).toBe('swamp');
+  });
+});
+
+describe('river helpers', () => {
+  it('finds both Niles at Khartoum and the edges of the White Nile', () => {
+    expect(riversAt('c20r1').map((r) => r.id).sort()).toEqual(['blue-nile', 'white-nile']);
+    const edges = riverEdges('c20r2');
+    expect(edges).toHaveLength(2);
+    expect(edges.find((e) => e.downstream)?.direction).toBe(directionTo('c20r2', 'c20r1'));
+    expect(edges.find((e) => !e.downstream)?.direction).toBe(directionTo('c20r2', 'c19r3'));
+    expect(hasRiver('c20r2')).toBe(true);
+    expect(hasRiver('c10r10')).toBe(false);
+  });
+  it('knows the printed cataracts and the mouths', () => {
+    expect(isCataract('c7r15')).toBe(true);
+    expect(isCataract('c22r5')).toBe(true);
+    expect(isCataract('c20r2')).toBe(false);
+    expect(riverMouths().map((m) => m.river.id).sort()).toEqual(['congo', 'cunene', 'limpopo', 'niger', 'ogooue', 'orange', 'rufiji', 'white-nile', 'zambezi']);
   });
 });

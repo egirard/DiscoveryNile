@@ -11,3 +11,5 @@ Every educated guess made while rolling through `docs/implementation-plan.md` wi
 | G-5 | 003 | Printed river courses that run along hex edges (Congo, Rufiji, Zambezi, Limpopo) | Assigned to the hexes listed in `build.py`; the Limpopo ends in jungle-swamp c19r30 | `RQ-5` |
 | G-6 | 003 | Swamp versus veldt symbols in the Cape and the Limpopo lowveld are hard to tell apart in the photo | Veldt unless the symbol has a visible base line (c18r30, c19r29 swamp; c19r30, c20r25, c23r17, c23r23 jungle-swamp) | `RQ-5` |
 | G-7 | 003 | Partial hexes cut by the board edge (top row, left column, east edge) | Excluded unless more than half the hex is on the board | `tools/mapfit/build.py` |
+| G-8 | 004 | The rulebook's points table has no entry for mountain hexes | Mountain scores 0 on its own, literally as printed; see `RQ-14` | `scoring.ts` |
+| G-9 | 004 | Where a printed river meets the sea or leaves the board, how far to draw it | Extended one hex radius seaward from the mouth (and off-board for the Niger and Nile), with the drainage number placed just seaward | `HexBoard.svelte` |

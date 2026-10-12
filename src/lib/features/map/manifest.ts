@@ -71,3 +71,44 @@ export function isLand(id: string): boolean {
 export function blankHexes(): BoardHex[] {
   return LAND_HEXES.filter((h) => h.terrain === null);
 }
+
+// ---- Rivers -------------------------------------------------------------------------------
+
+import { directionTo, type Direction } from './hex';
+
+export interface RiverEdge {
+  river: string;
+  /** Direction from this hex to the adjacent hex on the same river. */
+  direction: Direction;
+  /** True when the adjacent hex is nearer the mouth (downstream). */
+  downstream: boolean;
+}
+
+/** Every river edge leaving `id` along a pre-printed river: who it connects to and which way is downstream. */
+export function riverEdges(id: HexId): RiverEdge[] {
+  const out: RiverEdge[] = [];
+  for (const r of RIVERS) {
+    const i = r.path.indexOf(id);
+    if (i < 0) continue;
+    if (i > 0) out.push({ river: r.id, direction: directionTo(id, r.path[i - 1])!, downstream: true });
+    if (i < r.path.length - 1) out.push({ river: r.id, direction: directionTo(id, r.path[i + 1])!, downstream: false });
+  }
+  return out;
+}
+
+export function riversAt(id: HexId): River[] {
+  return RIVERS.filter((r) => r.path.includes(id));
+}
+
+export function hasRiver(id: HexId): boolean {
+  return RIVERS.some((r) => r.path.includes(id));
+}
+
+export function isCataract(id: HexId): boolean {
+  return RIVERS.some((r) => r.cataracts.includes(id));
+}
+
+/** The hex where each main river meets the sea (or the board edge for the Nile): the first of its path. */
+export function riverMouths(): { river: River; hex: HexId }[] {
+  return RIVERS.filter((r) => !r.joins).map((r) => ({ river: r, hex: r.path[0] }));
+}

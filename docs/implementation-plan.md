@@ -44,7 +44,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 001-app-shell-and-seats            landed (template)
 002-phone-takes-a-seat             landed (template)
 003-africa-board-and-six-seats     landed
-004-known-africa
+004-known-africa                   landed
 005-commission-an-explorer
 006-first-player-and-donations
 007-a-turn-in-europe
@@ -91,7 +91,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Baselines changed:** 001 (six rails instead of four), explained in the commit.
 - Issue spec: [`.github/ISSUES/003-africa-board-and-six-seats.md`](../.github/ISSUES/003-africa-board-and-six-seats.md).
 
-### 4. The known Africa of 1820 — `004-known-africa`
+### 4. The known Africa of 1820 — `004-known-africa` ✅ landed
 
 - **Player sees:** the pre-printed periphery: desert across the north and down the south-west coast, the Abyssinian mountains, the Sudd, the Cape's veldt and mountains, coastal veldt and jungle, the pre-printed rivers (White and Blue Nile, Niger and Benue, Ogooué, Congo, Cunene, Orange and Vaal, Limpopo, Zambezi, Rufiji) with their drainage numbers at the mouth, the pre-printed cataracts, and Zanzibar. Blank hexes are visibly blank.
 - **Introduced:** terrain, river segment, feature and drainage-number fields in the manifest; terrain and river iconography (original SVG, omnidirectional); `tableView` selector exposing hex terrain.
