@@ -58,7 +58,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 015-water-in-the-desert            landed
 016-natives-discovered-and-policy  landed
 017-native-reaction-and-combat     landed
-018-defeat-escape-and-victory
+018-defeat-escape-and-victory      landed
 019-negotiation-and-trade
 020-tribe-attitude
 021-sickness-starvation-desertion
@@ -185,9 +185,11 @@ Three-dice reaction with all modifiers shown, hide-or-attack, surprise, volley, 
 
 - **As landed:** `natives/react` in `natives/reaction.ts` resolves rules §8.2–8.3 on the `combat` stream for policies 1, 3, 4 and 5 (G-55): reaction dice with modifiers, strength (hide or attack), surprise with the mounted and desert adjustments, the volley, then alternating strikes until victory or defeat; askari losses go to the chart and warrior losses to the tribe, which keeps its survivors; the rail shows the reaction and every combat die with a narrated note. Defeat's consequences and victory's spoils wait for 018 (G-57). Scenario 017 (seed 18, scripted combat dice): `the-fight` → `they-hide`.
 
-### 18. Defeat, escape and victory — `018-defeat-escape-and-victory`
+### 18. Defeat, escape and victory — `018-defeat-escape-and-victory` ✅ landed
 
 Consequences of defeat, captivity with per-turn escape rolls, the Escape Survival table, victory, prisoners, finding and looting the village, desertion stopping.
+
+- **As landed:** `natives/aftermath.ts` resolves the consequences-of-defeat table (killed, held prisoner, escapes alone or with a musket, nine rations and survival rolls limited to what the expedition had), captivity as a location with an escape roll at −3 every turn, and the results of victory: prisoners (joining as bearers), the village search with a retry each turn while the explorer stays, and looting a die per warrior met; `natives/spoils` on an edge panel chooses release (attitude +3) or keep and loot. A killed explorer's seat is skipped in the turn order (G-62); desertion stopping waits for 021. Scenario 018 (seed 18, scripted combat dice): `village-found` → `looted` → `captured` → `escaped`. The rail's roll log now wraps into rows.
 
 ### 19. Negotiation and trade — `019-negotiation-and-trade`
 

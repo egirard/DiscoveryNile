@@ -25,6 +25,7 @@
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
   import PolicyChooser from '$features/natives/PolicyChooser.svelte';
+  import SpoilsChooser from '$features/natives/SpoilsChooser.svelte';
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
@@ -130,6 +131,18 @@
     const tribe = id != null ? gameState.tribes[id] : undefined;
     return tribe ? { seat, explorer, tribe } : null;
   });
+  const dealingSpoils = $derived.by(() => {
+    if (gameState.turn?.phase !== 'spoils') return null;
+    const seat = seats.find((s) => s.id === gameState.turn!.current);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer || explorer.location.kind !== 'hex') return null;
+    const id = gameState.map[explorer.location.hex]?.tribe;
+    const tribe = id != null ? gameState.tribes[id] : undefined;
+    return tribe?.pending ? { seat, prisoners: tribe.pending.prisoners } : null;
+  });
+  async function chooseSpoils(seat: string, choice: 'release' | 'keep') {
+    await game?.append('natives/spoils', { seat, choice });
+  }
   async function choosePolicy(seat: string, policy: number) {
     await game?.append('natives/policy', { seat, policy });
   }
@@ -199,6 +212,12 @@
   {#if facingNatives}
     <EdgePanel seat={facingNatives.seat} {viewport} inset={railDepth + target * 0.4} testid="policy-edge-{facingNatives.seat.id}">
       <PolicyChooser seat={facingNatives.seat.id} tribe={facingNatives.tribe.id} warriors={facingNatives.tribe.warriors} onchoose={(policy) => choosePolicy(facingNatives!.seat.id, policy)} />
+    </EdgePanel>
+  {/if}
+
+  {#if dealingSpoils}
+    <EdgePanel seat={dealingSpoils.seat} {viewport} inset={railDepth + target * 0.4} testid="spoils-edge-{dealingSpoils.seat.id}">
+      <SpoilsChooser seat={dealingSpoils.seat.id} prisoners={dealingSpoils.prisoners} onchoose={(choice) => chooseSpoils(dealingSpoils!.seat.id, choice)} />
     </EdgePanel>
   {/if}
 

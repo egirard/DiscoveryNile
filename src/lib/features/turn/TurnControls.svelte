@@ -32,6 +32,10 @@
     <span class="prompt" data-testid="policy-prompt-{seat}" aria-label="Natives in the hex: choose a policy on the panel">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7" r="3" /><path d="M5 21v-3a7 7 0 0 1 14 0v3" /><path d="M12 11v4" /></svg>
     </span>
+  {:else if phase === 'spoils'}
+    <span class="prompt" data-testid="spoils-prompt-{seat}" aria-label="The village is found: deal with the prisoners on the panel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11" /><path d="M10 20v-6h4v6" /></svg>
+    </span>
   {:else if confirming}
     <button class="confirm" data-testid="confirm-end-turn-{seat}" aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>

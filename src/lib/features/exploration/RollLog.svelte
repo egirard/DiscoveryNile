@@ -24,7 +24,8 @@
           </span>
         {/if}
         {#if r.rolls.length}
-          <DiceRoll values={r.rolls.map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.55)" />
+          <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.45)" />
+          {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
         {/if}
         {#if r.kind === 'disaster' && r.applies}
           <span class="note" data-testid="disaster-note-{seat}">{r.outcome}</span>
@@ -32,7 +33,7 @@
           <span class="note" data-testid="meal-note-{seat}">{r.outcome}</span>
         {:else if r.kind === 'natives'}
           <span class="note" data-testid="natives-note-{seat}">{r.outcome}</span>
-        {:else if r.kind === 'reaction' || r.kind === 'combat'}
+        {:else if r.kind === 'reaction' || r.kind === 'combat' || r.kind === 'defeat' || r.kind === 'captivity' || r.kind === 'victory' || r.kind === 'loot'}
           <span class="note" data-testid="{r.kind}-note-{seat}">{r.outcome}</span>
         {/if}
         {#if r.modifiers?.length}
@@ -51,10 +52,15 @@
 
 <style>
   .log {
+    /* The turn's records wrap into rows so a long turn (natives, reaction, fight, spoils) stays on the rail. */
     display: inline-flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: var(--gap);
+    align-content: center;
+    gap: calc(var(--gap) * 0.4) var(--gap);
     margin-left: var(--gap);
+    max-width: calc(var(--target) * 12.5);
+    max-height: calc(var(--rail-depth) - var(--gap));
   }
   .entry {
     display: inline-flex;
@@ -100,11 +106,17 @@
   }
   .note {
     font-family: system-ui, sans-serif;
-    font-size: calc(var(--target) * 0.26);
+    font-size: calc(var(--target) * 0.22);
     color: var(--paper);
     width: max-content;
-    max-width: calc(var(--target) * 5);
+    max-width: calc(var(--target) * 3.5);
     line-height: 1.1;
+  }
+  .more {
+    font-family: system-ui, sans-serif;
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.26);
+    color: var(--paper);
   }
   .badge {
     width: var(--target);

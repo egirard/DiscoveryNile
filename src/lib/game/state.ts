@@ -28,6 +28,8 @@ export type ExplorerLocation =
   | { kind: 'voyage'; port: PortId } // booked passage; arrives at the start of the explorer's next turn, which is skipped
   | { kind: 'port'; port: PortId }
   | { kind: 'hex'; hex: HexId }
+  /** Held prisoner by a tribe (rules §8.4): an escape roll every turn; `had` is the chart at capture, for the survival table. */
+  | { kind: 'captive'; hex: HexId; tribe: number; had: Chart }
   | { kind: 'dead' };
 
 /** Who in the expedition is sick (rules §10–11). Consequences of sickness arrive with slice 021. */
@@ -69,6 +71,8 @@ export interface Tribe {
   warriors: number;
   /** Attitude level, starting at 0 (rules §8.6). */
   attitude: number;
+  /** After a victory whose village was not found: the explorer may search again while he stays (rules §8.4). */
+  pending: { by: SeatId; prisoners: number; policy: number; original: number } | null;
 }
 
 /** A hex whose terrain has been determined in play. */
@@ -91,7 +95,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot';
   seat: SeatId;
   hex: HexId;
   /** The disaster card drawn this turn (rules §10). */
@@ -109,9 +113,10 @@ export interface RollRecord {
 /**
  * Where the current seat is in its turn. `discard`: over the hand limit, must choose discards
  * before drawing. `natives`: in a hex with natives, a policy must be chosen (rules §8.1).
- * `act`: free to publish, sail or end the turn.
+ * `spoils`: a village found after a victory, prisoners to release or keep (rules §8.4). `act`: free to
+ * publish, sail or end the turn.
  */
-export type Phase = 'discard' | 'natives' | 'act';
+export type Phase = 'discard' | 'natives' | 'spoils' | 'act';
 
 export interface TurnState {
   /** Seats with explorers, clockwise from the first player. */

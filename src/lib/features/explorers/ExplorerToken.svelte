@@ -23,6 +23,10 @@
       <span class="where" data-testid="at-sea-{explorer.seat}" aria-label="At sea, bound for {explorer.location.port}"><Icon name="ship" size="1em" /></span>
     {:else if explorer.location.kind === 'port'}
       <span class="where" data-testid="in-port-{explorer.seat}" aria-label="At the port of {explorer.location.port}"><Icon name="anchor" size="1em" /></span>
+    {:else if explorer.location.kind === 'captive'}
+      <span class="where" data-testid="captive-{explorer.seat}" aria-label="Held prisoner by tribe {explorer.location.tribe}">
+        <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 3v18M12 3v18M19 3v18" /></svg>
+      </span>
     {/if}
   </span>
   <span class="badges">

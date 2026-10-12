@@ -44,8 +44,9 @@ test.describe('017 - Native reaction and combat', () => {
     // Combat dice: reaction 6,6,6 (18 over the target 4: hostile); strength 1 (1 × 5 askaris ÷ policy 3 = 1: attack);
     // surprise 6,6 (not surprised; the volley kills 6); morale 1 (1 × 6 is not over 6: they close in); natives strike
     // 6 (6 ÷ 6: one askari falls); break check 1 (holds); askaris strike 1 (4 ÷ 1 + 1 = 5 warriors fall); natives'
-    // morale 2 (10 over 1: driven off). Next turn: reaction 6,6,6 (hostile), strength 6 (6 × 4 ÷ 4 = 6 over 1: they hide).
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1&dice-combat=6,6,6,1,6,6,1,6,1,1,2,6,6,6,6');
+    // morale 2 (10 over 1: driven off). Victory (since 018): prisoners die 6 (no quarter: none), village 6,6 (not found).
+    // Next turn: the village search again 6,6 (not found), reaction 6,6,6 (hostile), strength 6 (6 × 4 ÷ 4 = 6 over 1: they hide).
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1&dice-combat=6,6,6,1,6,6,1,6,1,1,2,6,6,6,6,6,6,6,6,6');
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
@@ -70,6 +71,7 @@ test.describe('017 - Native reaction and combat', () => {
         { spec: 'The combat note tells the fight and its eight dice are shown; the chart shows 4 askaris and the tribe one warrior', check: async () => {
           await expect(page.getByTestId('combat-note-bottom-1')).toHaveText('hostile: the natives attack; the volley kills 6; they close in; 1 askari falls; 5 warriors fall; the natives are driven off');
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '4');
+          await expect(page.getByTestId('victory-note-bottom-1')).toHaveText('no quarter: no prisoners, the village cannot be found');
           const s = await state(page);
           const combat = s.turn!.log.find((l) => l.kind === 'combat')!;
           expect(combat.rolls.map((r) => r.value)).toEqual([1, 6, 6, 1, 6, 1, 1, 2]);

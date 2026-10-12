@@ -16,7 +16,7 @@ import { discoverNatives } from '$features/natives/discovery';
 /** The hex an explorer stands on, if on the board. */
 export function standingHex(e: ExplorerState): HexId | null {
   if (e.location.kind === 'port') return BOARD.ports[e.location.port].hex;
-  if (e.location.kind === 'hex') return e.location.hex;
+  if (e.location.kind === 'hex' || e.location.kind === 'captive') return e.location.hex;
   return null;
 }
 
@@ -117,7 +117,7 @@ function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): {
 /** Where the expedition may step now, with the mode and cost of each step. */
 export function moveTargets(state: GameState, e: ExplorerState): MoveTarget[] {
   const from = standingHex(e);
-  if (!from || !e.chart || !state.turn || state.turn.current !== e.seat || state.turn.phase !== 'act' || state.turn.moved) return [];
+  if (!from || e.location.kind === 'captive' || !e.chart || !state.turn || state.turn.current !== e.seat || state.turn.phase !== 'act' || state.turn.moved) return [];
   const out: MoveTarget[] = [];
   for (const hex of neighbours(from)) {
     if (!isLand(hex)) continue;
@@ -145,6 +145,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       if (state.turn.phase !== 'act') return 'cannot move while discarding';
       const explorer = currentExplorer(state)!;
       const from = standingHex(explorer);
+      if (explorer.location.kind === 'captive') return 'the explorer is held prisoner';
       if (!from) return 'the explorer is not in Africa';
       if (!explorer.chart) return 'the expedition is not outfitted';
       if (!Array.isArray(path) || path.length !== 1 || typeof path[0] !== 'string') return 'expedition/moved needs a path of one hex';
@@ -230,7 +231,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
           if (found.result.rolls.length) {
             if (found.result.found) {
               const id = Object.keys(tribes).length + 1;
-              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0 } };
+              tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });

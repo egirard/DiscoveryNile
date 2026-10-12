@@ -36,7 +36,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(s.diagnostics).toEqual([]);
     expect(s.turn).toMatchObject({ current: 'bottom-1', round: 3, phase: 'natives', policy: null });
     expect(s.map['c24r12']).toMatchObject({ terrain: 'veldt', tribe: 1, markers: ['bottom-1'] });
-    expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0 } });
+    expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0, pending: null } });
     expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'natives', outcome: 'natives: 12 warriors (tribe 1)' });
     expect(s.turn!.log.at(-1)!.rolls.map((r) => r.value)).toEqual([1, 2, 3, 4, 5]);
     expect(s.explorers[0].cameFrom).toBe('c25r12');
