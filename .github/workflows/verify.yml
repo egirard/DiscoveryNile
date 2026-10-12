@@ -1,0 +1,50 @@
+# Verification only. The template's GitHub Pages deployment and retained PR previews are
+# disabled for now (see docs/ci-and-deployment.md); re-enable them by restoring the `deploy`
+# job from egirard/TabletopTemplate when a hosted table URL is wanted.
+name: Verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      update_baselines:
+        description: Regenerate Linux screenshot baselines and push them to this branch
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command bun install --frozen-lockfile
+      - run: nix develop --command bunx playwright install --with-deps chromium
+      - if: inputs.update_baselines != true
+        run: nix develop --command bun run verify:change
+      - if: inputs.update_baselines == true
+        run: |
+          nix develop --command bun run test:e2e:update
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add tests/e2e
+          git commit -m "Regenerate Linux screenshot baselines" || echo "no baseline changes"
+          git push
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: |
+            test-results/
+            playwright-report/

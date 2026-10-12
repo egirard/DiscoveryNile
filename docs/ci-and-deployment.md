@@ -1,5 +1,7 @@
 # CI and Deployment
 
+> **DiscoveryNile:** only the `verify` job is enabled, in `.github/workflows/verify.yml`. The GitHub Pages deployment, the retained PR previews and the `cleanup-pr-preview.yml` workflow described below are the template's design and are **disabled for now**. To enable them, restore the `deploy` job and the cleanup workflow from egirard/TabletopTemplate and work through the deployment checklist at the end of this document. Everything else here still applies.
+
 Every push and pull request is verified with the same script the Git hooks run, then built and deployed to GitHub Pages: `main` to the production URL, each pull request to a retained preview URL. The tracer bullet for a slice ends at a URL a reviewer can open on a table, not at a green check.
 
 ## Workflow: `ci-and-deploy.yml`

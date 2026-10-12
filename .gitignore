@@ -10,4 +10,4 @@ playwright-report/
 .direnv/
 .firebase/
 *.log
-diagnostics/
+/diagnostics/

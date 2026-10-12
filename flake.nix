@@ -1,5 +1,5 @@
 {
-  description = "Tabletop project development environment";
+  description = "DiscoveryNile development environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -16,7 +16,7 @@
           shellHook = ''
             # Keep Playwright browser downloads stable across `nix develop --command` invocations.
             export XDG_CACHE_HOME="$PWD/.cache"
-            echo "Tabletop dev shell: bun $(bun --version)"
+            echo "DiscoveryNile dev shell: bun $(bun --version)"
           '';
         };
       });
