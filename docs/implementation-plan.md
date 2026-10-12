@@ -52,7 +52,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 009-outfit-the-expedition          landed
 010-first-step-into-the-unknown    landed
 011-rivers-and-oases               landed
-012-movement-rates
+012-movement-rates                 landed
 013-disaster-cards
 014-hunting-and-rations
 015-water-in-the-desert
@@ -147,11 +147,12 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 011:** `source-found` (seeded: a source dot and river to a neighbour) → `river-continues` (entering the neighbour draws the river through) → `cataract-and-height` (a mountain hex records a peak over 15,000 ft and a cataract) → `oasis` (a desert hex with an oasis known only to this explorer).
 - **Unit tests:** each case of §7.4 with hand-built neighbourhoods; branching; drainage rule forcing continuation; uphill prohibition; oasis per-explorer rules; cataract odds per terrain; height products and thresholds.
 
-### 12. Movement rates — `012-movement-rates`
+### 12. Movement rates — `012-movement-rates` ✅ landed (the scenario shows mounted, a terrain conflict and canoes; walking two known hexes, canoe speeds by paddlers and the speed limit are unit-tested; Zanzibar's two mainland hexes are grid-adjacent, so no special case was needed)
 
 - **Player sees:** the highlighted move targets now reflect the expedition: two known hexes on foot, four mounted, canoe speeds by paddlers, half speed through swamp, no entry into impassable terrain for the mode, a path of several hexes chosen tap by tap with the remaining movement shown as marks; a terrain conflict bounces the expedition back with an explanation at the rail; a cataract blocks canoes without eight bearers; Zanzibar's mainland adjacency.
 - **Introduced:** `expedition/moved` with multi-hex paths; `movementBudget(explorer, chart)`; passability per mode; terrain conflict; the "unknown twice when mounted" rule and its lost cut-off.
 - **Scenario 012:** `foot-two-known` → `mounted-four` → `canoe-along-river` → `terrain-conflict`.
+- **As landed:** `mounted-four` → `terrain-conflict` → `canoe-along-river`, driven by seed 1573 and the first scripted dice (`?dice=`, see [e2e-test-guidelines.md](e2e-test-guidelines.md)); the path is still one `expedition/moved` per hex, tapped step by step against a per-turn budget of movement points shown as pips at the rail (G-32..36).
 - **Unit tests:** every row of §7.1; speed limit when loads exceed carriage; slowest canoe; `RQ-13`.
 
 ### 13. Disaster cards — `013-disaster-cards`

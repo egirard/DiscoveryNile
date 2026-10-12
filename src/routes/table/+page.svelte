@@ -15,6 +15,7 @@
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
+  import Icon from '$lib/ui/Icon.svelte';
   import TurnControls from '$features/turn/TurnControls.svelte';
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
@@ -209,6 +210,13 @@
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {/if}
             {#if mine}
+              {#if gameState.turn.movement}
+                {@const mv = gameState.turn.movement}
+                <span class="movement" data-testid="movement-{seat.id}" data-mode={mv.mode} data-left={mv.halted ? 0 : mv.points - mv.spent} aria-label="{mv.mode}: {mv.halted ? 0 : mv.points - mv.spent} of {mv.points} movement points left">
+                  <Icon name={mv.mode === 'canoe' ? 'canoes' : mv.mode === 'mounted' ? 'horses' : 'bearers'} size="1.2em" />
+                  {#each Array(mv.points) as _, i (i)}<span class="pip" class:used={i < mv.spent || mv.halted}></span>{/each}
+                </span>
+              {/if}
               <RollLog seat={seat.id} log={gameState.turn.log} />
               <TurnControls
                 seat={seat.id}
@@ -299,6 +307,25 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.6);
     margin-left: var(--gap);
+  }
+  .movement {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-left: var(--gap);
+    color: var(--paper);
+  }
+  .pip {
+    width: 0.5em;
+    height: 0.5em;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 1px solid var(--ink);
+  }
+  .pip.used {
+    background: transparent;
+    border-color: var(--paper);
+    opacity: 0.5;
   }
   .money {
     margin-left: var(--gap);

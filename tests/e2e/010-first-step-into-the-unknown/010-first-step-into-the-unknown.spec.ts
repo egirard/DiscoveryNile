@@ -130,7 +130,7 @@ test.describe('010 - First step into the unknown', () => {
           expect(after.map).toEqual(before.map);
           expect(after.explorers).toEqual(before.explorers);
           expect(after.turn).toEqual(before.turn);
-          expect(after.rng).toBe(before.rng);
+          expect(after.rng).toEqual(before.rng);
         } }
       ]
     });

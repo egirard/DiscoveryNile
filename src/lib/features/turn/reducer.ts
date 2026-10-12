@@ -53,7 +53,7 @@ function advance(state: GameState): GameState {
  * the explorer lands at the chosen port and this turn is the one the rules say is skipped.
  */
 function beginTurn(state: GameState, seat: SeatId): GameState {
-  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, log: [] };
+  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, movement: null, log: [] };
   state = { ...state, turn };
   let explorer = currentExplorer(state)!;
   if (explorer.location.kind === 'voyage') {
@@ -119,7 +119,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
-        turn: { order, current: winner, round: 1, phase: 'act', moved: false, log: [] },
+        turn: { order, current: winner, round: 1, phase: 'act', moved: false, movement: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
           hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e

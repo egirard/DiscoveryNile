@@ -203,7 +203,9 @@
         tabindex="0"
         data-testid="move-target-{t.hex}"
         data-unknown={t.unknown}
-        aria-label="Move to {t.hex}{t.unknown ? ' (unknown: risk of becoming lost)' : ''}"
+        data-mode={t.mode}
+        data-cost={t.cost}
+        aria-label="Move to {t.hex} {t.mode}, {t.cost} movement point{t.cost === 1 ? '' : 's'}{t.unknown ? ' (unknown: risk of becoming lost)' : ''}"
         onclick={() => onhex?.(t.hex)}
         onkeydown={(e) => e.key === 'Enter' && onhex?.(t.hex)}
       />
@@ -306,6 +308,14 @@
   .sym.jungle {
     stroke: #3f8a3f;
     stroke-width: 0.12;
+  }
+  /* Rivers, cataracts and heights are drawn over the targets; a tap on a river hex must still reach its target. */
+  .river-bank,
+  .river,
+  .cataract,
+  .drainage,
+  .height {
+    pointer-events: none;
   }
   .river-bank {
     fill: none;

@@ -12,6 +12,7 @@ const LAYOUT = { bottom: 2, top: 2, left: 1, right: 1 };
 const seatAndCommission = (seat: string) => [event('seat/taken', { seat, uid: `table:${seat}` }), event('explorer/commissioned', { seat, specialties: [] })];
 const start = (seed: number) => [created('ABCDE', LAYOUT, seed), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];
 const FOOT = { askaris: 5, bearers: 15, food: 100 };
+const hand = (s: GameState, seat: string) => s.explorers.find((e) => e.seat === seat)!.hand;
 
 /** Land the first player at a port with the given expedition; returns the event list and seats. */
 export function landedAt(seed: number, port: string, purchases: Record<string, number> = FOOT) {
@@ -43,10 +44,10 @@ describe('expedition/moved from a port (rules §7)', () => {
     expect(standingHex(e)).toBe('c14r36');
     const targets = moveTargets(s, e);
     expect(targets.map((t) => t.hex).sort()).toEqual(['c13r35', 'c13r36', 'c14r35', 'c15r36']);
-    expect(targets.every((t) => !t.unknown)).toBe(true); // the Cape is pre-printed
+    expect(targets.every((t) => !t.unknown && t.mode === 'foot' && t.cost === 1)).toBe(true); // the Cape is pre-printed
     expect(unknownTo(e, 'c12r20')).toBe(true);
   });
-  it('moves into a known hex without a roll and refuses a second move that turn', () => {
+  it('on foot moves two known hexes without a roll and no more that turn', () => {
     const { events, first } = landedAt(5, 'port-elizabeth');
     const s = reduce([...events, event('expedition/moved', { seat: first, path: ['c15r36'] })]);
     expect(s.diagnostics).toEqual([]);
@@ -54,10 +55,13 @@ describe('expedition/moved from a port (rules §7)', () => {
     expect(e.location).toEqual({ kind: 'hex', hex: 'c15r36' });
     expect(e.known).toEqual(['c14r36', 'c15r36']);
     expect(s.turn!.log).toEqual([]);
-    expect(s.turn!.moved).toBe(true);
+    expect(s.turn!.movement).toMatchObject({ mode: 'foot', points: 2, spent: 1, halted: false });
+    expect(s.turn!.moved).toBe(false);
     expect(s.map).toEqual({});
-    const again = reduce([...events, event('expedition/moved', { seat: first, path: ['c15r36'] }), event('expedition/moved', { seat: first, path: ['c14r36'] })]);
-    expect(again.diagnostics.at(-1)?.reason).toBe('the expedition has already moved this turn');
+    const two = reduce([...events, event('expedition/moved', { seat: first, path: ['c15r36'] }), event('expedition/moved', { seat: first, path: ['c14r36'] })]);
+    expect(two.turn!.moved).toBe(true);
+    const three = reduce([...events, event('expedition/moved', { seat: first, path: ['c15r36'] }), event('expedition/moved', { seat: first, path: ['c14r36'] }), event('expedition/moved', { seat: first, path: ['c15r36'] })]);
+    expect(three.diagnostics.at(-1)?.reason).toMatch(/no movement left/);
   });
   it('rejects non-adjacent, off-board, impassable and out-of-turn moves', () => {
     const { events, first, second } = landedAt(5, 'port-elizabeth');
@@ -114,6 +118,7 @@ describe('expedition/moved into a blank hex', () => {
       expect(s.explorers.find((x) => x.seat === first)!.location).toEqual({ kind: 'port', port: 'mombasa' });
       expect(s.map).toEqual({});
       expect(s.turn!.moved).toBe(true);
+      expect(s.turn!.movement?.halted).toBe(true);
       expect(s.turn!.log).toHaveLength(1);
       const again = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
       expect(again.turn!.log).toEqual(s.turn!.log);
@@ -139,5 +144,64 @@ describe('expedition/moved into a blank hex', () => {
     expect(a.map).toEqual(b.map);
     expect(a.turn!.log).toEqual(b.turn!.log);
     expect(neighbour('c24r11', 2)).toBe('c25r11');
+  });
+});
+
+describe('movement rates with scripted dice (rules §7.1)', () => {
+  // Seed 1573 (found by search): bottom-1's hand pays passage and the rules' mounted sample; top-1 holds a
+  // ticket to Brass and enough for the canoe sample. Scripted dice do not advance the shuffle.
+  // Dice script: roll-off bottom-1 6,6,6,6 and top-1 1,1,1,1; then bottom-1's unknown step: lost check 6,
+  // terrain tries 1 and 5 (both blank), random table 6 = lake.
+  const SCRIPT = [6, 6, 6, 6, 1, 1, 1, 1, 6, 1, 5, 6];
+  const MOUNTED = { horses: 11, askaris: 4, guides: 1, bearers: 2, muskets: 1, gifts: 20, food: 50 };
+  const CANOES = { canoes: 2, bearers: 16, guides: 1, askaris: 6, muskets: 4, gifts: 50, food: 125 };
+  const setup = () => {
+    resetSequence();
+    const base = [created('ABCDE', LAYOUT, 1573, SCRIPT), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];
+    const s0 = reduce(base);
+    expect(s0.turn!.current).toBe('bottom-1');
+    const brass = hand(s0, 'top-1').find((id) => card(id).donation.kind === 'ticket' && (card(id).donation as { port: string }).port === 'brass')!;
+    const events = [
+      ...base,
+      event('voyage/booked', { seat: 'bottom-1', port: 'durban' }), event('turn/ended', { seat: 'bottom-1' }),
+      event('voyage/booked', { seat: 'top-1', port: 'brass', ticketCardId: brass }), event('turn/ended', { seat: 'top-1' }),
+      // round 2: both at sea, both turns skipped; round 3: bottom-1 outfits and rides
+      event('expedition/outfitted', { seat: 'bottom-1', purchases: MOUNTED })
+    ];
+    const s = reduce(events);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.turn).toMatchObject({ current: 'bottom-1', round: 3 });
+    return events;
+  };
+  it('mounted: two known hexes then an unknown one, which turns out to be a lake and bounces the expedition', () => {
+    const events = [...setup(), event('expedition/moved', { seat: 'bottom-1', path: ['c16r33'] }), event('expedition/moved', { seat: 'bottom-1', path: ['c16r32'] })];
+    const s2 = reduce(events);
+    expect(s2.diagnostics).toEqual([]);
+    expect(s2.turn!.movement).toMatchObject({ mode: 'mounted', points: 4, unknownCost: 2, spent: 2 });
+    const targets = moveTargets(s2, s2.explorers[0]);
+    expect(targets.find((t) => t.hex === 'c15r32')).toMatchObject({ unknown: true, cost: 2, mode: 'mounted' });
+    const s3 = reduce([...events, event('expedition/moved', { seat: 'bottom-1', path: ['c15r32'] })]);
+    expect(s3.diagnostics).toEqual([]);
+    expect(s3.turn!.log.map((l) => l.outcome)).toEqual(['found the way', 'mapped lake', 'lake is impassable mounted: the expedition turns back']);
+    expect(s3.map['c15r32']).toMatchObject({ terrain: 'lake', markers: ['bottom-1'] });
+    expect(s3.explorers[0].location).toEqual({ kind: 'hex', hex: 'c16r32' });
+    expect(s3.turn!.moved).toBe(true);
+  });
+  it('canoes with eight paddlers each: four hexes up the Niger and along the coast, never off the water', () => {
+    const events = [...setup(), event('turn/ended', { seat: 'bottom-1' }), event('expedition/outfitted', { seat: 'top-1', purchases: CANOES })];
+    const s = reduce(events);
+    expect(s.turn!.current).toBe('top-1');
+    // From Brass (c2r8) the Niger leads to c2r7; the other land neighbour c3r8 is jungle-swamp, closed to canoes.
+    expect(moveTargets(s, s.explorers[1])).toEqual([{ hex: 'c2r7', unknown: false, mode: 'canoe', cost: 1 }]);
+    const trip = ['c2r7', 'c2r6', 'c2r5', 'c2r4'];
+    const s4 = reduce([...events, ...trip.map((hex) => event('expedition/moved', { seat: 'top-1', path: [hex] }))]);
+    expect(s4.diagnostics).toEqual([]);
+    expect(s4.turn!.movement).toMatchObject({ mode: 'canoe', points: 4, spent: 4 });
+    expect(s4.explorers[1].location).toEqual({ kind: 'hex', hex: 'c2r4' });
+    // The mode is fixed for the turn by the first step (open-questions G-32): once afloat, dry c3r7 is off the menu.
+    const afloat = reduce([...events, event('expedition/moved', { seat: 'top-1', path: ['c2r7'] })]);
+    expect(moveTargets(afloat, afloat.explorers[1]).map((x) => x.hex)).not.toContain('c3r7');
+    const dry = reduce([...events, event('expedition/moved', { seat: 'top-1', path: ['c2r7'] }), event('expedition/moved', { seat: 'top-1', path: ['c3r7'] })]);
+    expect(dry.diagnostics.at(-1)?.reason).toBe('canoes must follow the water');
   });
 });

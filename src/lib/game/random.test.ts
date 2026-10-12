@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createRandom, shuffle, rngFromSeed, nextRandom, dice, shuffleWith } from './random';
+import { createRandom, shuffle, rngFromSeed, rngScripted, nextRandom, dice, shuffleWith } from './random';
 
 describe('createRandom', () => {
   it('produces the same sequence for the same seed', () => {
@@ -53,5 +53,16 @@ describe('serialisable PRNG', () => {
   it('shuffles the same way as shuffle(createRandom)', () => {
     const items = [...Array(48).keys()];
     expect(shuffleWith(items, rngFromSeed(1234)).items).toEqual(shuffle(items, createRandom(1234)));
+  });
+});
+
+describe('scripted dice', () => {
+  it('serves the script first, then the generator, and shuffles from the generator only', () => {
+    const s = rngScripted(1234, [6, 1, 3]);
+    const r = dice(s, 5);
+    expect(r.values.slice(0, 3)).toEqual([6, 1, 3]);
+    expect(r.values.slice(3)).toEqual(dice(rngFromSeed(1234), 2).values);
+    expect(shuffleWith([1, 2, 3, 4], rngScripted(7, [6, 6])).items).toEqual(shuffleWith([1, 2, 3, 4], rngFromSeed(7)).items);
+    expect((rngScripted(1, [0, 9, 2.7]) as { script: number[] }).script).toEqual([1, 6, 2]);
   });
 });

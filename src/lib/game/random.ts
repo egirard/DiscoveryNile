@@ -28,22 +28,43 @@ export function shuffle<T>(items: readonly T[], random: Random): T[] {
 // The reducer cannot hold a closure, so game state carries the PRNG's 32-bit state and every
 // roll returns the next state. Same sequence as createRandom(seed).
 
-export type RngState = number;
+/**
+ * Either the bare 32-bit generator state, or that state plus a scripted sequence of die values
+ * that `d6` consumes first (tests and scenarios drive specific outcomes with it; the sequence is
+ * recorded in the test). Shuffles always use the generator.
+ */
+export type RngState = number | { state: number; script: number[]; next: number };
 
 export function rngFromSeed(seed: number): RngState {
   return seed >>> 0;
 }
 
+/** A generator whose first dice are scripted; after the script it continues from the seed. */
+export function rngScripted(seed: number, script: number[]): RngState {
+  return { state: seed >>> 0, script: script.map((v) => Math.min(6, Math.max(1, Math.floor(v)))), next: 0 };
+}
+
+function raw(state: RngState): number {
+  return typeof state === 'number' ? state : state.state;
+}
+
+function withRaw(state: RngState, next: number): RngState {
+  return typeof state === 'number' ? next : { ...state, state: next };
+}
+
 export function nextRandom(state: RngState): { state: RngState; value: number } {
-  const a = (state + 0x6d2b79f5) >>> 0;
+  const a = (raw(state) + 0x6d2b79f5) >>> 0;
   let t = a;
   t = Math.imul(t ^ (t >>> 15), t | 1);
   t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-  return { state: a, value: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
+  return { state: withRaw(state, a), value: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
 }
 
-/** One six-sided die. */
+/** One six-sided die: the next scripted value if any, else from the generator. */
 export function d6(state: RngState): { state: RngState; value: number } {
+  if (typeof state !== 'number' && state.next < state.script.length) {
+    return { state: { ...state, next: state.next + 1 }, value: state.script[state.next] };
+  }
   const r = nextRandom(state);
   return { state: r.state, value: 1 + Math.floor(r.value * 6) };
 }

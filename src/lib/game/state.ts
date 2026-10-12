@@ -7,6 +7,7 @@ import type { HexId } from '$features/map/hex';
 import type { Terrain } from '$features/map/manifest';
 import type { Modifier, Roll } from '$features/map/generate';
 import type { RiverCourse } from '$features/map/rivers';
+import type { MovementBudget } from '$features/exploration/movement';
 
 export interface SeatState {
   id: SeatId;
@@ -61,7 +62,7 @@ export interface MappedHex {
 
 /** A roll the table showed, kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes';
   seat: SeatId;
   hex: HexId;
   rolls: Roll[];
@@ -84,8 +85,10 @@ export interface TurnState {
   current: SeatId;
   round: number;
   phase: Phase;
-  /** The expedition has moved (or tried to) this turn. */
+  /** The expedition's movement is over for this turn. */
   moved: boolean;
+  /** Mode and points for this turn, fixed by the first move. */
+  movement: MovementBudget | null;
   /** Rolls shown this turn. */
   log: RollRecord[];
 }
