@@ -16,6 +16,7 @@
 {#if mine.length}
   <span class="log" data-testid="roll-log-{seat}" data-lost={lost}>
     {#each mine as r, i (i)}
+      {@const recent = i >= mine.length - 2}
       <span class="entry" data-testid="roll-{r.kind}-{seat}" data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} aria-label="{r.kind}: {r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}{r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}; {r.outcome}">
         {#if r.kind === 'disaster' && r.card}
           <span class="chip" class:applies={r.applies} data-testid="disaster-card-{seat}" data-card={r.card} data-applies={r.applies}>
@@ -27,13 +28,14 @@
           <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.45)" />
           {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
         {/if}
-        {#if r.kind === 'disaster' && r.applies}
+        <!-- Only the two latest records spell out their note; older ones keep their dice (the note stays in the label). -->
+        {#if recent && r.kind === 'disaster' && r.applies}
           <span class="note" data-testid="disaster-note-{seat}">{r.outcome}</span>
-        {:else if r.kind === 'hunting'}
+        {:else if recent && r.kind === 'hunting'}
           <span class="note" data-testid="meal-note-{seat}">{r.outcome}</span>
-        {:else if r.kind === 'natives'}
+        {:else if recent && r.kind === 'natives'}
           <span class="note" data-testid="natives-note-{seat}">{r.outcome}</span>
-        {:else if r.kind === 'reaction' || r.kind === 'combat' || r.kind === 'defeat' || r.kind === 'captivity' || r.kind === 'victory' || r.kind === 'loot'}
+        {:else if recent && (r.kind === 'reaction' || r.kind === 'combat' || r.kind === 'defeat' || r.kind === 'captivity' || r.kind === 'victory' || r.kind === 'loot')}
           <span class="note" data-testid="{r.kind}-note-{seat}">{r.outcome}</span>
         {/if}
         {#if r.modifiers?.length}

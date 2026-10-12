@@ -65,7 +65,7 @@ test.describe('017 - Native reaction and combat', () => {
       description: 'A show of force. The reaction dice come up 6, 6, 6 against a target of 4: hostile, and strong enough to attack. Not surprised, the five askaris and the explorer fire and six warriors fall; the rest close in, kill an askari, and lose five more before they are driven off',
       verifications: [
         { spec: 'The rail shows the reaction as hostile with its dice and modifiers', check: async () => {
-          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('hostile (18 over 4)');
+          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('data-outcome', 'hostile (18 over 4)');
           await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /distance to port \+1, policy 3 \+3/);
         } },
         { spec: 'The combat note tells the fight and its eight dice are shown; the chart shows 4 askaris and the tribe one warrior', check: async () => {
