@@ -37,6 +37,8 @@ export function cost(p: Purchases): number {
 /** The explorer's Expedition Organization Chart: what the expedition has. */
 export interface Chart extends Purchases {
   water: number;
+  /** Where each guide was hired, by hex id: a guide never gets lost leaving home (rules §7.2). */
+  guideHomes: Record<string, number>;
 }
 
 export interface CapacitySummary {

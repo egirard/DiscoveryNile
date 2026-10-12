@@ -110,7 +110,7 @@ test.describe('009 - Outfit the expedition', () => {
         { spec: 'The chart is recorded in the state and the budget is spent', check: async () => {
           const s = await state(page);
           const e = s.explorers.find((x) => x.seat === 'bottom-1')!;
-          expect(e.chart).toEqual({ canoes: 2, bearers: 16, guides: 1, askaris: 6, muskets: 4, gifts: 50, food: 125, horses: 0, camels: 0, water: 0 });
+          expect(e.chart).toEqual({ canoes: 2, bearers: 16, guides: 1, askaris: 6, muskets: 4, gifts: 50, food: 125, horses: 0, camels: 0, water: 0, guideHomes: { c14r36: 1 } });
           expect(e.money).toBe(0);
           expect(s.diagnostics).toEqual([]);
         } },

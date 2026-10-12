@@ -24,6 +24,9 @@
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
   import type { Purchases } from '$features/expedition/prices';
+  import { moveTargets, standingHex } from '$features/exploration/reducer';
+  import RollLog from '$features/exploration/RollLog.svelte';
+  import type { HexId } from '$features/map/hex';
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
 
@@ -105,8 +108,20 @@
   });
 
   const boardTokens = $derived.by((): BoardToken[] =>
-    gameState.explorers.filter((e) => e.location.kind === 'port').map((e) => ({ seat: e.seat, hex: BOARD.ports[(e.location as { port: PortId }).port].hex }))
+    gameState.explorers.flatMap((e) => {
+      const hex = standingHex(e);
+      return hex ? [{ seat: e.seat, hex }] : [];
+    })
   );
+
+  const targets = $derived.by(() => {
+    const explorer = gameState.turn ? explorerAt(gameState, gameState.turn.current) : undefined;
+    return explorer ? moveTargets(gameState, explorer) : [];
+  });
+  async function move(hex: HexId) {
+    const seat = gameState.turn?.current;
+    if (seat) await game?.append('expedition/moved', { seat, path: [hex] });
+  }
 
   onMount(() => {
     diagonal = readDiagonalInches();
@@ -148,7 +163,7 @@
   style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} />
+    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} {targets} onhex={move} />
   </div>
 
   {#if canStart}
@@ -194,6 +209,7 @@
               <span class="money" data-testid="money-{seat.id}" aria-label={explorer.location.kind === 'europe' ? 'Money raised' : 'Expedition budget'}>${explorer.location.kind === 'europe' ? handValue(explorer.hand) : explorer.money}</span>
             {/if}
             {#if mine}
+              <RollLog seat={seat.id} log={gameState.turn.log} />
               <TurnControls
                 seat={seat.id}
                 phase={gameState.turn.phase}

@@ -50,7 +50,7 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 007-a-turn-in-europe               landed
 008-sail-to-africa                 landed
 009-outfit-the-expedition          landed
-010-first-step-into-the-unknown
+010-first-step-into-the-unknown    landed
 011-rivers-and-oases
 012-movement-rates
 013-disaster-cards
@@ -133,7 +133,7 @@ Scenario 001 proves the shell, four seats, a room code, a build marker and persi
 - **Scenario 009:** `price-list` (at Mombasa: no camels, no horses) → `sample-canoe-expedition` (enter the rules' first sample expedition; total $1000; capacity shows 2 canoes carrying 24 men) → `confirmed` (unspent $30 of a $1030 budget forfeited; chart read-only).
 - **Unit tests:** price list from rules §5; port availability; the three sample expeditions total $1000, $970, $1000; capacity arithmetic from §5 (bearer 10 food / 2+2 / 10 gifts, led camel 20, ridden 5, eight bearers per canoe, one bearer per three animals); overspend rejected.
 
-### 10. First step into the unknown — `010-first-step-into-the-unknown`
+### 10. First step into the unknown — `010-first-step-into-the-unknown` ✅ landed
 
 - **Player sees:** on the explorer's African turn, tapping the token highlights the adjacent hexes it may enter this turn (one blank hex on foot); tapping a blank hex rolls the lost check as dice at the rail with its modifiers; on success the hex fills in with generated basic terrain (copied from a neighbour or rolled, with the composite roll if any), the token moves there, and the seat's marker appears on the hex; on failure the token stays, with a "lost" badge for the turn. The turn then ends (hunting and rations arrive in 014).
 - **Introduced:** `expedition/moved` with a one-hex path; `knownHexes` per explorer; the lost check (rules §7.2, steps 1–4, foot only, no guides yet) and basic terrain generation (§7.3) in `src/lib/features/map/generate.ts`, consuming the PRNG; generated hexes in `state.map`; `MoveTargets.svelte`.

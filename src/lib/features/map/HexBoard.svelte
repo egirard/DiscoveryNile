@@ -7,6 +7,8 @@
   import { hexPoints, toPixel, type HexId } from './hex';
 
   import { colourFor } from '$features/explorers/colours';
+  import type { MappedHex } from '$lib/game/state';
+  import type { MoveTarget } from '$features/exploration/reducer';
 
   export interface BoardToken {
     seat: string;
@@ -25,8 +27,14 @@
     /** When set, the ports become a chooser (sailing from Europe). */
     portChoices?: Partial<Record<PortId, PortChoice>> | null;
     onport?: (port: PortId) => void;
+    /** Hexes mapped in play, drawn over the blank board, with their markers. */
+    mapped?: Record<string, MappedHex>;
+    /** Hexes the current expedition may step into. */
+    targets?: MoveTarget[];
+    onhex?: (hex: HexId) => void;
   }
-  let { width, height, tokens = [], portChoices = null, onport }: Props = $props();
+  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], onhex }: Props = $props();
+  const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
   const SQ3 = Math.sqrt(3);
   const extents = (() => {
@@ -116,24 +124,55 @@
   <g {transform}>
     {#each LAND_HEXES as h (h.id)}
       {@const c = centre(h)}
+      {@const t = terrainFor(h)}
       <polygon
         data-testid="hex-{h.id}"
         data-col={h.col}
         data-row={h.row}
-        data-terrain={h.terrain ?? 'blank'}
-        class="hex {h.terrain ?? 'blank'}"
+        data-terrain={t ?? 'blank'}
+        data-mapped={h.id in mapped}
+        class="hex {t ?? 'blank'}"
+        class:explored={h.id in mapped}
         points={hexPoints(c.x, c.y, radius * 0.96)}
       />
     {/each}
     {#each LAND_HEXES as h (h.id)}
-      {#if h.terrain && symbolFor[h.terrain].length}
+      {@const t = terrainFor(h)}
+      {#if t && symbolFor[t].length}
         {@const c = centre(h)}
-        <g data-testid="terrain-{h.id}" data-terrain={h.terrain} aria-label={h.terrain} transform="translate({c.x} {c.y}) {upright} scale({radius})">
-          {#each symbolFor[h.terrain] as sym (sym)}
+        <g data-testid="terrain-{h.id}" data-terrain={t} aria-label={t} transform="translate({c.x} {c.y}) {upright} scale({radius})">
+          {#each symbolFor[t] as sym (sym)}
             <use href="#sym-{sym}" />
           {/each}
         </g>
       {/if}
+    {/each}
+    {#each Object.entries(mapped) as [id, m] (id)}
+      {#if m.markers.length}
+        {@const c = centre(id as HexId)}
+        <g class="markers" transform="translate({c.x} {c.y}) {upright}">
+          {#each m.markers as seat, i (seat)}
+            <circle data-testid="marker-{id}-{seat}" class="marker" r={radius * 0.16} cx={(i - (m.markers.length - 1) / 2) * radius * 0.36} cy={radius * 0.62} fill={colourFor(seat)} />
+          {/each}
+        </g>
+      {/if}
+    {/each}
+    {#each targets as t (t.hex)}
+      {@const c = centre(t.hex)}
+      <circle
+        class="target"
+        class:unknown={t.unknown}
+        r={radius * 0.98}
+        cx={c.x}
+        cy={c.y}
+        role="button"
+        tabindex="0"
+        data-testid="move-target-{t.hex}"
+        data-unknown={t.unknown}
+        aria-label="Move to {t.hex}{t.unknown ? ' (unknown: risk of becoming lost)' : ''}"
+        onclick={() => onhex?.(t.hex)}
+        onkeydown={(e) => e.key === 'Enter' && onhex?.(t.hex)}
+      />
     {/each}
     {#each RIVERS as r (r.id)}
       <polyline data-testid="river-{r.id}" class="river-bank" points={riverPoints(r)} />
@@ -305,6 +344,24 @@
   .token circle {
     stroke: #efe6cc;
     stroke-width: 2;
+  }
+  .hex.explored {
+    stroke: #1c2a2e;
+    stroke-width: 1.4;
+  }
+  .marker {
+    stroke: #efe6cc;
+    stroke-width: 1;
+  }
+  .target {
+    fill: #c9a24a;
+    fill-opacity: 0.35;
+    stroke: #c9a24a;
+    stroke-width: 2;
+    cursor: pointer;
+  }
+  .target.unknown {
+    stroke-dasharray: 4 3;
   }
   .anchor {
     fill: none;

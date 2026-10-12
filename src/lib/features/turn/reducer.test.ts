@@ -232,7 +232,7 @@ describe('expedition/outfitted (rules §5)', () => {
     const s = reduce([...events, event('expedition/outfitted', { seat: first, purchases: canoeExpedition })]);
     expect(s.diagnostics).toEqual([]);
     const e = s.explorers.find((x) => x.seat === first)!;
-    expect(e.chart).toEqual({ ...canoeExpedition, camels: 0, horses: 0, water: 0 });
+    expect(e.chart).toEqual({ ...canoeExpedition, camels: 0, horses: 0, water: 0, guideHomes: { c14r36: 1 } });
     expect(e.money).toBe(0);
   });
   it('sells horses at the Cape and refuses camels there; refuses overspending and bad counts', () => {

@@ -20,7 +20,7 @@
 
   const spent = $derived(cost(purchases));
   const left = $derived(budget - spent);
-  const summary = $derived(capacity({ ...purchases, water: 0 }));
+  const summary = $derived(capacity({ ...purchases, water: 0, guideHomes: {} }));
 
   function change(item: Item, delta: number) {
     const next = Math.max(0, purchases[item] + delta);

@@ -3,6 +3,9 @@ import type { RngState } from './random';
 import type { CardId } from '$features/cards/deck';
 import type { PortId } from '$features/map/manifest';
 import type { Chart } from '$features/expedition/prices';
+import type { HexId } from '$features/map/hex';
+import type { Terrain } from '$features/map/manifest';
+import type { Modifier, Roll } from '$features/map/generate';
 
 export interface SeatState {
   id: SeatId;
@@ -22,6 +25,7 @@ export type ExplorerLocation =
   | { kind: 'europe' }
   | { kind: 'voyage'; port: PortId } // booked passage; arrives at the start of the explorer's next turn, which is skipped
   | { kind: 'port'; port: PortId }
+  | { kind: 'hex'; hex: HexId }
   | { kind: 'dead' };
 
 export interface ExplorerState {
@@ -36,6 +40,28 @@ export interface ExplorerState {
   money: number;
   /** The Expedition Organization Chart, once outfitted at a port. */
   chart: Chart | null;
+  /** Hexes this explorer has passed through (plus the port of entry): "known" for movement and lost checks. */
+  known: HexId[];
+}
+
+/** A hex whose terrain has been determined in play. */
+export interface MappedHex {
+  terrain: Terrain;
+  /** Seats holding a coloured marker here (visited, unpublished). */
+  markers: SeatId[];
+}
+
+/** A roll the table showed, kept for the current turn so the rail can display it. */
+export interface RollRecord {
+  kind: 'lost-check' | 'terrain';
+  seat: SeatId;
+  hex: HexId;
+  rolls: Roll[];
+  modifiers?: Modifier[];
+  total?: number;
+  /** Human-readable result: 'lost', 'moved', 'mapped veldt', 'bounced: lake' … */
+  outcome: string;
+  lost?: boolean;
 }
 
 /**
@@ -50,6 +76,10 @@ export interface TurnState {
   current: SeatId;
   round: number;
   phase: Phase;
+  /** The expedition has moved (or tried to) this turn. */
+  moved: boolean;
+  /** Rolls shown this turn. */
+  log: RollRecord[];
 }
 
 export interface DeckState {
@@ -70,9 +100,11 @@ export interface GameState {
   rollOff: RollOff | null;
   turn: TurnState | null;
   deck: DeckState | null;
+  /** Hexes mapped in play, by id. */
+  map: Record<string, MappedHex>;
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, diagnostics: [] };
 }

@@ -53,11 +53,12 @@ function advance(state: GameState): GameState {
  * the explorer lands at the chosen port and this turn is the one the rules say is skipped.
  */
 function beginTurn(state: GameState, seat: SeatId): GameState {
-  const turn = { ...state.turn!, current: seat, phase: 'act' as const };
+  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, log: [] };
   state = { ...state, turn };
   let explorer = currentExplorer(state)!;
   if (explorer.location.kind === 'voyage') {
-    const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port: explorer.location.port } });
+    const port = explorer.location.port;
+    const landed = replaceExplorer(state, { ...explorer, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
     return advance(landed);
   }
   if (explorer.location.kind !== 'europe') return state;
@@ -71,6 +72,8 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
   if (explorer.hand.length > HAND_LIMIT) return { ...state, turn: { ...turn, phase: 'discard' } };
   return drawOne(state, explorer);
 }
+
+export { replaceExplorer };
 
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   switch (event.type) {
@@ -116,7 +119,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
-        turn: { order, current: winner, round: 1, phase: 'act' },
+        turn: { order, current: winner, round: 1, phase: 'act', moved: false, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
           hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e
@@ -187,8 +190,9 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       }
       const total = cost(bought);
       if (total > explorer.money) return `the expedition costs $${total}; the budget is $${explorer.money}`;
-      // Whatever is not spent on the expedition is lost (rules §5).
-      return replaceExplorer(state, { ...explorer, chart: { ...bought, water: 0 }, money: 0 });
+      // Whatever is not spent on the expedition is lost (rules §5). Guides hired here call this hex home.
+      const home = BOARD.ports[explorer.location.port].hex;
+      return replaceExplorer(state, { ...explorer, chart: { ...bought, water: 0, guideHomes: bought.guides > 0 ? { [home]: bought.guides } : {} }, money: 0 });
     }
     default:
       return state;
