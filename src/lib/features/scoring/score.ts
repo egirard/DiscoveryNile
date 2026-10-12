@@ -5,12 +5,16 @@ import type { ExplorerState, GameState, ScoreEntry } from '$lib/game/state';
 import type { SeatId } from '$lib/tabletop/seats';
 import type { HexId } from '$features/map/hex';
 import { terrainPoints } from '$features/map/scoring';
+import { superlativesOf } from './superlatives';
+import type { SuperlativeRecord } from '$lib/game/state';
 
 export interface Publication {
   points: number;
   /** What was counted, for the rail: 'veldt', 'river', 'tribe 2 discovered', 'tribe 2 defeated' … */
   parts: string[];
   entries: ScoreEntry[];
+  /** Superlatives ranked by this publication (rules §12), scoring or not. */
+  superlatives: SuperlativeRecord[];
 }
 
 /** Hexes this seat may publish now: mapped in play, unpublished, carrying its marker. */
@@ -36,7 +40,10 @@ export function valueOf(state: GameState, hex: HexId, seat: SeatId, round: numbe
     }
     entries.push({ kind: 'tribe', detail: String(tribe.id), points, round });
   }
-  return { points: entries.reduce((sum, e) => sum + e.points, 0), parts, entries };
+  const superlatives = superlativesOf(state, hex, seat, round);
+  parts.push(...superlatives.parts);
+  entries.push(...superlatives.entries);
+  return { points: entries.reduce((sum, e) => sum + e.points, 0), parts, entries, superlatives: superlatives.records };
 }
 
 /** What an explorer brings home to score on landing in Europe: specimens and the specialties' good works. */

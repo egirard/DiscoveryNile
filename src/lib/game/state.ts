@@ -173,9 +173,23 @@ export interface TurnState {
 
 /** Points scored by a seat (rules §12): once scored they are never lost, whatever becomes of the explorer. */
 export interface ScoreEntry {
-  kind: 'hex' | 'tribe' | 'specimens' | 'works';
+  kind: 'hex' | 'tribe' | 'specimens' | 'works' | 'superlative';
   /** What was scored: a hex id, a tribe number, or the specialty. */
   detail: string;
+  points: number;
+  round: number;
+}
+
+/** A superlative discovery as published (rules §12): its rank and points at that moment (RQ-15). */
+export interface SuperlativeRecord {
+  kind: 'peak' | 'waterfall' | 'lake' | 'source';
+  hex: HexId;
+  seat: SeatId;
+  /** Feet, lake hexes, or the river's length in hexes. */
+  value: number;
+  /** For a source: the river system (a manifest river id, or the coastal hex of an unnamed river). */
+  system?: string;
+  rank: number;
   points: number;
   round: number;
 }
@@ -206,9 +220,11 @@ export interface GameState {
   caches: Record<number, Cache>;
   /** Points scored, by seat, in the order they were scored (rules §12). */
   scores: Partial<Record<SeatId, ScoreEntry[]>>;
+  /** Superlative discoveries in the order published; later ranks are measured against them. */
+  superlatives: SuperlativeRecord[];
   diagnostics: Diagnostic[];
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], diagnostics: [] };
 }

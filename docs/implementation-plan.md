@@ -239,9 +239,11 @@ Explorer death from any cause, retirement from Europe, erasure of unpublished he
 
 - **As landed:** every death (a fight, captivity, a disaster card that strikes the explorer, poison, disease, sickness) and `explorer/retired` (a tap on one's explorer at the rail, confirmed at the edge) go through `explorers/fate.ts`: markers off, unpublished hexes only he had visited erased with their tribes and caches (so a later explorer generates them anew), his caches gone, everyone's known hexes trimmed, and `fate` recorded for the obituary at the rail. The seat's turn stays open to read the rail and ends as usual; the seat is skipped until `explorer/commissioned` again, when the new explorer starts in Europe with an empty hand. Tribe and cache numbers are never reused. Scenario 026 (seed 18, 018's dice with a 1 on the defeat die): `killed` → `successor` → `retired`.
 
-### 27. Superlatives — `027-superlatives`
+### 27. Superlatives — `027-superlatives` ✅ landed
 
 Highest mountain, highest waterfall, largest lake (`RQ-8`), longest river with the shortest-path source computation and the Nile's 25 off-map hexes, pre-game known records, ranked points.
+
+- **As landed:** `scoring/superlatives.ts` ranks each superlative at the moment its hex is published against the records published before it (`state.superlatives`): a peak over 15,000 ft (8/4/2/1), a waterfall of 400 ft or more (4/2/1), a lake measured as its connected lake hexes and scored once by its first published hex (RQ-8, 4/2/1), and a river source measured from the sea along the shortest course through every river hex the table knows, plus the Nile's 25 and the Niger's 23 hexes beyond the board, ranked among the rivers known in 1820 (Niger 23, Orange 12, Senegal 10, Gambia 7) and the sources published so far (16/8/4/2/1); a source whose river has not been followed to the sea cannot be measured yet. A new record takes first place; points once scored stay (RQ-15). The publish note names what scored. Scenario 027 (seed 210): `peak-mapped` → `published`.
 
 ### 28. Epic transits — `028-epic-transits`
 

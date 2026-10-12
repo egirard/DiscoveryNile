@@ -616,7 +616,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (!m.markers.includes(explorer.seat)) return `no marker of ${seat} on ${hex}`;
       const value = valueOf(state, hex as HexId, explorer.seat, state.turn.round);
       const record: RollRecord = { kind: 'published', seat: explorer.seat, hex: hex as HexId, rolls: [], outcome: `${hex} published (${value.parts.join(', ')}): ${value.points} point${value.points === 1 ? '' : 's'}, a card drawn` };
-      const published: GameState = { ...addScore(state, explorer.seat, value.entries), map: { ...state.map, [hex]: { ...m, markers: [], publishedBy: explorer.seat } }, turn: { ...state.turn, log: [...state.turn.log, record] } };
+      const published: GameState = { ...addScore(state, explorer.seat, value.entries), map: { ...state.map, [hex]: { ...m, markers: [], publishedBy: explorer.seat } }, superlatives: [...state.superlatives, ...value.superlatives], turn: { ...state.turn, log: [...state.turn.log, record] } };
       return drawOne(published, explorer);
     }
     case 'expedition/reorganised': {

@@ -58,4 +58,4 @@ resume as per instructions in discovery-nile-wip-012
 
 continue implementation
 
-`Outcome (in progress): 025 (publishing and points: claim on the board, stolen hexes, tally at the rail, the published map known to all) and 026 (death and retirement: erasure, obituary, successor, tap-to-retire) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..86 logged.`
+`Outcome (in progress): 025 (publishing and points), 026 (death and retirement) and 027 (superlatives: peaks, waterfalls, lakes, river sources ranked at publication) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..90 and RQ-15 logged.`
