@@ -1,6 +1,6 @@
 // Movement rates and passability by mode of travel (rules §7.1), as pure functions.
 import type { Chart } from '$features/expedition/prices';
-import { capacity } from '$features/expedition/prices';
+import { capacity, load, mountedCarry } from '$features/expedition/prices';
 import { isLand, type Terrain } from '$features/map/manifest';
 import { neighbours, type HexId } from '$features/map/hex';
 import { hasPart } from '$features/map/generate';
@@ -59,12 +59,13 @@ export function coastal(id: HexId): boolean {
 
 /**
  * The mode an expedition travels by this turn, decided when it first moves: canoes when they seat
- * everyone and the move is on water; mounts when there is one per man and the loads are carried;
- * otherwise on foot.
+ * everyone and the move is on water; mounts when everyone rides and the riders' and led animals'
+ * loads cover the supplies (rules §5: a ridden animal carries 5, a led one 20); otherwise on foot.
  */
 export function modeFor(chart: Chart, onWater: boolean): Mode {
   const cap = capacity(chart);
   if (chart.canoes > 0 && cap.canoeSeats >= cap.men && onWater) return 'canoe';
-  if (chart.camels + chart.horses >= cap.men && cap.load <= cap.carry) return 'mounted';
+  const mounted = mountedCarry(chart);
+  if (mounted !== null && load(chart) <= mounted) return 'mounted';
   return 'foot';
 }

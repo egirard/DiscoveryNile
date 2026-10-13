@@ -24,7 +24,7 @@ async function tap(page: Page, id: string, times: number) {
 async function outfit(page: Page, seat: string, purchases: Record<string, number>) {
   await expect(page.getByTestId(`expedition-chart-${seat}`)).toBeVisible();
   for (const [item, n] of Object.entries(purchases)) await tap(page, `buy-${item}-${seat}`, n % 10);
-  await page.getByTestId(`chart-step-${seat}`).click();
+  await page.getByTestId(`chart-step-10-${seat}`).click();
   for (const [item, n] of Object.entries(purchases)) await tap(page, `buy-${item}-${seat}`, Math.floor(n / 10));
   await page.getByTestId(`confirm-outfit-${seat}`).click();
   await page.getByTestId(`confirm-outfit-yes-${seat}`).click();

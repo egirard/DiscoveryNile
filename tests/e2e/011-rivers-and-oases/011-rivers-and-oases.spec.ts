@@ -51,10 +51,10 @@ test.describe('011 - Rivers, oases and cataracts', () => {
     await passTurn(page);
     await expect(page.getByTestId('expedition-chart-bottom-1')).toBeVisible();
     await tap(page, 'buy-askaris-bottom-1', 5);
-    await page.getByTestId('chart-step-bottom-1').click();
+    await page.getByTestId('chart-step-10-bottom-1').click();
     await tap(page, 'buy-bearers-bottom-1', 1);
     await tap(page, 'buy-food-bottom-1', 10);
-    await page.getByTestId('chart-step-bottom-1').click();
+    await page.getByTestId('chart-step-1-bottom-1').click();
     await tap(page, 'buy-bearers-bottom-1', 5);
     await page.getByTestId('confirm-outfit-bottom-1').click();
     await page.getByTestId('confirm-outfit-yes-bottom-1').click();

@@ -76,3 +76,42 @@ export function capacity(c: Chart): CapacitySummary {
   const onFoot = c.canoes > 0 ? canoeSeats < men || c.bearers < c.canoes : load > carry;
   return { men, load, carry, canoeSeats, paddlersWanted, handlersWanted, onFoot };
 }
+
+/** Everyone in the expedition: the explorer, guides, bearers and askaris. */
+export function people(c: Chart): number {
+  return 1 + c.guides + c.bearers + c.askaris;
+}
+
+/** Ration-weight units to carry: food, gifts, muskets, and water at four each. Canoes are carried by bearers, not weighed. */
+export function load(c: Chart): number {
+  return c.food + c.gifts + c.muskets + 4 * c.water;
+}
+
+/**
+ * Units the expedition can carry overland: every canoe takes eight bearers who carry nothing else, every
+ * three animals a bearer to lead them (a led animal carries 20, a ridden one 5), and each remaining bearer
+ * carries 10. Null when the bearers cannot even carry the canoes: the expedition cannot move overland at all.
+ */
+export function overlandCarry(c: Chart): number | null {
+  const animals = c.camels + c.horses;
+  const handlersWanted = Math.ceil(animals / 3);
+  const porters = 8 * c.canoes;
+  const free = c.bearers - porters;
+  if (free < 0) return null;
+  const handlers = Math.min(free, handlersWanted);
+  const led = Math.min(animals, handlers * 3);
+  return (free - handlers) * 10 + led * 20 + (animals - led) * 5;
+}
+
+/**
+ * Units a mounted expedition carries: everyone rides an animal that then carries 5, and the spare animals are
+ * led by the riding bearers (three each) with 20 apiece. Null when there are not enough animals for everyone,
+ * or canoes that bearers would have to walk with.
+ */
+export function mountedCarry(c: Chart): number | null {
+  const animals = c.camels + c.horses;
+  const riders = people(c);
+  if (animals < riders || c.canoes > 0) return null;
+  const led = Math.min(animals - riders, 3 * c.bearers);
+  return riders * 5 + led * 20;
+}

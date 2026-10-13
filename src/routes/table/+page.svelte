@@ -459,7 +459,7 @@
             {:else if party}
               <!-- A companion's rail: the men icon and the leader's colour; the leader's own rail counts the explorers. -->
               <span class="party" data-testid="party-{seat.id}" data-party={party.id} data-leader={party.leader} data-mover={moverOf(gameState, party)} aria-label="In a joint expedition led by {party.leader}; it moves on {moverOf(gameState, party)}'s turn">
-                <Icon name="men" size="1.2em" />
+                <Icon name="people" size="1.2em" />
                 {#if party.leader === seat.id}{party.members.length}{:else}<span class="leader" style="--colour:{colourFor(holderOf(gameState, explorer).seat)}"></span>{/if}
               </span>
             {:else}
@@ -467,7 +467,7 @@
             {/if}
             {#if party && explorer.chart}
               <span class="party" data-testid="party-{seat.id}" data-party={party.id} data-leader={party.leader} data-mover={moverOf(gameState, party)} aria-label="Leading a joint expedition with {party.members.filter((s) => s !== seat.id).join(', ')}; it moves on {moverOf(gameState, party)}'s turn">
-                <Icon name="men" size="1.2em" />{party.members.length}
+                <Icon name="people" size="1.2em" />{party.members.length}
               </span>
             {/if}
             <Tally seat={seat.id} points={scoreOf(gameState, seat.id as SeatId)} />

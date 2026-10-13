@@ -162,7 +162,7 @@ test.describe('032 - Responsive pass at 27" and 55"', () => {
     });
 
     await tap(page, 'buy-bearers-bottom-1', 5);
-    await page.getByTestId('chart-step-bottom-1').click();
+    await page.getByTestId('chart-step-10-bottom-1').click();
     await tap(page, 'buy-food-bottom-1', 2);
     await page.getByTestId('confirm-outfit-bottom-1').click();
     await page.getByTestId('confirm-outfit-yes-bottom-1').click();

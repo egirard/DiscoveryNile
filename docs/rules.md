@@ -62,7 +62,7 @@ The player names a port of entry and **skips one turn** while the token moves th
 - **Gifts** weigh one ration.
 - **Explorer respect**: if the explorer does bearer work (carrying, paddling, leading animals), one askari deserts per turn until a victory over natives or a dangerous animal is killed by a suitable disaster card.
 - **Caches and reorganisation**: any turn an expedition may cache canoes, rations, gifts or muskets (cache marker, contents recorded), release or eat animals, or dismiss men. Dismissed men and animals vanish. Returning to a cache: roll one die, on 1 or 2 it is gone. Other explorers' caches are findable only in published hexes (`RQ-3`).
-- **Speed limit**: an expedition that cannot carry all its men and supplies with its canoes, horses or camels moves at the on-foot rate.
+- **Speed limit**: an expedition that cannot carry all its men and supplies with its canoes, horses or camels moves at the on-foot rate. Mounted means a mount for everyone, the riders' animals carrying 5 each and the spare animals, led by the bearers (three each), 20 each; an expedition with canoes walks them (G-123). The outfitting panel shows these readings while the player buys.
 
 ## 6. A turn in Africa *(Rules: Order of a Turn)*
 

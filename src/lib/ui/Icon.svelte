@@ -1,7 +1,7 @@
 <script lang="ts">
   // Inline SVG icons. Every icon is direction-agnostic and carries no text. Original drawings.
   interface Props {
-    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology' | 'ship' | 'anchor' | 'guides' | 'bearers' | 'askaris' | 'camels' | 'horses' | 'canoes' | 'muskets' | 'food' | 'gifts' | 'water' | 'men';
+    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology' | 'ship' | 'anchor' | 'guides' | 'bearers' | 'askaris' | 'camels' | 'horses' | 'canoes' | 'muskets' | 'food' | 'gifts' | 'water' | 'people' | 'foot' | 'cataract';
     size?: string;
   }
   let { name, size = '1.6em' }: Props = $props();
@@ -54,8 +54,15 @@
     <rect x="4" y="9" width="16" height="11" rx="1" /><path d="M4 13h16M12 9v11" /><path d="M12 9c-3 0-5-2-4-4s4 0 4 4c0-4 3-6 4-4s-1 4-4 4z" />
   {:else if name === 'water'}
     <path d="M12 3c4 5 6 8 6 11a6 6 0 0 1-12 0c0-3 2-6 6-11z" />
-  {:else if name === 'men'}
+  {:else if name === 'people'}
     <circle cx="8" cy="7" r="3" /><circle cx="16" cy="7" r="3" /><path d="M2 21a6 6 0 0 1 12 0" /><path d="M10 21a6 6 0 0 1 12 0" />
+  {:else if name === 'foot'}
+    <!-- two footprints -->
+    <path d="M7 3c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z" /><path d="M5.5 15h3l-.5 4h-2z" />
+    <path d="M17 9c2 0 3 2 3 5s-1 5-3 5-3-2-3-5 1-5 3-5z" /><path d="M15.5 21h3" />
+  {:else if name === 'cataract'}
+    <!-- the map's cataract mark: a ring with two bars -->
+    <circle cx="12" cy="12" r="8" /><path d="M8 10h8M8 14h8" />
   {:else if name === 'geology'}
     <!-- crystal -->
     <path d="M12 3l6 6-6 12-6-12z" /><path d="M6 9h12" /><path d="M12 3v18" />
