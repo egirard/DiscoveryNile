@@ -7,8 +7,11 @@
   interface Props {
     seat: string;
     log: RollRecord[];
+    /** The full list of the turn is open at the seat's edge; "+" opens it and "−" in its place closes it. */
+    expanded?: boolean;
+    ontoggle?: () => void;
   }
-  let { seat, log }: Props = $props();
+  let { seat, log, expanded = false, ontoggle }: Props = $props();
   const mine = $derived(log.filter((r) => r.seat === seat));
   const lost = $derived(mine.some((r) => r.lost));
 </script>
@@ -50,6 +53,10 @@
       <span class="badge" data-testid="lost-badge-{seat}" aria-label="The expedition is lost this turn">?</span>
     {/if}
   </span>
+  <!-- Beside the log rather than inside it, so a long turn's overflow never pushes the control off the table. -->
+  {#if ontoggle}
+    <button class="expand" data-testid="log-expand-{seat}" aria-pressed={expanded} aria-label={expanded ? 'Close the full list of this turn' : 'Show everything that happened this turn'} onclick={ontoggle}>{expanded ? '−' : '+'}</button>
+  {/if}
 {/if}
 
 <style>
@@ -119,6 +126,25 @@
     font-weight: 700;
     font-size: calc(var(--target) * 0.26);
     color: var(--paper);
+  }
+  .expand {
+    margin-left: calc(var(--gap) * 0.5);
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    border: 2px solid var(--paper);
+    background: transparent;
+    color: var(--paper);
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
+    font-weight: 700;
+    font-size: calc(var(--target) * 0.5);
+    line-height: 1;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .expand[aria-pressed='true'] {
+    background: var(--paper);
+    color: var(--ink);
   }
   .badge {
     width: var(--target);

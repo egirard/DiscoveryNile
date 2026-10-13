@@ -94,6 +94,8 @@ It's unclear how "every seat votes to end the game" is supposed to happen.  Plea
 
 Let's add a "configuration" or "options" screen launched from a gear icon that is displayed in the northwest and southeast corners of the board (so each player should be able to reach it).  In that screen we should get access to "End this game".  Also include the screen size configuration in the options screen along with qr codes to join or rejoin from a phone.
 
+`Outcome: 035 Options landed: a gear at the north-west and south-east corners opens the options screen turned toward its corner, with the screen diagonal (steps, 27"/55" presets, a bank-card outline to check against), every seat's QR code, and "End this game" by agreement after a confirmation (game/ended); the vote on the retire panel is gone; G-118..121.`
+
 ## 13. 2026-10-12
 
 let's expand the log, which currently shows as a single line in each player's pod.  Add a "+" at the end of the section to expand the log, which opens to a fairly short but scrollable list.  the close button "-" will replace the "+" in place when the log is open.  This will show a more complete list of everything that's happened in the turn.
@@ -103,3 +105,5 @@ let's expand the log, which currently shows as a single line in each player's po
 Please improve the alignment of the river names with the river lengths.... it's good for single digit rivers, but runs too close for double digit lengths.
 
 `Outcome: river names now sit clear of their drainage numbers by the number's width (two digits push the name half a radius further); every board baseline regenerated.`
+
+`Outcome: a "+" at the end of each rail's roll log opens the full list of the turn at the player's edge (every record with dice, modifiers and outcome, a short scrollable list); "−" in its place closes it; scenario 036; G-122. Every rail baseline with a log regenerated.`

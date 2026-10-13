@@ -40,6 +40,7 @@
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
+  import TurnLog from '$features/exploration/TurnLog.svelte';
   import Tally from '$features/scoring/Tally.svelte';
   import { publishable, scoreOf } from '$features/scoring/score';
   import type { HexId } from '$features/map/hex';
@@ -249,6 +250,16 @@
     options = null;
     await game?.append('game/ended', { seat });
   }
+  // The full list of a turn's records, opened from the "+" at the end of a rail's roll log.
+  let logOpenSeat = $state<string | null>(null);
+  const openLog = $derived.by(() => {
+    if (!logOpenSeat) return null;
+    const seat = seats.find((s) => s.id === logOpenSeat);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    const log = gameState.turn?.current === logOpenSeat ? gameState.turn.log : explorer?.lastMeal ? [explorer.lastMeal] : [];
+    if (!seat || !log.some((r) => r.seat === logOpenSeat)) return null;
+    return { seat, log };
+  });
   let retiringSeat = $state<string | null>(null);
   const retiring = $derived.by(() => {
     if (!retiringSeat || gameState.turn?.current !== retiringSeat) return null;
@@ -387,6 +398,12 @@
     </EdgePanel>
   {/if}
 
+  {#if openLog}
+    <EdgePanel seat={openLog.seat} {viewport} inset={railDepth + target * 0.4} testid="turn-log-edge-{openLog.seat.id}">
+      <TurnLog seat={openLog.seat.id} log={openLog.log} onclose={() => (logOpenSeat = null)} />
+    </EdgePanel>
+  {/if}
+
   {#if retiring}
     <EdgePanel seat={retiring.seat} {viewport} inset={railDepth + target * 0.4} testid="retire-edge-{retiring.seat.id}">
       <RetirePanel seat={retiring.seat.id} where={retiring.where} onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} />
@@ -518,7 +535,7 @@
                   {/if}
                 </span>
               {/if}
-              <RollLog seat={seat.id} log={gameState.turn.log} />
+              <RollLog seat={seat.id} log={gameState.turn.log} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
               <TurnControls
                 seat={seat.id}
                 phase={gameState.turn.phase}
@@ -528,7 +545,7 @@
                 onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null}
               />
             {:else if explorer.lastMeal}
-              <RollLog seat={seat.id} log={[explorer.lastMeal]} />
+              <RollLog seat={seat.id} log={[explorer.lastMeal]} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             {/if}
           {/if}
         {:else}
@@ -543,7 +560,7 @@
             <!-- The game is over: the standings are in the middle of the table; nothing more is commissioned until it continues. -->
           {:else if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
             <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
-            <RollLog seat={seat.id} log={gameState.turn.log} />
+            <RollLog seat={seat.id} log={gameState.turn.log} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null} />
           {:else}
             <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
