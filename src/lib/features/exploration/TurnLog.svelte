@@ -1,7 +1,8 @@
 <script lang="ts">
   // Everything that happened this turn for one seat, opened from the "+" at the end of the rail's
-  // roll log (PROMPTS.md, prompt 13): every record in order with its dice, modifiers and outcome,
-  // in a short list that scrolls when the turn was eventful.
+  // roll log (PROMPTS.md, prompts 13 and 16): every record in order with its dice, modifiers and
+  // outcome, and a plain line for each action that rolled nothing, in a short list that scrolls
+  // when the turn was eventful.
   import type { RollRecord } from '$lib/game/state';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import { card as cardOf } from '$features/cards/deck';
@@ -29,6 +30,9 @@
   <ol class="entries" data-testid="turn-log-entries-{seat}">
     {#each mine as r, i (i)}
       <li class="entry" data-testid="turn-log-entry-{i}-{seat}" data-kind={r.kind}>
+        {#if r.kind === 'action'}
+          <span class="action">{r.outcome}</span>
+        {:else}
         <span class="kind">{name(r.kind)}{#if r.kind === 'disaster' && r.card} {cardOf(r.card).number}{/if}</span>
         {#if r.rolls.length}
           <DiceRoll values={r.rolls.map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" />
@@ -37,6 +41,7 @@
           <span class="mods">{r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')}</span>
         {/if}
         <span class="outcome" class:bad={r.lost}>{r.outcome}</span>
+        {/if}
       </li>
     {/each}
   </ol>
@@ -90,6 +95,9 @@
   }
   .kind {
     font-weight: 700;
+  }
+  .action {
+    grid-column: 1 / -1;
   }
   .mods {
     grid-column: 1 / -1;

@@ -62,7 +62,7 @@ test.describe('013 - Disaster cards', () => {
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
     await outfit(page, 'bottom-1', { askaris: 5, bearers: 15, food: 100 });
     // At the port no card is drawn; the expedition walks one known veldt hex north.
-    await expect(page.locator('[data-testid^="roll-log-"]')).toHaveCount(0);
+    await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-rolls', '0');
     await page.getByTestId('move-target-c25r11').click();
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r11');
     await nextRound(page);

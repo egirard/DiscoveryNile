@@ -6,6 +6,9 @@ import { card } from '$features/cards/deck';
 import { moveTargets, standingHex, unknownTo } from './reducer';
 import { neighbour } from '$features/map/hex';
 
+/** The turn's rolls, leaving out the plain lines for actions that rolled nothing (prompt 16). */
+const rolls = (s: GameState) => s.turn!.log.filter((r) => r.kind !== 'action');
+
 beforeEach(resetSequence);
 
 const LAYOUT = { bottom: 2, top: 2, left: 1, right: 1 };
@@ -54,7 +57,8 @@ describe('expedition/moved from a port (rules §7)', () => {
     const e = s.explorers.find((x) => x.seat === first)!;
     expect(e.location).toEqual({ kind: 'hex', hex: 'c15r36' });
     expect(e.known).toEqual(['c14r36', 'c15r36']);
-    expect(s.turn!.log).toEqual([]);
+    expect(rolls(s)).toEqual([]);
+    expect(s.turn!.log.map((r) => r.kind)).toEqual(['action', 'action']); // outfitted, moved: no die
     expect(s.turn!.movement).toMatchObject({ mode: 'foot', points: 2, spent: 1, halted: false });
     expect(s.turn!.moved).toBe(false);
     expect(s.map).toEqual({});
@@ -89,14 +93,14 @@ describe('expedition/moved into a blank hex', () => {
       if (!cash.chart) continue; // could not afford or sail
       const s = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
       if (s.diagnostics.length) continue;
-      const lost = s.turn!.log[0];
+      const lost = rolls(s)[0];
       expect(lost.kind).toBe('lost-check');
       expect(lost.modifiers![0]).toEqual({ label: 'veldt', value: -1 });
       if (!lost.lost) hit = { s, first };
     }
     expect(hit).not.toBeNull();
     const { s, first } = hit!;
-    expect(s.turn!.log[1].kind).toBe('terrain');
+    expect(rolls(s)[1].kind).toBe('terrain');
     expect(s.map['c24r12']).toBeDefined();
     expect(s.map['c24r12'].markers).toEqual([first]);
     const e = s.explorers.find((x) => x.seat === first)!;
@@ -113,13 +117,13 @@ describe('expedition/moved into a blank hex', () => {
       const { events, first } = mombasa(seed);
       if (!reduce(events).explorers.find((x) => x.seat === first)!.chart) continue;
       const s = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
-      if (s.diagnostics.length || !s.turn!.log[0]?.lost) continue;
+      if (s.diagnostics.length || !rolls(s)[0]?.lost) continue;
       found = true;
       expect(s.explorers.find((x) => x.seat === first)!.location).toEqual({ kind: 'port', port: 'mombasa' });
       expect(s.map).toEqual({});
       expect(s.turn!.moved).toBe(true);
       expect(s.turn!.movement?.halted).toBe(true);
-      expect(s.turn!.log).toHaveLength(1);
+      expect(rolls(s)).toHaveLength(1);
       const again = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
       expect(again.turn!.log).toEqual(s.turn!.log);
     }
@@ -131,7 +135,7 @@ describe('expedition/moved into a blank hex', () => {
       if (!reduce(events).explorers.find((x) => x.seat === first)!.chart) continue;
       const s = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
       expect(s.diagnostics).toEqual([]);
-      expect(s.turn!.log[0]).toMatchObject({ kind: 'lost-check', lost: false, rolls: [], modifiers: [{ label: 'guide from this hex', value: 0 }] });
+      expect(rolls(s)[0]).toMatchObject({ kind: 'lost-check', lost: false, rolls: [], modifiers: [{ label: 'guide from this hex', value: 0 }] });
       return;
     }
     throw new Error('no affordable seed');
@@ -182,7 +186,7 @@ describe('movement rates with scripted dice (rules §7.1)', () => {
     expect(targets.find((t) => t.hex === 'c15r32')).toMatchObject({ unknown: true, cost: 2, mode: 'mounted' });
     const s3 = reduce([...events, event('expedition/moved', { seat: 'bottom-1', path: ['c15r32'] })]);
     expect(s3.diagnostics).toEqual([]);
-    expect(s3.turn!.log.map((l) => l.outcome)).toEqual(['found the way', 'mapped lake', 'lake is impassable mounted: the expedition turns back']);
+    expect(rolls(s3).map((l) => l.outcome)).toEqual(['found the way', 'mapped lake', 'lake is impassable mounted: the expedition turns back']);
     expect(s3.map['c15r32']).toMatchObject({ terrain: 'lake', markers: ['bottom-1'] });
     expect(s3.explorers[0].location).toEqual({ kind: 'hex', hex: 'c16r32' });
     expect(s3.turn!.moved).toBe(true);

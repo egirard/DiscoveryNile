@@ -93,7 +93,7 @@ test.describe('012 - Movement rates', () => {
           const s = await state(page);
           expect(s.turn!.movement).toMatchObject({ mode: 'mounted', points: 4, unknownCost: 2, spent: 2, halted: false });
           expect(s.turn!.moved).toBe(false);
-          expect(s.turn!.log).toEqual([]);
+          expect(s.turn!.log.filter((r) => r.kind !== 'action')).toEqual([]);
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.location).toEqual({ kind: 'hex', hex: 'c16r32' });
           expect(s.diagnostics).toEqual([]);
         } }
@@ -150,7 +150,7 @@ test.describe('012 - Movement rates', () => {
         { spec: 'The token stands on c2r4 after four steps, with no roll (all hexes were pre-printed) and no further target', check: async () => {
           await expect(page.getByTestId('board-token-top-1')).toHaveAttribute('data-hex', 'c2r4');
           await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
-          await expect(page.locator('[data-testid^="roll-log-"]')).toHaveCount(0);
+          await expect(page.getByTestId('roll-log-top-1')).toHaveAttribute('data-rolls', '0');
           const s = await state(page);
           expect(s.turn!.movement).toMatchObject({ mode: 'canoe', points: 4, unknownCost: 2, spent: 4 });
           expect(s.turn!.moved).toBe(true);

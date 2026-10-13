@@ -1,3 +1,4 @@
+import { describeCard } from './actions';
 import type { GameEvent } from '$lib/game/events';
 import type { ExplorerState, GameState, RollOff, RollRecord } from '$lib/game/state';
 import type { HexId } from '$features/map/hex';
@@ -43,7 +44,7 @@ function replaceExplorer(state: GameState, explorer: ExplorerState): GameState {
 }
 
 /** Take the top card; when the draw pile is empty the discards are shuffled to form a new one. */
-function drawOne(state: GameState, explorer: ExplorerState): GameState {
+function drawOne(state: GameState, explorer: ExplorerState, noted = false): GameState {
   let { draw, discard } = state.deck!;
   let rng = state.rng!;
   if (draw.length === 0) {
@@ -55,7 +56,9 @@ function drawOne(state: GameState, explorer: ExplorerState): GameState {
   }
   const [top, ...rest] = draw;
   const next: ExplorerState = { ...explorer, hand: [...explorer.hand, top], drawnRound: { ...explorer.drawnRound, [top]: state.turn!.round } };
-  return { ...replaceExplorer(state, next), rng, deck: { draw: rest, discard } };
+  // The draw that opens a turn in Europe is the turn's first entry in the log; a draw earned by publishing is in that record already.
+  const log = noted ? [...state.turn!.log, { kind: 'action', seat: explorer.seat, rolls: [], outcome: `drew ${describeCard(top)}` } as RollRecord] : state.turn!.log;
+  return { ...replaceExplorer(state, next), rng, deck: { draw: rest, discard }, turn: { ...state.turn!, log } };
 }
 
 /** Hand the turn to the next seat clockwise; a new round starts when the order wraps, and the agreed limit ends the game. */
@@ -153,7 +156,7 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     state = { ...replaceExplorer(state, explorer), deck: { ...state.deck!, discard: [...state.deck!.discard, ...expired] } };
   }
   if (explorer.hand.length > HAND_LIMIT) return { ...state, turn: { ...turn, phase: 'discard' } };
-  return drawOne(state, explorer);
+  return drawOne(state, explorer, true);
 }
 
 export { replaceExplorer };

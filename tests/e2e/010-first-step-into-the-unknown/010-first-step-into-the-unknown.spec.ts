@@ -60,7 +60,7 @@ test.describe('010 - First step into the unknown', () => {
           await expect(page.getByTestId('move-target-c24r13')).toHaveAttribute('data-unknown', 'false');
         } },
         { spec: 'No roll has been made and no hex is mapped yet', check: async () => {
-          await expect(page.locator('[data-testid^="roll-log-"]')).toHaveCount(0);
+          await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-rolls', '0'); // the log holds the outfitting only
           const s = await state(page);
           expect(s.map).toEqual({});
           expect(s.turn).toMatchObject({ current: 'bottom-1', moved: false });

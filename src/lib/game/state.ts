@@ -148,11 +148,12 @@ export interface MappedHex {
   peakFeet: number | null;
 }
 
-/** A roll the table showed, kept for the current turn so the rail can display it. */
+/** A roll the table showed, or an action that rolled nothing (`action`), kept for the current turn so the rail can display it. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit' | 'party';
+  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit' | 'party' | 'action';
   seat: SeatId;
-  hex: HexId;
+  /** Where it happened; none for an action in Europe or at sea. */
+  hex?: HexId;
   /** The disaster card drawn this turn (rules §10). */
   card?: CardId;
   /** Whether the card's context matched the expedition's situation. */

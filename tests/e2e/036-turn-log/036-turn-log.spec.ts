@@ -20,7 +20,7 @@ test.describe('036 - The turn\'s log', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'The turn\'s log',
-      'The rail shows this turn\'s rolls as dice on one line, with a note for the latest. A "+" at the end of that line opens the full list at the player\'s edge: every record of the turn in order, with its dice, the modifiers that applied and what came of it, in a short list that scrolls when the turn was eventful. The "−" that takes the place of the "+" closes it.'
+      'The rail shows this turn\'s rolls as dice on one line, with a note for the latest, and the "+" is there from the turn\'s first action, rolled or not. The "+" at the end of that line opens the full list at the player\'s edge: every record of the turn in order, with its dice, the modifiers that applied and what came of it, in a short list that scrolls when the turn was eventful. The "−" that takes the place of the "+" closes it.'
     );
 
     // Seed 150 as in scenario 010: bottom-1 sails to Mombasa on a ticket, outfits, and the first step into c24r12 is lost.
@@ -43,6 +43,29 @@ test.describe('036 - The turn\'s log', () => {
     await tap(page, 'buy-bearers-bottom-1', 5);
     await page.getByTestId('confirm-outfit-bottom-1').click();
     await page.getByTestId('confirm-outfit-yes-bottom-1').click();
+    await expect(page.getByTestId('chart-summary-bottom-1')).toBeVisible();
+    await page.getByTestId('log-expand-bottom-1').click();
+
+    await steps.step('log-before-any-roll', {
+      description: 'Nothing has rolled yet this turn, but the expedition was outfitted: the rail already ends with the "+", and the list it opens says so in a plain line (prompt 16)',
+      verifications: [
+        { spec: 'The rail shows no dice but the "+" is there, and the open list holds the one line: the outfitting', check: async () => {
+          await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-rolls', '0');
+          await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-records', '1');
+          await expect(page.getByTestId('log-expand-bottom-1')).toHaveText('−');
+          await expect(page.getByTestId('turn-log-bottom-1')).toHaveAttribute('data-count', '1');
+          await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toHaveAttribute('data-kind', 'action');
+          await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toHaveText('outfitted at Mombasa: 15 bearers, 5 askaris, 100 rations');
+        } },
+        { spec: 'The log in the state holds that one action and no roll', check: async () => {
+          const log = (await state(page)).turn!.log;
+          expect(log.map((r) => r.kind)).toEqual(['action']);
+        } }
+      ]
+    });
+
+    await page.getByTestId('log-expand-bottom-1').click();
+    await expect(page.getByTestId('turn-log-bottom-1')).toHaveCount(0);
     await page.getByTestId('move-target-c24r12').click();
     await expect(page.getByTestId('lost-badge-bottom-1')).toBeVisible();
 
@@ -67,8 +90,9 @@ test.describe('036 - The turn\'s log', () => {
           const records = (await state(page)).turn!.log.filter((r) => r.seat === 'bottom-1').length;
           await expect(page.getByTestId('turn-log-bottom-1')).toHaveAttribute('data-count', String(records));
           await expect(page.getByTestId('turn-log-entries-bottom-1').locator('li')).toHaveCount(records);
-          await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toHaveAttribute('data-kind', 'lost-check');
-          await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toContainText('Lost check');
+          await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toHaveAttribute('data-kind', 'action');
+          await expect(page.getByTestId('turn-log-entry-1-bottom-1')).toHaveAttribute('data-kind', 'lost-check');
+          await expect(page.getByTestId('turn-log-entry-1-bottom-1')).toContainText('Lost check');
         } },
         { spec: 'The control now reads "−" and is pressed', check: async () => {
           await expect(page.getByTestId('log-expand-bottom-1')).toHaveText('−');

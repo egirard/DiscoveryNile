@@ -4,6 +4,7 @@ import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
 import { reduceTurn } from '$features/turn/reducer';
 import { reduceExploration } from '$features/exploration/reducer';
+import { noteAction } from '$features/turn/actions';
 
 export type Step = (state: GameState, event: GameEvent) => GameState | string;
 
@@ -40,7 +41,8 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
     if (typeof result === 'string') return reject(state, event, result);
     if (result !== state) {
       const seat = (event.payload as { seat?: string }).seat;
-      return { ...result, undo: seat && undoable(state, result, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };
+      const noted = noteAction(event, state, result);
+      return { ...noted, undo: seat && undoable(state, noted, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };
     }
   }
   return reject(state, event, `unknown event type ${event.type}`);

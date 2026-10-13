@@ -86,7 +86,7 @@ describe('publishing (rules §12)', () => {
     expect(target).toMatchObject({ unknown: false, cost: 1 });
     const back = reduceOne(atMombasa, event('expedition/moved', { seat: 'top-1', path: ['c24r12'] }));
     expect(back.diagnostics).toEqual([]);
-    expect(back.turn!.log.map((r) => r.kind)).toEqual([]); // neither a lost check nor a natives roll
+    expect(back.turn!.log.map((r) => r.kind)).toEqual(['action']); // the step itself; neither a lost check nor a natives roll
     expect(back.map['c24r12'].markers).toEqual([]);
     const cacheId = Object.values(back.caches).find((c) => c.seat === 'bottom-1')!.id;
     const dug = reduceOne({ ...back, turn: { ...back.turn!, round: back.turn!.round + 1 } }, event('cache/recovered', { seat: 'top-1', cacheId }));

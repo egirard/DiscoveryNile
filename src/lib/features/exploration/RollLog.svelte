@@ -12,12 +12,14 @@
     ontoggle?: () => void;
   }
   let { seat, log, expanded = false, ontoggle }: Props = $props();
-  const mine = $derived(log.filter((r) => r.seat === seat));
+  const all = $derived(log.filter((r) => r.seat === seat));
+  /** The rail shows the rolls; an action that rolled nothing is listed only in the full list of the turn. */
+  const mine = $derived(all.filter((r) => r.kind !== 'action'));
   const lost = $derived(mine.some((r) => r.lost));
 </script>
 
-{#if mine.length}
-  <span class="log" data-testid="roll-log-{seat}" data-lost={lost}>
+{#if all.length}
+  <span class="log" data-testid="roll-log-{seat}" data-lost={lost} data-rolls={mine.length} data-records={all.length}>
     {#each mine as r, i (i)}
       {@const recent = i >= mine.length - 2}
       <span class="entry" data-testid="roll-{r.kind}-{seat}" data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} aria-label="{r.kind}: {r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}{r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}; {r.outcome}">
