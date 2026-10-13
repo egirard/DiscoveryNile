@@ -39,6 +39,7 @@ test.describe('009 - Outfit the expedition', () => {
     await page.getByTestId('sail-bottom-1').click();
     await expect(page.getByTestId('port-port-elizabeth')).toHaveAttribute('data-fare', 'ticket');
     await page.getByTestId('choose-port-port-elizabeth').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await expect(page.getByTestId('money-bottom-1')).toHaveText('$1100');
     await endTurn(page, 'bottom-1');
     await endTurn(page, 'top-1'); // bottom-1's turn at sea is skipped; the token lands

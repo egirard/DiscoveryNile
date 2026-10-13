@@ -20,7 +20,7 @@ test.describe('007 - A turn in Europe', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'A turn in Europe',
-      'Each turn an explorer stays in Europe: expired free tickets are discarded, a hand above five must be trimmed by tapping cards, then one card is drawn. The current seat alone shows an end-turn control that asks for confirmation at its edge, and the turn passes clockwise. Money raised is totalled at each rail.'
+      'Each turn an explorer stays in Europe: expired free tickets are discarded, a hand above five must be trimmed by tapping cards, then one card is drawn. The current seat alone shows the hourglass that ends the turn (to wait is the other choice besides sailing); a tap puts the check mark on the hourglass itself with the "✕" to its left, in the ship\'s place, and the turn passes clockwise once confirmed. Money raised is totalled at each rail.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
@@ -32,17 +32,23 @@ test.describe('007 - A turn in Europe', () => {
     const second = first === 'bottom-1' ? 'top-1' : 'bottom-1';
 
     await steps.step('turn-begins-draw', {
-      description: 'The first player has drawn a sixth card as the turn begins; only that seat shows an end-turn control and a money total',
+      description: 'The first player has drawn a sixth card as the turn begins; only that seat shows the ship and the hourglass, and a money total; the roll for first player is the other seat\'s latest line',
       verifications: [
         { spec: 'The current seat holds six cards and the other five; the draw pile is 37', check: async () => {
           await expect(page.getByTestId(`hand-${first}`)).toHaveAttribute('data-count', '6');
           await expect(page.getByTestId(`hand-${second}`)).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '37');
         } },
-        { spec: 'The end-turn control is offered at the current seat only, and no discard is pending', check: async () => {
+        { spec: 'The hourglass is offered at the current seat only, and no discard is pending', check: async () => {
           await expect(page.getByTestId(`end-turn-${first}`)).toBeVisible();
           await expect(page.locator('[data-testid^="end-turn-"]')).toHaveCount(1);
           await expect(page.locator('[data-testid^="discard-prompt-"]')).toHaveCount(0);
+        } },
+        { spec: 'The first player\'s latest line is the card drawn; the other seat\'s is its roll for first player, with four dice and no dice at the rail besides', check: async () => {
+          await expect(page.getByTestId(`action-note-${first}`)).toHaveText(/^drew /);
+          await expect(page.getByTestId(`roll-first-player-${second}`).locator('.die')).toHaveCount(4);
+          await expect(page.getByTestId(`roll-first-player-${second}`)).toHaveAttribute('data-outcome', /^total \d+$/);
+          await expect(page.locator('[data-testid^="roll-off-"]')).toHaveCount(0);
         } },
         { spec: 'Each rail totals the money in its hand', check: async () => {
           const s = await state(page);
@@ -56,13 +62,31 @@ test.describe('007 - A turn in Europe', () => {
     });
 
     await page.getByTestId(`end-turn-${first}`).click();
-    await expect(page.getByTestId(`confirm-end-turn-${first}`)).toBeVisible();
+
+    await steps.step('hourglass-asks-to-confirm', {
+      description: 'A tap on the hourglass: the check mark overlays the hourglass where it stands, and the ship\'s place to its left holds the "✕" that keeps the turn going',
+      verifications: [
+        { spec: 'The confirmation is on the hourglass and the cancel sits to its left, where the ship was', check: async () => {
+          const confirm = page.getByTestId(`confirm-end-turn-${first}`);
+          const cancel = page.getByTestId(`cancel-end-turn-${first}`);
+          await expect(confirm).toBeVisible();
+          await expect(cancel).toBeVisible();
+          await expect(page.getByTestId(`sail-${first}`)).toHaveCount(0);
+          await expect(page.getByTestId(`end-turn-${first}`)).toHaveCount(0);
+          const [c, x] = await Promise.all([confirm.boundingBox(), cancel.boundingBox()]);
+          expect(x!.x + x!.width).toBeLessThanOrEqual(c!.x + 1);
+          expect(Math.abs(x!.y - c!.y)).toBeLessThan(2);
+        } }
+      ]
+    });
+
     await page.getByTestId(`cancel-end-turn-${first}`).click();
     await expect(page.getByTestId(`end-turn-${first}`)).toBeVisible();
+    await expect(page.getByTestId(`sail-${first}`)).toBeVisible();
     await endTurn(page, first);
 
     await steps.step('end-turn-confirmed', {
-      description: 'After confirming, the turn marker moved clockwise; the next explorer drew a card; the roll-off dice are gone',
+      description: 'After confirming, the turn marker moved clockwise; the next explorer drew a card, which is now its latest line; the roll for first player stays in the log behind it',
       verifications: [
         { spec: 'The second seat is current and has drawn to six; the first keeps six', check: async () => {
           await expect(page.getByTestId(`turn-marker-${second}`)).toHaveAttribute('data-current', 'true');
@@ -70,8 +94,9 @@ test.describe('007 - A turn in Europe', () => {
           await expect(page.getByTestId(`hand-${first}`)).toHaveAttribute('data-count', '6');
           await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '36');
         } },
-        { spec: 'The roll-off dice are no longer shown and the end-turn control moved with the marker', check: async () => {
-          await expect(page.locator('[data-testid^="roll-off-"]')).toHaveCount(0);
+        { spec: 'No roll for first player is at either rail now; the hourglass moved with the marker', check: async () => {
+          await expect(page.locator('[data-testid^="roll-first-player-"]')).toHaveCount(0);
+          await expect(page.getByTestId(`action-note-${second}`)).toHaveText(/^drew /);
           await expect(page.getByTestId(`end-turn-${second}`)).toBeVisible();
           await expect(page.getByTestId(`end-turn-${first}`)).toHaveCount(0);
           const s = await state(page);

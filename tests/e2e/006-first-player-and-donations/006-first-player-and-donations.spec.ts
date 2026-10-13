@@ -27,7 +27,7 @@ test.describe('006 - First player and donations', () => {
           await expect(page.getByTestId('start-game')).toBeVisible();
           await expect(page.locator('[data-testid^="card-"]')).toHaveCount(0);
           await expect(page.getByTestId('deck')).toHaveCount(0);
-          await expect(page.locator('[data-testid^="roll-off-"]')).toHaveCount(0);
+          await expect(page.locator('[data-testid^="roll-log-"]')).toHaveCount(0);
         } }
       ]
     });
@@ -35,16 +35,30 @@ test.describe('006 - First player and donations', () => {
     await page.getByTestId('start-game').click();
 
     await steps.step('started', {
-      description: 'Both explorers rolled four dice; the high roller holds the turn marker; each rail shows five face-up cards; the piles are on the board',
+      description: 'Both explorers rolled four dice, read in the log rather than at the rail: the seat that waits has the roll as its latest line, the high roller has already drawn and keeps the roll behind that line; each rail shows five face-up cards; the piles are on the board',
       verifications: [
-        { spec: 'Four dice are shown at each explorer\'s rail with their total', check: async () => {
+        { spec: 'The roll is the first line of each seat\'s log, four dice and the total, at the rail for the waiting seat and behind the draw for the first player', check: async () => {
+          const s = await page.evaluate(() => window.__TABLETOP__!.getState());
+          const total = (seat: string) => s.rollOff![seat].at(-1)!.reduce((a, b) => a + b, 0);
+          const first = s.turn!.current;
           for (const seat of ['bottom-1', 'top-1']) {
-            const dice = page.getByTestId(`roll-off-${seat}`);
-            await expect(dice).toBeVisible();
-            await expect(dice.locator('.die')).toHaveCount(4);
-            const values = await dice.locator('.die').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-value'))));
-            expect(await dice.getAttribute('data-total')).toBe(String(values.reduce((a, b) => a + b, 0)));
+            const roll = page.getByTestId(`roll-first-player-${seat}`);
+            if (seat === first) {
+              await expect(page.getByTestId(`action-note-${seat}`)).toHaveText(/^drew /);
+              await expect(roll).toHaveCount(0);
+              await page.getByTestId(`log-expand-${seat}`).click();
+              await expect(page.getByTestId(`turn-log-round-0-${seat}`)).toHaveText('First player');
+              await expect(roll).toHaveAttribute('data-outcome', `total ${total(seat)}: first player`);
+            } else {
+              await expect(roll).toHaveAttribute('data-outcome', `total ${total(seat)}`);
+            }
+            await expect(roll.locator('.die')).toHaveCount(4);
+            const values = await roll.locator('.die').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-value'))));
+            expect(values.reduce((a, b) => a + b, 0)).toBe(total(seat));
+            await expect(roll).toHaveAttribute('data-total', String(total(seat)));
+            if (seat === first) await page.getByTestId(`log-expand-${seat}`).click();
           }
+          await expect(page.locator('[data-testid^="roll-off-"]')).toHaveCount(0);
         } },
         { spec: 'The turn marker sits at the seat whose final roll was higher', check: async () => {
           const state = await page.evaluate(() => window.__TABLETOP__!.getState());
@@ -90,6 +104,7 @@ test.describe('006 - First player and donations', () => {
           expect(after.explorers.map((e) => e.hand)).toEqual(before.explorers.map((e) => e.hand));
           expect(after.deck).toEqual(before.deck);
           expect(after.rollOff).toEqual(before.rollOff);
+          expect(after.history).toEqual(before.history);
           expect(after.turn).toEqual(before.turn);
           await expect(page.getByTestId(`turn-marker-${before.turn!.current}`)).toHaveAttribute('data-current', 'true');
         } },

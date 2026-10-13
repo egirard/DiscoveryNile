@@ -49,6 +49,7 @@ test.describe('015 - Water in the desert', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-khartoum').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Khartoum and that turn is skipped
     await passTurn(page);

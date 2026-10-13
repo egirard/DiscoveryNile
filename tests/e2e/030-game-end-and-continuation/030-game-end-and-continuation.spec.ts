@@ -60,6 +60,7 @@ test.describe('030 - Game end and continuation', () => {
     expect((await state(page)).turn!.roundLimit).toBe(5);
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands and that turn is skipped
     await passTurn(page);

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -53,6 +54,7 @@ test.describe('017 - Native reaction and combat', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
@@ -65,13 +67,17 @@ test.describe('017 - Native reaction and combat', () => {
       description: 'A show of force. The reaction dice come up 6, 6, 6 against a target of 4: hostile, and strong enough to attack. Not surprised, the five askaris and the explorer fire and six warriors fall; the rest close in, kill an askari, and lose five more before they are driven off',
       verifications: [
         { spec: 'The rail shows the reaction as hostile with its dice and modifiers', check: async () => {
-          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('data-outcome', 'hostile (18 over 4)');
-          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /distance to port \+1, policy 3 \+3/);
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('data-outcome', 'hostile (18 over 4)');
+            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /distance to port \+1, policy 3 \+3/);
+          });
         } },
         { spec: 'The combat note tells the fight and its eight dice are shown; the chart shows 4 askaris and the tribe one warrior', check: async () => {
-          await expect(page.getByTestId('combat-note-bottom-1')).toHaveText('hostile: the natives attack; the volley kills 6; they close in; 1 askari falls; 5 warriors fall; the natives are driven off');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile: the natives attack; the volley kills 6; they close in; 1 askari falls; 5 warriors fall; the natives are driven off');
+            await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('no quarter: no prisoners, the village cannot be found');
+          });
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '4');
-          await expect(page.getByTestId('victory-note-bottom-1')).toHaveText('no quarter: no prisoners, the village cannot be found');
           const s = await state(page);
           const combat = s.turn!.log.find((l) => l.kind === 'combat')!;
           expect(combat.rolls.map((r) => r.value)).toEqual([1, 6, 6, 1, 6, 1, 1, 2]);
@@ -92,8 +98,10 @@ test.describe('017 - Native reaction and combat', () => {
       description: 'Remaining in the hex next turn, the explorer ignores the tribe. Hostile again on 6, 6, 6, but the lone surviving warrior hides from four askaris',
       verifications: [
         { spec: 'The reaction is hostile and the natives hide; nothing changes on the chart', check: async () => {
-          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('hostile (18 over 5)');
-          await expect(page.getByTestId('combat-note-bottom-1')).toHaveText('hostile, but the natives hide from the expedition (6 against 1 warriors)');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('reaction-note-bottom-1').last()).toHaveText('hostile (18 over 5)');
+            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile, but the natives hide from the expedition (6 against 1 warriors)');
+          });
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '4');
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'act', policy: 4 });

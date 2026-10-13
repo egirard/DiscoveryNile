@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -50,6 +51,7 @@ test.describe('019 - Negotiation and trade', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
@@ -67,8 +69,10 @@ test.describe('019 - Negotiation and trade', () => {
       description: 'The reaction is calm, so the chief receives the explorer. Two gifts are offered; the dice show 3 and 6, and 6 × 2 reaches the twelve warriors: the chief is satisfied and permits trade. The trade panel shows this turn\'s prices',
       verifications: [
         { spec: 'The rail tells the offer and the permission with the prices', check: async () => {
-          await expect(page.getByTestId('negotiation-note-bottom-1')).toHaveText('2 gifts offered: the chief is satisfied (6 × 2 against 12 warriors)');
-          await expect(page.getByTestId('trade-note-bottom-1')).toHaveText('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('2 gifts offered: the chief is satisfied (6 × 2 against 12 warriors)');
+            await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
+          });
           await expect(page.getByTestId('trade-prompt-bottom-1')).toBeVisible();
         } },
         { spec: 'The trade panel lists rations, bearers, guides and askaris at the rolled prices; 18 gifts remain', check: async () => {
@@ -120,8 +124,10 @@ test.describe('019 - Negotiation and trade', () => {
       description: 'Next turn the tribe remembers the explorer (+1 for the prior negotiation) and stays calm. The explorer gives everything but the men: the stores go, the chief returns 18 gifts, and trade opens again at fresh prices',
       verifications: [
         { spec: 'The reaction counts the local knowledge; the chart keeps the men, 18 gifts and nothing else', check: async () => {
-          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /local knowledge \+1/);
-          await expect(page.getByTestId('negotiation-note-bottom-1')).toHaveText('everything given: the chief is satisfied and returns 18 gifts');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /local knowledge \+1/);
+            await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('everything given: the chief is satisfied and returns 18 gifts');
+          });
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('trade-price-food-bottom-1')).toHaveAttribute('data-price', '1');

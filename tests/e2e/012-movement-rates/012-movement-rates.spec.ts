@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -58,10 +59,12 @@ test.describe('012 - Movement rates', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-durban').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await page.getByTestId('sail-top-1').click();
     await expect(page.getByTestId('port-brass')).toHaveAttribute('data-fare', 'ticket');
     await page.getByTestId('choose-port-brass').click();
+    await page.getByTestId('confirm-sail-top-1').click();
     await passTurn(page);
     // Round 2 is skipped at sea by both; round 3 opens with bottom-1 at Durban.
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c17r34');
@@ -106,9 +109,11 @@ test.describe('012 - Movement rates', () => {
       description: 'The blank hex is entered: the lost check succeeds, the terrain table gives a lake, which horses cannot enter, so the hex is mapped and claimed but the expedition turns back and its movement is over',
       verifications: [
         { spec: 'The rail shows the lost check, the terrain roll and the turning back, in that order', check: async () => {
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'false');
-          await expect(page.getByTestId('roll-terrain-bottom-1')).toHaveAttribute('data-outcome', 'mapped lake');
-          await expect(page.getByTestId('roll-turned-back-bottom-1')).toHaveAttribute('data-outcome', 'lake is impassable mounted: the expedition turns back');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', 'mapped lake');
+            await expect(page.getByTestId('roll-turned-back-bottom-1').last()).toHaveAttribute('data-outcome', 'lake is impassable mounted: the expedition turns back');
+          });
           await expect(page.getByTestId('movement-bottom-1')).toHaveAttribute('data-left', '0');
         } },
         { spec: 'The lake is drawn with the bottom seat\'s marker; the token stays on c16r32 and no target is offered', check: async () => {

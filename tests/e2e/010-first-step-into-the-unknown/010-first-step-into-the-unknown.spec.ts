@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -33,6 +34,7 @@ test.describe('010 - First step into the unknown', () => {
     await page.getByTestId('sail-bottom-1').click();
     await expect(page.getByTestId('port-mombasa')).toHaveAttribute('data-fare', 'ticket');
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await endTurn(page, 'bottom-1');
     await endTurn(page, 'top-1');
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
@@ -101,8 +103,10 @@ test.describe('010 - First step into the unknown', () => {
       description: 'Next turn the expedition finds the way: the hex is generated as veldt like its neighbour, drawn, marked, and entered',
       verifications: [
         { spec: 'The lost check succeeded and a terrain roll followed', check: async () => {
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'false');
-          await expect(page.getByTestId('roll-terrain-bottom-1')).toHaveAttribute('data-outcome', /mapped veldt/);
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', /mapped veldt/);
+          });
           await expect(page.getByTestId('lost-badge-bottom-1')).toHaveCount(0);
         } },
         { spec: 'The hex shows veldt with the bottom seat\'s marker and the token stands on it', check: async () => {

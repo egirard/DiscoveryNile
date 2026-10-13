@@ -64,7 +64,7 @@ The player names a port of entry and **skips one turn** while the token moves th
 - **Caches and reorganisation**: any turn an expedition may cache canoes, rations, gifts or muskets (cache marker, contents recorded), release or eat animals, or dismiss men. Dismissed men and animals vanish. Returning to a cache: roll one die, on 1 or 2 it is gone. Other explorers' caches are findable only in published hexes (`RQ-3`).
 - **Speed limit**: an expedition that cannot carry all its men and supplies with its canoes, horses or camels moves at the on-foot rate. Mounted means a mount for everyone, the riders' animals carrying 5 each and the spare animals, led by the bearers (three each), 20 each; an expedition with canoes walks them (G-123). The outfitting panel shows these readings while the player buys.
 
-The table keeps a log of the current seat's turn: every roll the rules call for, and a plain line for each action that rolls nothing (G-126); the rail shows the dice and a "+" opens the whole list.
+The table keeps a log of the whole game, seat by seat and round by round, from the roll for first player: every roll the rules call for, a plain line for each action that rolls nothing (G-126), the landing after the turn at sea, and the meal that ends a turn in the field (G-128). The rail reads the latest line; a "+" opens the rest directly above it (G-127).
 
 ## 6. A turn in Africa *(Rules: Order of a Turn)*
 

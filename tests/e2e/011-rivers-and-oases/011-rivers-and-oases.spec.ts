@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -45,6 +46,7 @@ test.describe('011 - Rivers, oases and cataracts', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
@@ -59,7 +61,9 @@ test.describe('011 - Rivers, oases and cataracts', () => {
     await page.getByTestId('confirm-outfit-bottom-1').click();
     await page.getByTestId('confirm-outfit-yes-bottom-1').click();
     await stepWest(page, 'c24r12');
-    await expect(page.getByTestId('roll-water-bottom-1')).toHaveAttribute('data-outcome', 'no river');
+    await withLogOpen(page, 'bottom-1', async () => {
+      await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', 'no river');
+    });
     await passTurn(page);
     await passTurn(page);
     await stepWest(page, 'c23r13');
@@ -68,7 +72,9 @@ test.describe('011 - Rivers, oases and cataracts', () => {
       description: 'c23r13 is mapped: a river rises there, flows north-west into the unexplored, and has a cataract',
       verifications: [
         { spec: 'The water roll reports a source flowing in direction 6 with a cataract, and the board draws it', check: async () => {
-          await expect(page.getByTestId('roll-water-bottom-1')).toHaveAttribute('data-outcome', /rises here and flows in direction 6; a cataract/);
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /rises here and flows in direction 6; a cataract/);
+          });
           const course = page.getByTestId('course-c23r13');
           await expect(course).toHaveAttribute('data-source', 'true');
           await expect(course).toHaveAttribute('data-out', '6');
@@ -97,7 +103,9 @@ test.describe('011 - Rivers, oases and cataracts', () => {
           const s = await state(page);
           expect(s.map['c22r13'].peakFeet).toBe(20000);
           expect(s.map['c22r13'].river).toMatchObject({ source: true, out: 5 });
-          await expect(page.getByTestId('roll-water-bottom-1')).toHaveAttribute('data-outcome', /a peak of 20,000 ft; a river rises here and flows in direction 5/);
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /a peak of 20,000 ft; a river rises here and flows in direction 5/);
+          });
         } }
       ]
     });
@@ -114,8 +122,10 @@ test.describe('011 - Rivers, oases and cataracts', () => {
           await expect(course).toHaveAttribute('data-in', '2');
           await expect(course).toHaveAttribute('data-out', '4');
           await expect(course).toHaveAttribute('data-source', 'false');
-          await expect(page.getByTestId('roll-water-bottom-1')).toHaveAttribute('data-outcome', /the river flows on in direction 4/);
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('aria-label', /following the river downstream/);
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /the river flows on in direction 4/);
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('aria-label', /following the river downstream/);
+          });
         } },
         { spec: 'Three hexes are mapped and marked, all replayable from the seed', check: async () => {
           const s = await state(page);

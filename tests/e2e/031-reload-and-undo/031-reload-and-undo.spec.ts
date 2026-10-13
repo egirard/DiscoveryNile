@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -48,6 +49,7 @@ test.describe('031 - Reload and undo', () => {
     await expect(page.getByTestId('undo-bottom-1')).toHaveCount(0); // the start rolled dice and dealt cards
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await expect(page.getByTestId('at-sea-bottom-1')).toBeVisible();
     await page.getByTestId('undo-bottom-1').click();
 
@@ -67,6 +69,7 @@ test.describe('031 - Reload and undo', () => {
 
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands and is skipped
     await passTurn(page);
@@ -95,7 +98,9 @@ test.describe('031 - Reload and undo', () => {
       description: 'The step into c24r12 rolls the lost check and maps the hex: the dice have spoken, and the undo control is gone',
       verifications: [
         { spec: 'The token is on c24r12 after a lost check; no undo is offered', check: async () => {
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeVisible();
+          });
           await expect(page.getByTestId('undo-bottom-1')).toHaveCount(0);
           const s = await state(page);
           expect(s.undo).toBeNull();
@@ -111,8 +116,10 @@ test.describe('031 - Reload and undo', () => {
       verifications: [
         { spec: 'The same screen: token on c24r12, lost check and terrain rolls shown, movement spent, end-turn offered', check: async () => {
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('roll-terrain-bottom-1')).toBeVisible();
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeVisible();
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toBeVisible();
+          });
           await expect(page.getByTestId('movement-bottom-1')).toHaveAttribute('data-left', '0');
           await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
           const s = await state(page);

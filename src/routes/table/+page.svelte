@@ -3,7 +3,7 @@
   import { base } from '$app/paths';
   import QRCode from 'qrcode';
   import { openGame, type Game } from '$lib/game/store';
-  import type { GameState } from '$lib/game/state';
+  import type { GameState, LoggedTurn } from '$lib/game/state';
   import { initialState } from '$lib/game/state';
   import SeatRail from '$features/seats/SeatRail.svelte';
   import { seatsFor, type Seat } from '$lib/tabletop/seats';
@@ -22,7 +22,6 @@
   import { chartOf, holderOf, moverOf, partyOf } from '$features/expedition/party';
   import Card from '$features/cards/Card.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
-  import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import TurnControls from '$features/turn/TurnControls.svelte';
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
@@ -40,7 +39,6 @@
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
   import RollLog from '$features/exploration/RollLog.svelte';
-  import TurnLog from '$features/exploration/TurnLog.svelte';
   import Tally from '$features/scoring/Tally.svelte';
   import { publishable, scoreOf } from '$features/scoring/score';
   import type { HexId } from '$features/map/hex';
@@ -109,8 +107,13 @@
     await game?.append('cards/discarded', { seat: seat.id, cardIds: [id] });
   }
 
-  // Sailing: the current seat opens the port chooser on the map; a port tap books passage.
+  // Sailing: the current seat opens the port chooser on the map; a port tap chooses, the check mark at the rail books (prompt 17).
   let sailingSeat = $state<string | null>(null);
+  let chosenPort = $state<PortId | null>(null);
+  function toggleSailing(seat: string) {
+    sailingSeat = sailingSeat === seat ? null : seat;
+    chosenPort = null;
+  }
   const portChoices = $derived.by((): Partial<Record<PortId, PortChoice>> | null => {
     if (!sailingSeat || gameState.turn?.current !== sailingSeat) return null;
     const explorer = explorerAt(gameState, sailingSeat);
@@ -118,7 +121,7 @@
     const cash = handValue(explorer.hand) + pooling.filter((s) => poolable.includes(s)).reduce((sum, s) => sum + handValue(explorerAt(gameState, s)!.hand), 0);
     const tickets = new Set(explorer.hand.map((id) => cardOf(id).donation).filter((d) => d.kind === 'ticket').map((d) => (d as { port: PortId }).port));
     const out: Partial<Record<PortId, PortChoice>> = {};
-    for (const id of Object.keys(BOARD.ports) as PortId[]) out[id] = { fare: tickets.has(id) ? 'ticket' : cash >= PASSAGE_FARE ? 'cash' : 'none' };
+    for (const id of Object.keys(BOARD.ports) as PortId[]) out[id] = { fare: tickets.has(id) ? 'ticket' : cash >= PASSAGE_FARE ? 'cash' : 'none', selected: chosenPort === id };
     return out;
   });
   // Companions in Europe chosen to pool their donations and sail along (rules §13).
@@ -127,16 +130,21 @@
     if (!sailingSeat) return [];
     return gameState.explorers.filter((e) => e.seat !== sailingSeat && e.location.kind === 'europe' && e.party === null).map((e) => e.seat);
   });
-  async function bookPassage(port: PortId) {
+  function choosePort(port: PortId) {
+    chosenPort = chosenPort === port ? null : port;
+  }
+  async function bookPassage() {
     const seat = sailingSeat;
+    const port = chosenPort;
     const explorer = seat ? explorerAt(gameState, seat) : undefined;
-    if (!seat || !explorer) return;
+    if (!seat || !port || !explorer || portChoices?.[port]?.fare === 'none') return;
     const ticket = explorer.hand.find((id) => {
       const d = cardOf(id).donation;
       return d.kind === 'ticket' && d.port === port;
     });
     const companions = pooling.filter((s) => poolable.includes(s));
     sailingSeat = null;
+    chosenPort = null;
     pooling = [];
     await game?.append('voyage/booked', { seat, port, ticketCardId: ticket ?? null, ...(companions.length ? { with: companions } : {}) });
   }
@@ -250,16 +258,17 @@
     options = null;
     await game?.append('game/ended', { seat });
   }
-  // The full list of a turn's records, opened from the "+" at the end of a rail's roll log.
+  // The rest of a seat's log, opened above the rail from the "+" at the end of its latest line.
   let logOpenSeat = $state<string | null>(null);
-  const openLog = $derived.by(() => {
-    if (!logOpenSeat) return null;
-    const seat = seats.find((s) => s.id === logOpenSeat);
-    const explorer = seat && explorerAt(gameState, seat.id);
-    const log = gameState.turn?.current === logOpenSeat ? gameState.turn.log : explorer?.lastMeal ? [explorer.lastMeal] : [];
-    if (!seat || !log.some((r) => r.seat === logOpenSeat)) return null;
-    return { seat, log };
-  });
+  /** The seat's turns so far with its own lines (a joint expedition's lines fall on the mover's turn), the turn in progress last when it is the seat's. */
+  function turnsOf(seat: string): LoggedTurn[] {
+    const own = (t: LoggedTurn) => ({ ...t, log: t.log.filter((r) => r.seat === seat) });
+    const past = gameState.history.map(own).filter((t) => t.log.length > 0);
+    const turn = gameState.turn;
+    if (!turn) return past;
+    const now = own({ round: turn.round, seat: turn.current, log: turn.log });
+    return turn.current === seat || now.log.length > 0 ? [...past, now] : past;
+  }
   let retiringSeat = $state<string | null>(null);
   const retiring = $derived.by(() => {
     if (!retiringSeat || gameState.turn?.current !== retiringSeat) return null;
@@ -349,7 +358,7 @@
   data-mm-per-px={k}
 >
   <div class="board" data-testid="board" data-e2e-fit style="inset: {inset.top}px {inset.right}px {inset.bottom}px {inset.left}px">
-    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
+    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={choosePort} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
   </div>
 
   {#if canStart}
@@ -398,12 +407,6 @@
     </EdgePanel>
   {/if}
 
-  {#if openLog}
-    <EdgePanel seat={openLog.seat} {viewport} inset={railDepth + target * 0.4} testid="turn-log-edge-{openLog.seat.id}">
-      <TurnLog seat={openLog.seat.id} log={openLog.log} onclose={() => (logOpenSeat = null)} />
-    </EdgePanel>
-  {/if}
-
   {#if retiring}
     <EdgePanel seat={retiring.seat} {viewport} inset={railDepth + target * 0.4} testid="retire-edge-{retiring.seat.id}">
       <RetirePanel seat={retiring.seat.id} where={retiring.where} onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} />
@@ -441,9 +444,6 @@
           <svelte:element this={canRetire ? 'button' : 'span'} class="turn-marker" role={canRetire ? 'button' : undefined} data-testid="turn-marker-{seat.id}" data-current={gameState.turn?.current === seat.id} aria-label={canRetire ? 'It is this seat\'s turn; tap the explorer to retire him' : gameState.turn?.current === seat.id ? 'It is this seat\'s turn' : ''} onclick={canRetire ? () => (retiringSeat = retiringSeat === seat.id ? null : seat.id) : undefined}>
             <ExplorerToken {explorer} />
           </svelte:element>
-          {#if gameState.rollOff?.[seat.id]}
-            <DiceRoll values={gameState.rollOff[seat.id].at(-1) ?? []} label="Roll for first player" testid="roll-off-{seat.id}" />
-          {/if}
           {#if gameState.turn}
             {@const mine = gameState.turn.current === seat.id}
             {@const discarding = mine && gameState.turn.phase === 'discard'}
@@ -535,17 +535,20 @@
                   {/if}
                 </span>
               {/if}
-              <RollLog seat={seat.id} log={gameState.turn.log} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
+              <RollLog seat={seat.id} turns={turnsOf(seat.id)} current expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
               <TurnControls
                 seat={seat.id}
                 phase={gameState.turn.phase}
                 onend={() => endTurn(seat)}
-                onsail={explorer.location.kind === 'europe' ? () => (sailingSeat = sailingSeat === seat.id ? null : seat.id) : null}
+                onsail={explorer.location.kind === 'europe' ? () => toggleSailing(seat.id) : null}
                 sailing={sailingSeat === seat.id}
+                portChosen={sailingSeat === seat.id && chosenPort !== null && portChoices?.[chosenPort]?.fare !== 'none'}
+                onbook={bookPassage}
+                onstay={() => toggleSailing(seat.id)}
                 onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null}
               />
-            {:else if explorer.lastMeal}
-              <RollLog seat={seat.id} log={[explorer.lastMeal]} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
+            {:else}
+              <RollLog seat={seat.id} turns={turnsOf(seat.id)} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             {/if}
           {/if}
         {:else}
@@ -560,9 +563,10 @@
             <!-- The game is over: the standings are in the middle of the table; nothing more is commissioned until it continues. -->
           {:else if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
             <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
-            <RollLog seat={seat.id} log={gameState.turn.log} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
+            <RollLog seat={seat.id} turns={turnsOf(seat.id)} current expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null} />
           {:else}
+            <RollLog seat={seat.id} turns={turnsOf(seat.id)} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
           {/if}
         {/if}

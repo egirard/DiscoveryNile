@@ -148,9 +148,9 @@ export interface MappedHex {
   peakFeet: number | null;
 }
 
-/** A roll the table showed, or an action that rolled nothing (`action`), kept for the current turn so the rail can display it. */
+/** A roll the table showed, or an action that rolled nothing (`action`): the turn's log, kept in `history` once the turn is over. */
 export interface RollRecord {
-  kind: 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit' | 'party' | 'action';
+  kind: 'first-player' | 'lost-check' | 'terrain' | 'water' | 'turned-back' | 'canoes' | 'disaster' | 'hunting' | 'natives' | 'reaction' | 'combat' | 'defeat' | 'captivity' | 'victory' | 'loot' | 'negotiation' | 'poison' | 'trade' | 'specialty' | 'cache' | 'published' | 'transit' | 'party' | 'action';
   seat: SeatId;
   /** Where it happened; none for an action in Europe or at sea. */
   hex?: HexId;
@@ -191,7 +191,17 @@ export interface TurnState {
   policy: number | null;
   /** Trade permitted this turn: the tribe and the prices rolled (rules §8.5). */
   trade: { tribe: number; prices: Partial<Record<Item, number>> } | null;
-  /** Rolls shown this turn. */
+  /** Everything that happened this turn, in order; archived to `history` when the turn ends. */
+  log: RollRecord[];
+}
+
+/**
+ * A turn that is over, with its log as it stood (the meal at its end included), so the table can show every turn so far
+ * (PROMPTS.md, prompt 17). Round 0 holds the roll for first player, one entry per seat.
+ */
+export interface LoggedTurn {
+  round: number;
+  seat: SeatId;
   log: RollRecord[];
 }
 
@@ -236,6 +246,8 @@ export interface GameState {
   rollOff: RollOff | null;
   turn: TurnState | null;
   deck: DeckState | null;
+  /** Every turn played so far, oldest first; the current turn's log is in `turn`. */
+  history: LoggedTurn[];
   /** Hexes mapped in play, by id. */
   map: Record<string, MappedHex>;
   /** Tribes discovered, by marker number. */
@@ -272,5 +284,5 @@ export interface GameEnd {
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, history: [], map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, diagnostics: [] };
 }

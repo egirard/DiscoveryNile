@@ -21,7 +21,7 @@ test.describe('008 - Sail to Africa', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Sail to Africa',
-      'In Europe the current seat offers a sail control. It turns the thirteen ports on the map into a chooser: a port the explorer holds a free ticket for shows the ticket, the others show the $500 fare, and ports the explorer cannot afford are greyed out. Choosing one turns the whole hand into the expedition budget (less the fare), puts the explorer at sea, and after one skipped turn the token lands on the port hex.'
+      'In Europe the current seat offers a sail control. It turns the thirteen ports on the map into a chooser: a port the explorer holds a free ticket for shows the ticket, the others show the $500 fare, and ports the explorer cannot afford are greyed out. A tap on the ship puts the check mark on it with the "✕" to its right, in the hourglass\'s place; a tap on a port chooses it, and the check mark books: the whole hand becomes the expedition budget (less the fare), the explorer is at sea, and after one skipped turn the token lands on the port hex.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
@@ -39,11 +39,19 @@ test.describe('008 - Sail to Africa', () => {
     await page.getByTestId(`sail-${first}`).click();
 
     await steps.step('choose-port', {
-      description: 'The sail control opens the port chooser on the map: tickets, fares and unaffordable ports are marked',
+      description: 'The ship opens the port chooser on the map: tickets, fares and unaffordable ports are marked; the ship carries the check mark, not yet live, and the "✕" to its right would stay in Europe',
       verifications: [
         { spec: 'All thirteen ports became choosable', check: async () => {
           await expect(page.locator('[data-testid^="choose-port-"]')).toHaveCount(13);
-          await expect(page.getByTestId(`sail-${first}`)).toHaveAttribute('aria-pressed', 'true');
+        } },
+        { spec: 'The check mark is on the ship but waits for a port; the "✕" is to its right, where the hourglass was', check: async () => {
+          const confirm = page.getByTestId(`confirm-sail-${first}`);
+          const cancel = page.getByTestId(`cancel-sail-${first}`);
+          await expect(confirm).toHaveAttribute('aria-disabled', 'true');
+          await expect(page.getByTestId(`end-turn-${first}`)).toHaveCount(0);
+          const [c, x] = await Promise.all([confirm.boundingBox(), cancel.boundingBox()]);
+          expect(x!.x).toBeGreaterThanOrEqual(c!.x + c!.width - 1);
+          expect(Math.abs(x!.y - c!.y)).toBeLessThan(2);
         } },
         { spec: 'A port the explorer holds a ticket for shows the ticket; Mombasa shows the $500 fare if affordable', check: async () => {
           expect(ticketPort, 'seed 1234 deals the first player a free ticket').not.toBeNull();
@@ -57,8 +65,22 @@ test.describe('008 - Sail to Africa', () => {
 
     await page.getByTestId(`choose-port-${ticketPort}`).click();
 
+    await steps.step('port-chosen', {
+      description: 'The ticket\'s port is tapped: it is marked on the map and the check mark on the ship is live; nothing is booked yet',
+      verifications: [
+        { spec: 'The chosen port is marked and the others are not; the confirmation is live; the explorer is still in Europe', check: async () => {
+          await expect(page.getByTestId(`port-${ticketPort}`)).toHaveAttribute('data-selected', 'true');
+          await expect(page.locator('[data-testid^="port-"][data-selected="true"]')).toHaveCount(1);
+          await expect(page.getByTestId(`confirm-sail-${first}`)).toHaveAttribute('aria-disabled', 'false');
+          await expect(page.getByTestId(`explorer-token-${first}`)).toHaveAttribute('data-location', 'europe');
+        } }
+      ]
+    });
+
+    await page.getByTestId(`confirm-sail-${first}`).click();
+
     await steps.step('booked', {
-      description: 'Passage is booked with the ticket: the explorer is at sea, the hand became the budget, the chooser closed',
+      description: 'The check mark books passage with the ticket: the explorer is at sea, the hand became the budget, the chooser closed',
       verifications: [
         { spec: 'The rail token shows the explorer at sea and the budget equals the money raised (no fare with a ticket)', check: async () => {
           await expect(page.getByTestId(`explorer-token-${first}`)).toHaveAttribute('data-location', 'voyage');
@@ -69,6 +91,7 @@ test.describe('008 - Sail to Africa', () => {
         { spec: 'The chooser is closed, the sail control is gone, and the hand went to the discard pile', check: async () => {
           await expect(page.locator('[data-testid^="choose-port-"]')).toHaveCount(0);
           await expect(page.getByTestId(`sail-${first}`)).toHaveCount(0);
+          await expect(page.getByTestId(`confirm-sail-${first}`)).toHaveCount(0);
           const s = await state(page);
           expect(s.explorers.find((e) => e.seat === first)!.location).toEqual({ kind: 'voyage', port: ticketPort });
           expect(s.deck!.discard).toEqual(expect.arrayContaining(hand));

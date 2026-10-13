@@ -51,6 +51,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
     await page.getByTestId('sail-bottom-1').click();
     await expect(page.getByTestId('port-mombasa')).toHaveAttribute('data-fare', 'ticket');
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);

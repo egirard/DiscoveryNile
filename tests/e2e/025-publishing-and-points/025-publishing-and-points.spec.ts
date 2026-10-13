@@ -34,6 +34,7 @@ async function outfit(page: Page, seat: string, purchases: Record<string, number
 async function sailTo(page: Page, seat: string) {
   await page.getByTestId(`sail-${seat}`).click();
   await page.getByTestId('choose-port-mombasa').click();
+  await page.getByTestId(`confirm-sail-${seat}`).click();
   await passTurn(page);
 }
 async function walkIn(page: Page, seat: string) {

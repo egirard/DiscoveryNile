@@ -121,3 +121,9 @@ The log isn't appearing.
 It only seems to appear if you enter an unknown hex.
 
 `Outcome: the turn's log now has a plain line for every action that rolls nothing (the card drawn in Europe, passage booked, outfitting and what was bought, a step through known country, water, policy, gifts, the prisoners' fate, retirement), written once in the dispatcher; the rail's "+" is there from the first action and an undo removes the line. Scenario 036 extended (log-before-any-roll); G-126.`
+
+## 17. 2026-10-13
+
+The most recent line of the log should be shown even when the log is collapsed.  The + that is next to this text should expand directly above (so the - in the open log is aligned with the - in the player area. The log should show more than just the current turn.  Die results for first player should only show up in the log, not in the player mat. When a player is in europe the two choices are to sail or to wait... let's change the "end turn" to be an hourglass, and when clicking on the hourglass the checkmark to confirm should appear overlaid on the hourglass (not in the "sail" button's position.  The sail button can turn into an x.  Likewise when the sail button is clicked, a checkmark should overlay that button with the x to the right this time.
+
+`Outcome: the rail reads the log's latest line with the "+" after it, and the "+" opens the rest of the log directly above, its "−" over the rail's, the latest line left on the rail as the list's last (G-127); the log spans the game round by round, the meal closing each turn and the landing logged (G-128); the roll for first player is a log line, not dice at the rail (G-129); the hourglass ends the turn with the check mark on itself and the "✕" to its left, the ship takes the check mark with the "✕" to its right, a port tap chooses and the check mark books (G-130). Scenario 036 rewritten; 007 and 008 gained a step; every rail baseline regenerated.`

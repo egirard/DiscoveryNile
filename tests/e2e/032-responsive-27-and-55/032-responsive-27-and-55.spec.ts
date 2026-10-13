@@ -106,10 +106,13 @@ test.describe('032 - Responsive pass at 27" and 55"', () => {
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('six-hands-dealt', {
-      description: 'The game starts: six hands of cards face their players on six rails, the dice of the roll for first player beside them, and the bottom seat holds the turn',
+      description: 'The game starts: six hands of cards face their players on six rails, the roll for first player as the latest line of every seat that waits, and the bottom seat holds the turn',
       verifications: [
         { spec: 'bottom-1 rolled four sixes and holds the turn; every rail shows a hand', check: async () => {
-          await expect(page.getByTestId('roll-off-bottom-1')).toHaveAttribute('data-total', '24');
+          const s = await page.evaluate(() => window.__TABLETOP__!.getState());
+          expect(s.history.find((t) => t.round === 0 && t.seat === 'bottom-1')!.log.at(-1)).toMatchObject({ kind: 'first-player', total: 24 });
+          await expect(page.getByTestId('action-note-bottom-1')).toHaveText(/^drew /);
+          await expect(page.locator('[data-testid^="roll-first-player-"]')).toHaveCount(5);
           for (const seat of SEATS) expect(Number(await page.getByTestId(`hand-${seat}`).getAttribute('data-count'))).toBeGreaterThanOrEqual(5);
         } },
         { spec: 'A card is at least 20 mm tall at the configured diagonal', check: async () => {
@@ -142,6 +145,7 @@ test.describe('032 - Responsive pass at 27" and 55"', () => {
     });
 
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await expect(page.getByTestId('explorer-token-bottom-1')).toHaveAttribute('data-location', 'voyage');
     // The other five seats take their turns; bottom-1 lands in round 2 (a turn that passes by itself) and outfits in round 3.
     for (let i = 0; i < 12 && !(await page.getByTestId('expedition-chart-bottom-1').isVisible()); i++) await passTurn(page);

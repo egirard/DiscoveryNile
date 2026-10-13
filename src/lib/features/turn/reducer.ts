@@ -1,6 +1,6 @@
 import { describeCard } from './actions';
 import type { GameEvent } from '$lib/game/events';
-import type { ExplorerState, GameState, RollOff, RollRecord } from '$lib/game/state';
+import type { ExplorerState, GameState, LoggedTurn, RollOff, RollRecord } from '$lib/game/state';
 import type { HexId } from '$features/map/hex';
 import { d6, dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
@@ -63,6 +63,7 @@ function drawOne(state: GameState, explorer: ExplorerState, noted = false): Game
 
 /** Hand the turn to the next seat clockwise; a new round starts when the order wraps, and the agreed limit ends the game. */
 function advance(state: GameState): GameState {
+  state = archiveTurn(state);
   const { order, current, round, roundLimit } = state.turn!;
   const living = (seat: SeatId) => state.explorers.some((e) => e.seat === seat && e.location.kind !== 'dead');
   let i = order.indexOf(current);
@@ -74,6 +75,13 @@ function advance(state: GameState): GameState {
     if (living(order[i])) return beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: nextRound } }, order[i]);
   }
   return state; // no living explorer: the players end the game by consensus (G-62)
+}
+
+/** The turn that is ending joins the history with everything it logged (a skipped turn that logged nothing leaves no entry). */
+function archiveTurn(state: GameState): GameState {
+  const { round, current, log } = state.turn!;
+  if (log.length === 0) return state;
+  return { ...state, history: [...state.history, { round, seat: current, log }] };
 }
 
 /**
@@ -119,8 +127,12 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     if (party && party.leader !== explorer.seat) return advance(state);
     const crew = party ? members(state, explorer).filter((m) => m.location.kind === 'voyage') : [explorer];
     let landed = state;
-    for (const m of crew) landed = replaceExplorer(landed, { ...m, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
-    return advance(landed);
+    const lines: RollRecord[] = [];
+    for (const m of crew) {
+      landed = replaceExplorer(landed, { ...m, location: { kind: 'port', port }, known: [BOARD.ports[port].hex] });
+      lines.push({ kind: 'action', seat: m.seat, hex: BOARD.ports[port].hex, rolls: [], outcome: `landed at ${BOARD.ports[port].name}` });
+    }
+    return advance({ ...landed, turn: { ...landed.turn!, log: [...landed.turn!.log, ...lines] } });
   }
   if (explorer.location.kind === 'homeward') {
     // Back in Europe the turn after leaving Africa (rules §12); the Europe turn then runs as usual.
@@ -184,6 +196,8 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   sick = round.sick;
   const rolls = [...h.result.rolls, ...round.rolls];
   const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: parts.join('; ') };
+  // The meal closes the turn's log as well as sitting on the explorer for his rail.
+  state = { ...state, turn: { ...state.turn!, log: [...state.turn!.log, lastMeal] } };
   if (round.explorerDied) return { ...perish(state, { ...explorer, sick, lastMeal }, 'died', `died of sickness at ${hex}`), rng: round.rng };
   return { ...replaceExplorer(state, { ...explorer, chart: round.chart, sick, lastMeal }), rng: round.rng };
 }
@@ -369,7 +383,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       // A new game on the same map (rules: Description of Game): what was published stays known, with its tribes and the
       // records to beat; the scores start afresh and every seat commissions a new explorer.
       if (!state.ended) return 'the game has not ended';
-      return { ...state, explorers: [], turn: null, deck: null, rollOff: null, scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
+      return { ...state, explorers: [], turn: null, deck: null, rollOff: null, history: [], scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
     }
     case 'game/started': {
       if (state.turn) return 'game already started';
@@ -383,6 +397,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       // First player: four dice apiece, high total; ties re-roll among the tied (RQ-1).
       let rng = state.rng;
       const rollOff: RollOff = Object.fromEntries(seats.map((s) => [s, [] as number[][]]));
+      // The roll is read in the log, not at the rail (prompt 17): a line per attempt for each seat.
+      const rolled: Record<string, RollRecord[]> = Object.fromEntries(seats.map((s) => [s, [] as RollRecord[]]));
       let contenders = seats;
       let winner: SeatId | null = null;
       while (winner === null) {
@@ -396,8 +412,14 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const high = Math.max(...totals.values());
         const tied = contenders.filter((s) => totals.get(s) === high);
         if (tied.length === 1) winner = tied[0];
-        else contenders = tied;
+        for (const seat of contenders) {
+          const total = totals.get(seat)!;
+          const outcome = tied.length > 1 && tied.includes(seat) ? `total ${total}, a tie: rolled again` : seat === winner ? `total ${total}: first player` : `total ${total}`;
+          rolled[seat].push({ kind: 'first-player', seat, rolls: rollOff[seat].at(-1)!.map((value, i) => ({ label: `die ${i + 1}`, value })), total, outcome });
+        }
+        if (winner === null) contenders = tied;
       }
+      const history: LoggedTurn[] = seats.map((seat) => ({ round: 0, seat, log: rolled[seat] }));
       const start = seats.indexOf(winner);
       const order = [...seats.slice(start), ...seats.slice(0, start)];
 
@@ -413,6 +435,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
+        history,
         turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', moved: false, movement: null, policy: null, trade: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>

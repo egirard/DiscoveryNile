@@ -17,6 +17,8 @@
   export interface PortChoice {
     /** 'ticket': a free ticket pays; 'cash': the $500 fare; 'none': unaffordable. */
     fare: 'ticket' | 'cash' | 'none';
+    /** The port tapped, awaiting the confirmation at the rail (prompt 17). */
+    selected?: boolean;
   }
 
   interface Props {
@@ -304,9 +306,9 @@
     {#each PORTS as p (p.id)}
       {@const c = centre(BOARD.hexes[p.hex])}
       {@const choice = portChoices?.[p.id]}
-      <g data-testid="port-{p.id}" class="port" class:choosable={Boolean(choice)} data-fare={choice?.fare} aria-label="Port of entry: {p.name}" transform="translate({c.x} {c.y}) {upright}">
+      <g data-testid="port-{p.id}" class="port" class:choosable={Boolean(choice)} class:selected={choice?.selected} data-fare={choice?.fare} data-selected={choice ? Boolean(choice.selected) : undefined} aria-label="Port of entry: {p.name}" transform="translate({c.x} {c.y}) {upright}">
         {#if choice}
-          <circle class="halo" class:none={choice.fare === 'none'} r={radius * 1.15} />
+          <circle class="halo" class:none={choice.fare === 'none'} r={radius * (choice.selected ? 1.45 : 1.15)} />
         {/if}
         <circle r={radius * 0.48} />
         <g class="anchor" transform="scale({radius / 28}) translate(-12 -12)">
@@ -439,6 +441,12 @@
   .halo.none {
     fill: #777;
     opacity: 0.4;
+  }
+  .port.selected .halo {
+    /* The port tapped: a wider, solid halo until the rail confirms or the chooser closes. */
+    opacity: 1;
+    stroke: #efe6cc;
+    stroke-width: 3px;
   }
   .hit {
     fill: transparent;

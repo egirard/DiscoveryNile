@@ -49,6 +49,7 @@ test.describe('029 - Joint expeditions', () => {
     await page.getByTestId('pool-top-1-bottom-1').click();
     await expect(page.getByTestId('pool-top-1-bottom-1')).toHaveAttribute('aria-pressed', 'true');
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
 
     await steps.step('pooled', {
       description: 'bottom-1 opens the sail chooser, taps top-1\'s token to pool his donations, and books Mombasa: both are at sea, the budget is the two hands less the fare, and the rail notes the joint expedition',

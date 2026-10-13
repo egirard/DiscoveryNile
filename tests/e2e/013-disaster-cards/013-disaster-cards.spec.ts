@@ -56,6 +56,7 @@ test.describe('013 - Disaster cards', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
@@ -97,7 +98,7 @@ test.describe('013 - Disaster cards', () => {
           const chip = page.getByTestId('disaster-card-bottom-1');
           await expect(chip).toHaveAttribute('data-card', 'card-29');
           await expect(chip).toHaveAttribute('data-applies', 'false');
-          await expect(page.getByTestId('disaster-note-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('disaster-note-bottom-1')).toHaveText('not here: jungle');
           await expect(page.getByTestId('roll-disaster-bottom-1')).toHaveAttribute('data-outcome', 'not here: jungle');
         } },
         { spec: 'The chart is unchanged and nobody is sick', check: async () => {

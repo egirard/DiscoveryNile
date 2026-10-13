@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
 async function commission(page: Page, seat: string) {
@@ -83,7 +84,7 @@ test.describe('034 - The table fills the screen', () => {
           expect(await page.locator('[aria-label]').count()).toBeGreaterThan(20);
         } },
         { spec: 'The end-turn control\'s tooltip says what it does', check: async () => {
-          await expect(page.getByTestId('end-turn-bottom-1').or(page.getByTestId('end-turn-bottom-2')).first()).toHaveAttribute('title', 'End the turn');
+          await expect(page.getByTestId('end-turn-bottom-1').or(page.getByTestId('end-turn-bottom-2')).first()).toHaveAttribute('title', 'Wait: end the turn in Europe');
         } }
       ]
     });

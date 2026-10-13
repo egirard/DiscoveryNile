@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -51,6 +52,7 @@ test.describe('018 - Defeat, escape and victory', () => {
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await page.getByTestId('choose-port-mombasa').click();
+    await page.getByTestId('confirm-sail-bottom-1').click();
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
@@ -63,7 +65,9 @@ test.describe('018 - Defeat, escape and victory', () => {
       description: 'The show of force wins: six warriors fall to the volley and the rest are driven off. Four prisoners are taken and the village is found, so the panel at the edge asks whether to release them or keep them and loot',
       verifications: [
         { spec: 'The victory note reads four prisoners and the village found; the chart already counts the prisoners as bearers', check: async () => {
-          await expect(page.getByTestId('victory-note-bottom-1')).toHaveText('4 prisoners taken, the village is found');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('4 prisoners taken, the village is found');
+          });
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '10');
           await expect(page.getByTestId('spoils-prompt-bottom-1')).toBeVisible();
         } },
@@ -86,7 +90,9 @@ test.describe('018 - Defeat, escape and victory', () => {
       description: 'The prisoners are kept as bearers and the village looted: twelve dice, one per warrior met, yield twenty rations and two gifts',
       verifications: [
         { spec: 'The loot note and its twelve dice show; the chart has 120 food, 2 gifts and 10 bearers', check: async () => {
-          await expect(page.getByTestId('loot-note-bottom-1')).toHaveText('looted 20 rations, 2 gifts');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('loot-note-bottom-1').last()).toHaveText('looted 20 rations, 2 gifts');
+          });
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '120');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '2');
           await expect(page.getByTestId('spoils-panel-bottom-1')).toHaveCount(0);
@@ -108,8 +114,10 @@ test.describe('018 - Defeat, escape and victory', () => {
       description: 'Next turn the explorer ignores the two warriors left; they attack by surprise, two askaris fall and the rest break. The defeat die is a 2: the explorer is held prisoner and the expedition is lost',
       verifications: [
         { spec: 'The combat and defeat notes tell the rout and the capture; the token shows the captive mark', check: async () => {
-          await expect(page.getByTestId('combat-note-bottom-1')).toHaveText('hostile: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat');
-          await expect(page.getByTestId('defeat-note-bottom-1')).toHaveText('the explorer is held prisoner');
+          await withLogOpen(page, 'bottom-1', async () => {
+            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat');
+            await expect(page.getByTestId('defeat-note-bottom-1').last()).toHaveText('the explorer is held prisoner');
+          });
           await expect(page.getByTestId('captive-bottom-1')).toBeVisible();
           await expect(page.getByTestId('chart-summary-bottom-1')).toHaveCount(0);
           await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
