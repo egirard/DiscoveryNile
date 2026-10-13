@@ -61,12 +61,22 @@
   const scale = $derived(target / 44);
   const qrSize = $derived(pxFor(30, k, 96));
   const railDepth = $derived(target * 2.6);
-  const boardW = $derived(Math.max(200, viewport.w - 2 * railDepth - 2 * target));
-  const boardH = $derived(Math.max(200, viewport.h - 2 * railDepth - 2 * target));
 
   function seatState(seat: Seat) {
     return gameState.seats.find((s) => s.id === seat.id) ?? { id: seat.id, uid: null, name: null };
   }
+  // Once the game has started, a seat nobody took has no rail: the players' rails stay, the board
+  // takes the edges that are free, and the piles keep to the board's corner. Before the start, and
+  // again after a game ends and continues, every seat is offered.
+  const shownSeats = $derived(gameState.turn ? seats.filter((s) => seatState(s).uid) : seats);
+  const inset = $derived({
+    top: shownSeats.some((s) => s.edge === 'top') ? railDepth : 0,
+    bottom: shownSeats.some((s) => s.edge === 'bottom') ? railDepth : 0,
+    left: shownSeats.some((s) => s.edge === 'left') ? railDepth : 0,
+    right: shownSeats.some((s) => s.edge === 'right') ? railDepth : 0
+  });
+  const boardW = $derived(Math.max(200, viewport.w - inset.left - inset.right - 2 * target));
+  const boardH = $derived(Math.max(200, viewport.h - inset.top - inset.bottom - 2 * target));
 
   async function join(seat: Seat) {
     await game?.append('seat/taken', { seat: seat.id, uid: `table:${seat.id}` });
@@ -264,6 +274,12 @@
   onMount(() => {
     diagonal = readDiagonalInches();
     viewport = { w: innerWidth, h: innerHeight };
+    // The table follows its window: the board, rails and panels are derived from the viewport.
+    const onResize = () => {
+      viewport = { w: innerWidth, h: innerHeight };
+      opened?.publishGeometry(screenGeometry(diagonal, viewport.w, viewport.h));
+    };
+    addEventListener('resize', onResize);
     let opened: Game | null = null;
     openGame({
       layout,
@@ -290,7 +306,10 @@
         qr = Object.fromEntries(entries);
       }
     });
-    return () => opened?.close();
+    return () => {
+      removeEventListener('resize', onResize);
+      opened?.close();
+    };
   });
 </script>
 
@@ -298,11 +317,11 @@
   data-e2e-layout
   data-testid="table"
   data-e2e-no-scroll
-  style="--target:{target}px; --scale:{scale}; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
+  style="--target:{target}px; --scale:{scale}; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px; --inset-top:{inset.top}px; --inset-right:{inset.right}px; --inset-bottom:{inset.bottom}px; --inset-left:{inset.left}px"
   data-diagonal={diagonal}
   data-mm-per-px={k}
 >
-  <div class="board" data-testid="board" data-e2e-fit>
+  <div class="board" data-testid="board" data-e2e-fit style="inset: {inset.top}px {inset.right}px {inset.bottom}px {inset.left}px">
     <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
   </div>
 
@@ -381,7 +400,7 @@
   {/if}
 
   <!-- A seat's span: its share of the edge, less the gap at each end along the long edges and less a rail's depth at each end along the short ones, so the corners belong to the long edges' rails; an even number of pixels keeps the centred content on whole pixels. -->
-  {#each seats as seat (seat.id)}
+  {#each shownSeats as seat (seat.id)}
     <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} current={gameState.turn?.current === seat.id} span={seat.edge === 'bottom' || seat.edge === 'top' ? viewport.w / seat.count - 2 * target : 2 * Math.floor((viewport.h / seat.count - 2 * railDepth) / 2)}>
       {#snippet content()}
         {@const explorer = explorerAt(gameState, seat.id)}
@@ -608,8 +627,8 @@
   /* The piles sit in the sea at the board's top-right corner, inside the rails, where no seat's rail reaches. */
   .deck-area {
     position: absolute;
-    right: calc(var(--rail-depth) + var(--gap));
-    top: calc(var(--rail-depth) + var(--gap));
+    right: calc(var(--inset-right) + var(--gap));
+    top: calc(var(--inset-top) + var(--gap));
   }
   .turn-marker {
     display: inline-flex;
