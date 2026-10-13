@@ -40,7 +40,7 @@ The application cannot know the physical size of the screen it is on. The **scre
 ## Input
 
 - Input is **touch or mouse**. Design for fingers first: a touch target is at least **12 mm** physically, derived from the configured diagonal; never smaller than 44 CSS px.
-- **No hover-dependent interaction.** Hover may embellish but never gates.
+- **No hover-dependent interaction.** Hover may embellish but never gates. Every control's `aria-label` doubles as its tooltip (`src/lib/ui/tooltips.ts`), so a mouse can learn what an icon does; a finger cannot hover, so the icons must stand on their own and touch feedback is a later stage.
 - **No keyboard**, except a **virtual keyboard** rendered on the table, oriented to the seat using it, for the rare text entry (a player name). Physical keyboard shortcuts may exist for development and E2E but nothing a player needs is keyboard-only.
 - **No drag as the only way** to do something. Drag is welcome as a shortcut; a tap-tap alternative always exists, because concurrent drags by multiple players are fragile.
 - **Concurrency**: two players may interact at once. Selections and staging are per seat, not global; one player's half-finished action does not block another's legal action unless the rules say so.

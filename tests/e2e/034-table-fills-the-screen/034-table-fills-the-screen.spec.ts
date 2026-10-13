@@ -70,6 +70,24 @@ test.describe('034 - The table fills the screen', () => {
       ]
     });
 
+    await page.getByTestId('end-turn-bottom-1').or(page.getByTestId('end-turn-bottom-2')).first().hover();
+
+    await steps.step('hover-explains', {
+      description: 'The mouse rests on the end-turn control: every control and marker on the table carries its label as a tooltip, so hovering explains what an icon is and what a tap does',
+      verifications: [
+        { spec: 'Every element with an aria-label has the same text as its title', check: async () => {
+          const mismatched = await page.evaluate(() =>
+            [...document.querySelectorAll('[aria-label]')].filter((el) => (el.getAttribute('title') ?? '') !== (el.getAttribute('aria-label') ?? '')).map((el) => el.getAttribute('data-testid') ?? el.tagName)
+          );
+          expect(mismatched).toEqual([]);
+          expect(await page.locator('[aria-label]').count()).toBeGreaterThan(20);
+        } },
+        { spec: 'The end-turn control\'s tooltip says what it does', check: async () => {
+          await expect(page.getByTestId('end-turn-bottom-1').or(page.getByTestId('end-turn-bottom-2')).first()).toHaveAttribute('title', 'End the turn');
+        } }
+      ]
+    });
+
     steps.generateDocs();
   });
 });

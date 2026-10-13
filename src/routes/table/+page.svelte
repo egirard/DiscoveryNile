@@ -8,6 +8,7 @@
   import SeatRail from '$features/seats/SeatRail.svelte';
   import { seatsFor, type Seat } from '$lib/tabletop/seats';
   import { mmPerPx, pxFor, readDiagonalInches, screenGeometry } from '$lib/tabletop/screen';
+  import { attachTooltips } from '$lib/ui/tooltips';
   import HexBoard from '$features/map/HexBoard.svelte';
   import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
   import ExplorerToken from '$features/explorers/ExplorerToken.svelte';
@@ -280,6 +281,7 @@
       opened?.publishGeometry(screenGeometry(diagonal, viewport.w, viewport.h));
     };
     addEventListener('resize', onResize);
+    const detachTooltips = attachTooltips(document.body);
     let opened: Game | null = null;
     openGame({
       layout,
@@ -308,6 +310,7 @@
     });
     return () => {
       removeEventListener('resize', onResize);
+      detachTooltips();
       opened?.close();
     };
   });
