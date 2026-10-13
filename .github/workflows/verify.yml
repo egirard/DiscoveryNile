@@ -1,7 +1,6 @@
-# Verification only. The template's GitHub Pages deployment and retained PR previews are
-# disabled for now (see docs/ci-and-deployment.md); re-enable them by restoring the `deploy`
-# job from egirard/TabletopTemplate when a hosted table URL is wanted.
-name: Verify
+# Verify every push and pull request; deploy `main` to GitHub Pages once it is verified (see
+# docs/ci-and-deployment.md). The template's retained PR previews stay disabled for now.
+name: Verify and deploy
 
 on:
   push:
@@ -48,3 +47,33 @@ jobs:
           path: |
             test-results/
             playwright-report/
+
+  # The hosted table: the verified build of `main`, served from GitHub Pages at /<repo>/ through
+  # the Pages deployment action (Settings → Pages → source: GitHub Actions). The local backend only;
+  # no relay is hosted, so phones cannot take a seat from the hosted table yet.
+  deploy:
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop --command bun install --frozen-lockfile
+      - run: nix develop --command bun run build
+        env:
+          PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          VITE_GIT_HASH: ${{ github.sha }}
+          VITE_DEFAULT_BACKEND: local
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+      - id: deployment
+        uses: actions/deploy-pages@v4

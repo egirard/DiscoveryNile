@@ -1,6 +1,6 @@
 # CI and Deployment
 
-> **DiscoveryNile:** only the `verify` job is enabled, in `.github/workflows/verify.yml`. The GitHub Pages deployment, the retained PR previews and the `cleanup-pr-preview.yml` workflow described below are the template's design and are **disabled for now**. To enable them, restore the `deploy` job and the cleanup workflow from egirard/TabletopTemplate and work through the deployment checklist at the end of this document. Everything else here still applies.
+> **DiscoveryNile:** `.github/workflows/verify.yml` runs the `verify` job on every push and pull request and, since 2026-10-12, a `deploy` job that publishes the verified build of `main` to GitHub Pages at <https://egirard.github.io/DiscoveryNile/> through the Pages deployment actions (`actions/upload-pages-artifact` and `actions/deploy-pages`; Settings → Pages → source: GitHub Actions). It differs from the template's design below in two ways: the retained PR previews and the `cleanup-pr-preview.yml` workflow are still **disabled**, and the build goes through the Pages artifact rather than a `gh-pages` branch. The hosted table uses the local backend and has no relay, so phones cannot take a seat from it yet. Everything else here still applies.
 
 Every push and pull request is verified with the same script the Git hooks run, then built and deployed to GitHub Pages: `main` to the production URL, each pull request to a retained preview URL. The tracer bullet for a slice ends at a URL a reviewer can open on a table, not at a green check.
 
