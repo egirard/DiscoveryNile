@@ -27,9 +27,9 @@ export function mmPerPx(diagonalInches: number, widthPx: number, heightPx: numbe
   return (diagonalInches * 25.4) / diagonalPx;
 }
 
-/** Pixels needed for a physical size, never below a floor in CSS px. */
+/** Pixels needed for a physical size (rounded up, so the size is never under it), never below a floor in CSS px. */
 export function pxFor(mm: number, mmPerPixel: number, floorPx = 44): number {
-  return Math.max(floorPx, Math.round(mm / mmPerPixel));
+  return Math.max(floorPx, Math.ceil(mm / mmPerPixel));
 }
 
 export interface ScreenGeometry {

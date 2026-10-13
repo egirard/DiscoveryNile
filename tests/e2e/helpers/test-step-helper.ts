@@ -24,7 +24,10 @@ export class ScenarioJournal {
 /**
  * Asserts the interface fits: no document scroll, nothing marked `data-e2e-fit` leaves the
  * viewport or is clipped, no control is clipped, nothing marked `data-e2e-no-scroll` scrolls,
- * and on the table route nothing marked `data-e2e-private` is present.
+ * and on the table route nothing marked `data-e2e-private` is present. Every control is at
+ * least the touch target the screen publishes as `--target` (12 mm at the configured diagonal,
+ * never under 44 px); a control marked `data-e2e-hex-sized` is as big as the board's hexes
+ * and is measured by the responsive scenario instead.
  */
 export async function expectInterfaceToFit(page: Page) {
   const problems = await page.evaluate(async () => {
@@ -65,11 +68,15 @@ export async function expectInterfaceToFit(page: Page) {
       const c = clippedBy(el);
       if (c) failures.push(`${label(el)} clipped by ${c}`);
     }
-    for (const el of root.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href]')) {
+    const target = Math.max(44, parseFloat(getComputedStyle(root).getPropertyValue('--target')) || 0);
+    for (const el of root.querySelectorAll<HTMLElement>('button, input, select, textarea, a[href], [role="button"]')) {
       if (!visible(el)) continue;
-      if (outside(el.getBoundingClientRect())) failures.push(`${label(el)} control leaves viewport`);
+      const r = el.getBoundingClientRect();
+      if (outside(r)) failures.push(`${label(el)} control leaves viewport`);
       const c = clippedBy(el);
       if (c) failures.push(`${label(el)} control clipped by ${c}`);
+      if (!el.hasAttribute('data-e2e-hex-sized') && (r.width < target - tolerance || r.height < target - tolerance))
+        failures.push(`${label(el)} control is ${r.width.toFixed(1)}×${r.height.toFixed(1)}px, under the ${target}px touch target`);
     }
     for (const el of root.querySelectorAll<HTMLElement>('[data-e2e-no-scroll]')) {
       if (!visible(el)) continue;

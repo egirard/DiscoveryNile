@@ -62,7 +62,7 @@ Every step lists **verifications**: a human-readable spec and a check. The check
 
 ### 6. The interface fits
 
-Every step asserts that the document does not scroll, no marked region leaves the viewport or is clipped by an ancestor, no control is clipped, and no marked region scrolls internally. On the table route it additionally asserts that no element marked private is present. This is `expectInterfaceToFit` in the step helper; it needs the markers below to be present in the DOM.
+Every step asserts that the document does not scroll, no marked region leaves the viewport or is clipped by an ancestor, no control is clipped, no control is smaller than the touch target the screen publishes as `--target` on its root (12 mm at the configured diagonal, never under 44 px), and no marked region scrolls internally. On the table route it additionally asserts that no element marked private is present. This is `expectInterfaceToFit` in the step helper; it needs the markers below to be present in the DOM. A control that is necessarily the size of a board hex (a move or publish target) carries `data-e2e-hex-sized` and is measured by the responsive scenario instead.
 
 | Marker | On |
 |---|---|
@@ -198,7 +198,7 @@ export default defineConfig({
   snapshotPathTemplate: '{testDir}/{testFileDir}/screenshots/{arg}{ext}',
   projects: [
     { name: 'table', use: { browserName: 'chromium', viewport: { width: 1920, height: 1080 } } },
-    { name: 'table-4k', testMatch: '**/0NN-responsive-*/*.spec.ts',
+    { name: 'table-4k', testMatch: '**/*responsive*/*.spec.ts',
       use: { browserName: 'chromium', viewport: { width: 3840, height: 2160 } } },
   ],
   webServer: [
@@ -212,7 +212,7 @@ export default defineConfig({
 
 - Scenarios run against the **production build** (`vite preview`), never the dev server, so Vite's on-demand compilation cannot reload a page mid-scenario.
 - `table` at 1920×1080 stands in for the 27" table and is the primary project; the walkthrough README is generated from it.
-- `table-4k` stands in for the 55" table and runs only for the responsive scenario(s), because 4K baselines are large.
+- `table-4k` stands in for the 55" table and runs only for the responsive scenario(s), because 4K baselines are large. The diagonal is local configuration, so the responsive scenario passes `?diag=27` in `table` and `?diag=55` in `table-4k`; every other scenario runs at the default 55", where the 44 px floor rules.
 - There is no phone project: a scenario that needs a phone opens a phone-sized context itself with `helpers/phone.ts`, so every scenario starts from the table.
 - Baselines are generated on **Linux** (CI's platform). A developer on macOS generates them through the `update-baselines` workflow (see [ci-and-deployment.md](ci-and-deployment.md)), never locally.
 

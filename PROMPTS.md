@@ -58,4 +58,10 @@ resume as per instructions in discovery-nile-wip-012
 
 continue implementation
 
-`Outcome (in progress): 025 (publishing and points), 026 (death and retirement), 027 (superlatives), 028 (epic transits, with a recorded trek replayed), 029 (joint expeditions), 030 (game end and continuation) and 031 (within-turn undo and reload at every phase) landed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..106 and RQ-15..16 logged.`
+`Outcome (paused 2026-10-12): 025 (publishing and points), 026 (death and retirement), 027 (superlatives), 028 (epic transits, with a recorded trek replayed), 029 (joint expeditions), 030 (game end and continuation) and 031 (within-turn undo and reload at every phase) landed and pushed; the move-after-halt gap and the token-over-target tap bug fixed; G-78..106 and RQ-15..16 logged. Paused before 032 (the last slice) for context.`
+
+## 8. 2026-10-12
+
+resume as per memory discovery-nile-roll-through
+
+`Outcome: 032 (responsive pass) landed and pushed: the table-4k project runs the six-seat scenario at 55" beside the 27" run, the touch target is 12 mm rounded up and every scenario now fails a control under it, rails wrap within their seat and grow inward, the ticket-card width bug and three undersized controls fixed, the piles moved to the top-right sea corner, G-107..111 logged; every slice of the plan has landed. The closing review list follows in the reply.`

@@ -15,6 +15,11 @@ describe('pxFor', () => {
     expect(pxFor(12, mmPerPx(27, 1920, 1080))).toBeGreaterThanOrEqual(44);
   });
   it('never goes below the floor', () => expect(pxFor(1, 1)).toBe(44));
+  it('rounds up, so the physical size is never undercut', () => {
+    const k = mmPerPx(13.5, 1920, 1080); // 163 ppi: 12 mm is 77.08 px
+    expect(pxFor(12, k)).toBe(78);
+    expect(pxFor(12, k) * k).toBeGreaterThanOrEqual(12);
+  });
 });
 
 describe('screenGeometry', () => {

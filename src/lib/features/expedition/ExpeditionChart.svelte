@@ -123,6 +123,7 @@
   .step {
     border-radius: 999px;
     width: auto;
+    min-width: var(--target);
     padding: 0 0.6em;
     font-size: 0.9em;
   }

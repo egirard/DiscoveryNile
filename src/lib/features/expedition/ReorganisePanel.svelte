@@ -91,7 +91,7 @@
     font-size: calc(var(--target) * 0.26);
   }
   button {
-    min-height: calc(var(--target) * 0.8);
+    min-height: var(--target);
     padding: 0 calc(var(--gap) * 0.6);
     border: 2px solid var(--ink);
     border-radius: 8px;

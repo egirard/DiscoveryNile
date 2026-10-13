@@ -71,8 +71,8 @@ State grows with the same slices: `explorers[]` (seat, specialties, location `eu
 028-epic-transits
 029-joint-expeditions
 030-game-end-and-continuation
-031-reload-and-undo
-032-responsive-27-and-55
+031-reload-and-undo                landed
+032-responsive-27-and-55           landed
 ```
 
 ## Slice sequence
@@ -269,9 +269,11 @@ Reload at every phase of a turn reconstructs the same screen; confirmation at th
 
 - **As landed:** the reducer keeps `state.undo`, the one action that can still be taken back: after every event it compares the states before and after, and an event made by the current seat that rolled no die (same `rng`), drew no card (same `deck`), kept the turn and did not end the game is undoable; `turn/undone {seat, eventId}` restores the state it was applied to (one level, as part of the event log, so a reload replays it). The rail shows a dashed undo control beside the turn controls while it applies. Reload reconstructs every phase from the log, as before; the choosers that live only on the screen (the port chooser, the claim, the reorganise and split panels) close on reload. Confirmations at the edge: ending the turn, outfitting, retiring, splitting; publication opens a deliberate claim. Scenario 031 (seed 26): `undone-voyage` → `reloaded-discarding` → `undone-outfit` → `resolved-by-dice` → `reloaded-mid-turn`.
 
-### 32. Responsive pass at 27" and 55" — `032-responsive-27-and-55`
+### 32. Responsive pass at 27" and 55" — `032-responsive-27-and-55` ✅ landed
 
 The 4K project; physical sizing of touch targets, hexes and cards from the configured diagonal; the fit check at every step with six seats occupied.
+
+- **As landed:** the `table-4k` project (3840×2160) runs this scenario beside `table` (1920×1080); each tells the table its size with `?diag=` (55" and 27"), and the touch target is 12 mm rounded up, never under 44 px, with text and icons scaling with it (`--scale`) on a denser screen. The fit check in every scenario now also fails any control under the target (move and publish targets are hex-sized and measured by this scenario instead). Six seats occupied exposed four layout faults, fixed here: a rail's content now wraps within the seat's span of its edge and grows inward from the table's edge instead of reaching off the table or into the next seat; a ticket card, through a shared CSS class, was 55% of the hand wide and its artwork swallowed taps beside it (every scenario's ticket baselines changed); the round-limit and chart-step buttons were under 44 px; the piles sat where the second bottom seat's rail is, so they moved to the sea at the board's top-right corner. The port chooser's tap area is never smaller than the target. At 27" the board between six rails gives a 9.7 mm hex, under the 12 mm minimum, and the scenario records that the board already fills the height it has (G-107). Scenario 032 (seed 5, bottom-1 first by scripted dice): `six-seats-taken` → `six-explorers` → `six-hands-dealt` → `port-chooser` → `outfitting-at-the-edge` → `move-targets` → `denser-screen` (the same game at half the diagonal: a 78 px target).
 
 ## Definition of complete
 

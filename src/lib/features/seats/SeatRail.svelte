@@ -14,12 +14,15 @@
     content?: Snippet;
     /** It is this seat's turn. */
     current?: boolean;
+    /** The seat's span of its edge in px: the rail's content wraps rather than reach into the next seat's. */
+    span?: number | null;
   }
-  let { seat, state, qrImage = null, qrUrl = null, onjoin, content, current = false }: Props = $props();
+  let { seat, state: seatState, qrImage = null, qrUrl = null, onjoin, content, current = false, span = null }: Props = $props();
 
-  const taken = $derived(Boolean(state.uid));
+  const taken = $derived(Boolean(seatState.uid));
   const rotation = $derived(rotationFor(seat.edge));
   const along = $derived(positionAlongEdge(seat));
+  const spanStyle = $derived(span === null ? 'var(--rail-length)' : `${span}px`);
   const style = $derived.by(() => {
     const pct = `${along * 100}%`;
     switch (seat.edge) {
@@ -34,7 +37,7 @@
 <div
   class="rail"
   class:taken
-  style="{style} --rotation:{rotation}deg"
+  style="{style} --rotation:{rotation}deg; --span:{spanStyle}"
   data-testid="seat-rail-{seat.id}"
   data-seat={seat.id}
   data-edge={seat.edge}
@@ -42,11 +45,12 @@
   data-current={current}
   data-e2e-fit
 >
+  <!-- The face is anchored at the table's edge and grows inward when it wraps, so a crowded rail never hangs off the table. -->
   <div class="face">
     {#if taken}
-      <span class="who" data-testid="seat-name-{seat.id}" aria-label={`Seat ${seat.id} taken by ${state.name ?? 'a player'}`}>
+      <span class="who" data-testid="seat-name-{seat.id}" aria-label={`Seat ${seat.id} taken by ${seatState.name ?? 'a player'}`}>
         <Icon name="player" />
-        {#if state.name}<span class="name">{state.name}</span>{/if}
+        {#if seatState.name}<span class="name">{seatState.name}</span>{/if}
       </span>
       {@render content?.()}
     {:else}
@@ -64,27 +68,51 @@
 
 <style>
   .rail {
+    /* The seat's span of its edge by the rail's depth. */
     position: absolute;
-    width: var(--rail-length);
+    width: var(--span);
     height: var(--rail-depth);
     pointer-events: none;
   }
   .rail[data-edge='left'],
   .rail[data-edge='right'] {
     width: var(--rail-depth);
-    height: var(--rail-length);
+    height: var(--span);
   }
   .face {
-    /* Centre the unrotated box on the rail, then rotate it about its own centre. */
+    /* The unrotated face is the rail's span wide and at least its depth tall, its content centred, so
+       a crowded rail (six seats, a hand and a row of controls) wraps onto a second row instead of
+       reaching into the next seat or off the table. It is rotated toward its seat about the rail's
+       corner, with its bottom (the player's side) kept on the table's edge, so a face taller than the
+       rail grows inward over the gap the board leaves. */
     position: absolute;
-    left: 50%;
-    top: 50%;
-    translate: -50% -50%;
-    rotate: var(--rotation);
+    left: 0;
+    top: 0;
+    width: var(--span);
+    min-height: var(--rail-depth);
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    align-content: center;
+    justify-content: center;
     gap: var(--gap);
+    row-gap: 0;
+    transform-origin: 0 0;
+    /* The translate (applied first) puts the face's bottom on the edge; the rotation turns it to its seat. */
+    rotate: var(--rotation);
     pointer-events: auto;
+  }
+  .rail[data-edge='bottom'] .face {
+    transform: translate(0, calc(var(--rail-depth) - 100%));
+  }
+  .rail[data-edge='top'] .face {
+    transform: translate(-100%, -100%);
+  }
+  .rail[data-edge='left'] .face {
+    transform: translate(0, -100%);
+  }
+  .rail[data-edge='right'] .face {
+    transform: translate(-100%, calc(var(--rail-depth) - 100%));
   }
   .join {
     width: var(--target);

@@ -22,6 +22,8 @@
   interface Props {
     width: number;
     height: number;
+    /** The touch target in px: a chooser on the board is never smaller, whatever the hex size. */
+    touch?: number;
     /** Explorer tokens standing on hexes. */
     tokens?: BoardToken[];
     /** When set, the ports become a chooser (sailing from Europe). */
@@ -38,7 +40,7 @@
     publishable?: HexId[];
     onpublish?: (hex: HexId) => void;
   }
-  let { width, height, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
+  let { width, height, touch = 44, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
   const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
   const SQ3 = Math.sqrt(3);
@@ -222,6 +224,7 @@
         cy={c.y}
         role="button"
         tabindex="0"
+        data-e2e-hex-sized
         data-testid="move-target-{t.hex}"
         data-unknown={t.unknown}
         data-mode={t.mode}
@@ -240,6 +243,7 @@
         cy={c.y}
         role="button"
         tabindex="0"
+        data-e2e-hex-sized
         data-testid="publish-target-{hex}"
         aria-label="Publish {hex}"
         onclick={() => onpublish?.(hex)}
@@ -288,7 +292,7 @@
           </g>
           <circle
             class="hit"
-            r={radius * 1.2}
+            r={Math.max(radius * 1.2, touch / 2)}
             role="button"
             tabindex="0"
             data-testid="choose-port-{p.id}"

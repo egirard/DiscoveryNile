@@ -57,6 +57,8 @@
 
   const k = $derived(mmPerPx(diagonal, viewport.w, viewport.h));
   const target = $derived(pxFor(12, k));
+  // Everything measured in em follows the touch target, so a denser screen scales text and icons with its controls.
+  const scale = $derived(target / 44);
   const qrSize = $derived(pxFor(30, k, 96));
   const railDepth = $derived(target * 2.6);
   const boardW = $derived(Math.max(200, viewport.w - 2 * railDepth - 2 * target));
@@ -296,10 +298,12 @@
   data-e2e-layout
   data-testid="table"
   data-e2e-no-scroll
-  style="--target:{target}px; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
+  style="--target:{target}px; --scale:{scale}; --qr:{qrSize}px; --rail-length:{Math.min(viewport.w, viewport.h) * 0.5}px; --rail-depth:{railDepth}px; --gap:{target * 0.3}px"
+  data-diagonal={diagonal}
+  data-mm-per-px={k}
 >
   <div class="board" data-testid="board" data-e2e-fit>
-    <HexBoard width={boardW} height={boardH} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
+    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={bookPassage} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
   </div>
 
   {#if canStart}
@@ -376,8 +380,9 @@
     </div>
   {/if}
 
+  <!-- A seat's span: its share of the edge, less the gap at each end along the long edges and less a rail's depth at each end along the short ones, so the corners belong to the long edges' rails; an even number of pixels keeps the centred content on whole pixels. -->
   {#each seats as seat (seat.id)}
-    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} current={gameState.turn?.current === seat.id}>
+    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} current={gameState.turn?.current === seat.id} span={seat.edge === 'bottom' || seat.edge === 'top' ? viewport.w / seat.count - 2 * target : 2 * Math.floor((viewport.h / seat.count - 2 * railDepth) / 2)}>
       {#snippet content()}
         {@const explorer = explorerAt(gameState, seat.id)}
         {#if explorer}
@@ -539,6 +544,7 @@
     height: 100vh;
     overflow: hidden;
     color: var(--paper);
+    font-size: calc(1rem * var(--scale));
   }
   .board {
     position: absolute;
@@ -586,8 +592,8 @@
     font-size: calc(var(--target) * 0.36);
   }
   .limit button {
-    min-width: calc(var(--target) * 0.9);
-    height: calc(var(--target) * 0.9);
+    min-width: var(--target);
+    height: var(--target);
     border-radius: 999px;
     border: 2px solid var(--paper);
     background: var(--paper);
@@ -599,10 +605,11 @@
     min-width: 1.6em;
     text-align: center;
   }
+  /* The piles sit in the sea at the board's top-right corner, inside the rails, where no seat's rail reaches. */
   .deck-area {
     position: absolute;
     right: calc(var(--rail-depth) + var(--gap));
-    bottom: calc(var(--rail-depth) * 0.1);
+    top: calc(var(--rail-depth) + var(--gap));
   }
   .turn-marker {
     display: inline-flex;

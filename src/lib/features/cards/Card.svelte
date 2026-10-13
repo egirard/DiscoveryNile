@@ -21,7 +21,7 @@
   {#if donation.kind === 'money'}
     <span class="amount">${donation.amount}</span>
   {:else if donation.kind === 'ticket'}
-    <svg class="ticket" viewBox="0 0 24 24" aria-hidden="true">
+    <svg class="art" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" />
       <path d="M9 6v12" stroke-dasharray="2 2" />
     </svg>
@@ -70,7 +70,8 @@
     font-weight: 700;
     font-size: calc(var(--target) * 0.34);
   }
-  .ticket {
+  /* The ticket artwork (not `.ticket`, which the card itself carries: a shared name once made ticket cards 55% of the hand wide). */
+  .art {
     width: 55%;
     fill: none;
     stroke: var(--ink);
