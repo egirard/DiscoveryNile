@@ -67,7 +67,7 @@ ports = {
     "khartoum": ("Khartoum", (20, 1)), "mombasa": ("Mombasa", (25, 12)), "zanzibar": ("Zanzibar", (24, 15)), "kilwa": ("Kilwa", (23, 18)),
     "quilimane": ("Quilimane", (21, 25)), "lourenco-marques": ("Lourenço Marques", (18, 31)), "durban": ("Durban", (17, 34)),
     "port-elizabeth": ("Port Elizabeth", (14, 36)), "capetown": ("Capetown", (10, 36)), "benguela": ("Benguela", (7, 21)),
-    "luanda": ("Luanda", (8, 19)), "calabar": ("Calabar", (4, 8)), "brass": ("Brass", (2, 8)),
+    "luanda": ("Luanda", (7, 19)), "calabar": ("Calabar", (4, 8)), "brass": ("Brass", (2, 8)),
 }
 rivers = [
     dict(id="white-nile", name="White Nile", drainage=35, offMapHexes=25, path=[(20, 1), (20, 2), (19, 3), (20, 4), (19, 5), (19, 6), (18, 6)], cataracts=[]),

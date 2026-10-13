@@ -1941,13 +1941,13 @@
   "c7r19": {
    "col": 7,
    "row": 19,
-   "terrain": "veldt"
+   "terrain": "veldt",
+   "port": "luanda"
   },
   "c8r19": {
    "col": 8,
    "row": 19,
-   "terrain": "veldt",
-   "port": "luanda"
+   "terrain": "veldt"
   },
   "c9r19": {
    "col": 9,
@@ -3189,7 +3189,7 @@
   },
   "luanda": {
    "name": "Luanda",
-   "hex": "c8r19"
+   "hex": "c7r19"
   },
   "calabar": {
    "name": "Calabar",

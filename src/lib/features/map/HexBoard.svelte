@@ -106,6 +106,35 @@
     return `${c.x.toFixed(1)},${c.y.toFixed(1)} ${(c.x + ux * k).toFixed(1)},${(c.y + uy * k).toFixed(1)}`;
   }
 
+  /** A river's name goes on the seaward side of its drainage number (screen x = map y when the board is rotated). */
+  function nameSide(r: River): { x: number; anchor: 'start' | 'end' } {
+    const m = centre(r.path[0]);
+    const p = mouthLabel(r);
+    const seaward = rotated ? p.y - m.y : p.x - m.x;
+    return seaward < 0 ? { x: -radius * 0.6, anchor: 'end' } : { x: radius * 0.6, anchor: 'start' };
+  }
+
+  /** Where each port's name sits, in the upright (screen) frame and radius units: in the water off the
+   *  coast and level with the port where the coast allows, above the east coast (the sea is up when north
+   *  is to the left), south of Khartoum (the Nile's name has the north), south of Port Elizabeth, at Calabar's south-west corner. */
+  const LABEL_AT: Record<PortId, { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }> = {
+    khartoum: { dx: 1.05, dy: 0, anchor: 'start' }, // south: the Nile's name takes the north side
+    mombasa: { dx: 0, dy: -1.05, anchor: 'middle' },
+    zanzibar: { dx: 0.3, dy: -1.05, anchor: 'start' },
+    kilwa: { dx: 0, dy: -1.05, anchor: 'middle' },
+    quilimane: { dx: 0, dy: -1.05, anchor: 'middle' },
+    'lourenco-marques': { dx: 0, dy: -1.5, anchor: 'middle' }, // clear of the Limpopo's name at the same mouth
+    durban: { dx: 0, dy: -1.05, anchor: 'middle' },
+    'port-elizabeth': { dx: 1.05, dy: 0, anchor: 'start' },
+    capetown: { dx: 1.05, dy: 0, anchor: 'start' },
+    benguela: { dx: 0.3, dy: 1.35, anchor: 'start' }, // the two names lean apart
+    luanda: { dx: -0.3, dy: 1.35, anchor: 'end' },
+    calabar: { dx: 0.7, dy: 1.15, anchor: 'start' },
+    brass: { dx: 0, dy: 1.35, anchor: 'middle' }
+  };
+  /** The fare of a port chooser sits on the side of the port its name does not take. */
+  const fareDy = (id: PortId) => (LABEL_AT[id].dy < 0 ? 1.1 : -0.95);
+
   const symbolFor: Record<string, string[]> = {
     desert: [],
     veldt: ['veldt'],
@@ -142,6 +171,7 @@
       {@const t = terrainFor(h)}
       <polygon
         data-testid="hex-{h.id}"
+        data-port={h.port}
         data-col={h.col}
         data-row={h.row}
         data-terrain={t ?? 'blank'}
@@ -266,6 +296,8 @@
     {#each riverMouths() as { river } (river.id)}
       {@const p = mouthLabel(river)}
       <text data-testid="drainage-{river.id}" class="drainage" aria-label="{river.name} drains at least {river.drainage} hexes" transform="translate({p.x} {p.y}) {upright}" font-size={radius * 0.8}>{river.drainage}</text>
+      <!-- The river's name beside its mouth, upright for a reader at the south edge. -->
+      <text data-testid="label-river-{river.id}" class="river-name" aria-label="Mouth of the {river.name}" transform="translate({p.x} {p.y}) {upright}" x={nameSide(river).x} text-anchor={nameSide(river).anchor} font-size={radius * 0.55}>{river.name}</text>
     {/each}
     {#each PORTS as p (p.id)}
       {@const c = centre(BOARD.hexes[p.hex])}
@@ -280,9 +312,9 @@
           <line x1="12" y1="22" x2="12" y2="8" />
           <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
         </g>
-        <text class="label" y={radius * 1.25} font-size={radius * 0.62}>{p.name}</text>
+        <text class="label" data-testid="label-port-{p.id}" x={radius * LABEL_AT[p.id].dx} y={radius * LABEL_AT[p.id].dy} text-anchor={LABEL_AT[p.id].anchor} dominant-baseline="central" font-size={radius * 0.62}>{p.name}</text>
         {#if choice}
-          <g class="fare" transform="translate(0 {-radius * 0.95})">
+          <g class="fare" transform="translate(0 {radius * fareDy(p.id)})">
             {#if choice.fare === 'ticket'}
               <rect x={-radius * 0.55} y={-radius * 0.32} width={radius * 1.1} height={radius * 0.64} rx={radius * 0.12} class="ticket" />
               <path d="M{-radius * 0.15} {-radius * 0.22} V{radius * 0.22}" class="ticket-perf" />
@@ -521,9 +553,19 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
+  .river-name {
+    fill: #2d72c9;
+    dominant-baseline: central;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
+    font-weight: 700;
+    font-style: italic;
+    paint-order: stroke;
+    stroke: #efe6cc;
+    stroke-width: 3px;
+    stroke-linejoin: round;
+  }
   .label {
     fill: #1c2a2e;
-    text-anchor: middle;
     font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 600;
     paint-order: stroke;

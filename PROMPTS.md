@@ -71,3 +71,13 @@ resume as per memory discovery-nile-roll-through
 please bring up both local servers and also fix the CI font mismatch to enable the public deploy
 
 `Outcome: one bundled typeface (DejaVu Sans as "Nile Sans", WOFF2 in static/fonts, declared in app.html) replaces system-ui everywhere so CI and the workstation rasterise the same bytes; every baseline regenerated and spot-checked; pushed so the deploy job can publish; dev server (3000) and relay (3001) started.`
+
+## 10. 2026-10-12
+
+Luanda should be on the coast (one hex to the west of its current position)
+Port names can be aligned with the port row, and face "north", with most port names placed in the water off the coast.  port Elizabeth and Khartoum can be to the south or the north of the cities, and calabar can align to the southwest corner of the city.  all should be readable from the south.
+Icons and buttons are fairly confusing.  we need to introduce tooltips to describe them and their actions (note that this is not touch-friendly, so we will need to improve feedback in a later stage.  this design is to help me better understand the design.
+Map should resize to fill most of the screen when the screen resizes.
+River names should appear at the mouth of the river
+Let's configure the game to use a relay server like Jaipur's (see GitHub.com/egirard/Jaipur)
+Non-playing positions should not be shown once the game starts.

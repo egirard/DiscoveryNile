@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
 const TICKETS: Record<number, string> = { 2: 'mombasa', 15: 'capetown', 22: 'lourenco-marques', 30: 'quilimane', 31: 'calabar', 32: 'kilwa', 33: 'luanda', 34: 'benguela', 35: 'port-elizabeth', 36: 'zanzibar', 39: 'durban', 43: 'brass' };
-const PORT_HEX: Record<string, string> = { khartoum: 'c20r1', mombasa: 'c25r12', zanzibar: 'c24r15', kilwa: 'c23r18', quilimane: 'c21r25', 'lourenco-marques': 'c18r31', durban: 'c17r34', 'port-elizabeth': 'c14r36', capetown: 'c10r36', benguela: 'c7r21', luanda: 'c8r19', calabar: 'c4r8', brass: 'c2r8' };
+const PORT_HEX: Record<string, string> = { khartoum: 'c20r1', mombasa: 'c25r12', zanzibar: 'c24r15', kilwa: 'c23r18', quilimane: 'c21r25', 'lourenco-marques': 'c18r31', durban: 'c17r34', 'port-elizabeth': 'c14r36', capetown: 'c10r36', benguela: 'c7r21', luanda: 'c7r19', calabar: 'c4r8', brass: 'c2r8' };
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();

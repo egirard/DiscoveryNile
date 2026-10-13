@@ -275,6 +275,12 @@ The 4K project; physical sizing of touch targets, hexes and cards from the confi
 
 - **As landed:** the `table-4k` project (3840×2160) runs this scenario beside `table` (1920×1080); each tells the table its size with `?diag=` (55" and 27"), and the touch target is 12 mm rounded up, never under 44 px, with text and icons scaling with it (`--scale`) on a denser screen. The fit check in every scenario now also fails any control under the target (move and publish targets are hex-sized and measured by this scenario instead). Six seats occupied exposed four layout faults, fixed here: a rail's content now wraps within the seat's span of its edge and grows inward from the table's edge instead of reaching off the table or into the next seat; a ticket card, through a shared CSS class, was 55% of the hand wide and its artwork swallowed taps beside it (every scenario's ticket baselines changed); the round-limit and chart-step buttons were under 44 px; the piles sat where the second bottom seat's rail is, so they moved to the sea at the board's top-right corner. The port chooser's tap area is never smaller than the target. At 27" the board between six rails gives a 9.7 mm hex, under the 12 mm minimum, and the scenario records that the board already fills the height it has (G-107). Scenario 032 (seed 5, bottom-1 first by scripted dice): `six-seats-taken` → `six-explorers` → `six-hands-dealt` → `port-chooser` → `outfitting-at-the-edge` → `move-targets` → `denser-screen` (the same game at half the diagonal: a 78 px target).
 
+### Post-plan changes
+
+Slices landed after the plan's last numbered slice, at the user's direction (PROMPTS.md, prompt 10).
+
+- **033 Map legibility** ✅ landed: Luanda moved one hex west onto the coast (c7r19, G-4); port names placed by hand in the sea beside their ports, upright for the south edge (G-112); river names at their mouths beside the drainage numbers (G-113). Scenario 033: `ports-named-in-the-sea`.
+
 ## Definition of complete
 
 - Every scenario in the map has landed and passes with zero-pixel tolerance on Linux.
