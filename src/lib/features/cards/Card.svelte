@@ -55,7 +55,7 @@
     place-items: center;
     align-content: center;
     gap: 2px;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     box-sizing: border-box;
   }
   .card.ticket {

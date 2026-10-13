@@ -74,7 +74,7 @@
   .chart {
     display: grid;
     gap: var(--gap);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-size: calc(var(--target) * 0.36);
   }
   .rows {

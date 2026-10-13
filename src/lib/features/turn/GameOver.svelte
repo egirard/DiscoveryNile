@@ -43,7 +43,7 @@
     border: 4px solid var(--accent);
     background: var(--ink);
     color: var(--paper);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     box-shadow: 0 0 calc(var(--target) * 0.6) rgba(0, 0, 0, 0.6);
   }
   .title {

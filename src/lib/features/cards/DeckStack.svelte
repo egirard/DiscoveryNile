@@ -55,7 +55,7 @@
     inset: 0;
     display: grid;
     place-items: center;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.35);
     color: var(--ink);

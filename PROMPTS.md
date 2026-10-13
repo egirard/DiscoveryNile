@@ -65,3 +65,9 @@ continue implementation
 resume as per memory discovery-nile-roll-through
 
 `Outcome: 032 (responsive pass) landed and pushed: the table-4k project runs the six-seat scenario at 55" beside the 27" run, the touch target is 12 mm rounded up and every scenario now fails a control under it, rails wrap within their seat and grow inward, the ticket-card width bug and three undersized controls fixed, the piles moved to the top-right sea corner, G-107..111 logged; every slice of the plan has landed. The closing review list follows in the reply.`
+
+## 9. 2026-10-12
+
+please bring up both local servers and also fix the CI font mismatch to enable the public deploy
+
+`Outcome: one bundled typeface (DejaVu Sans as "Nile Sans", WOFF2 in static/fonts, declared in app.html) replaces system-ui everywhere so CI and the workstation rasterise the same bytes; every baseline regenerated and spot-checked; pushed so the deploy job can publish; dev server (3000) and relay (3001) started.`

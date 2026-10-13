@@ -38,7 +38,7 @@
     display: grid;
     gap: calc(var(--gap) * 0.6);
     width: calc(var(--target) * 7);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     color: var(--ink);
   }
   .text {

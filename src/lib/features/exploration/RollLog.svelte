@@ -72,7 +72,7 @@
   }
   .mods,
   .outcome {
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.34);
     color: var(--paper);
@@ -89,7 +89,7 @@
     background: var(--paper);
     color: var(--ink);
     border: 2px solid var(--ink);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     line-height: 1;
     opacity: 0.7;
@@ -107,7 +107,7 @@
     letter-spacing: 0.02em;
   }
   .note {
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-size: calc(var(--target) * 0.22);
     color: var(--paper);
     width: max-content;
@@ -115,7 +115,7 @@
     line-height: 1.1;
   }
   .more {
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.26);
     color: var(--paper);
@@ -129,7 +129,7 @@
     border: 3px solid var(--paper);
     display: grid;
     place-items: center;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.5);
   }

@@ -533,7 +533,7 @@
     margin: 0;
     overflow: hidden;
     background: #1c2a2e;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     --ink: #1c2a2e;
     --paper: #e8d8b0;
     --accent: #c9a24a;
@@ -587,7 +587,7 @@
     background: var(--ink);
     border: 2px solid var(--accent);
     color: var(--paper);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.36);
   }
@@ -633,7 +633,7 @@
     border-radius: 999px;
     border: 2px solid var(--accent);
     color: var(--paper);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.3);
   }
@@ -675,7 +675,7 @@
     margin-left: var(--gap);
     flex-shrink: 0;
     max-width: calc(var(--target) * 5);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-size: calc(var(--target) * 0.3);
     line-height: 1.2;
     color: #e7b4a8;
@@ -751,7 +751,7 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.4);
     cursor: pointer;

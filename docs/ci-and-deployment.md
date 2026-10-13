@@ -93,6 +93,8 @@ jobs:
 
 ## Screenshot baselines on Linux
 
+Text is rendered from one bundled typeface (`static/fonts/`, declared in `src/app.html`; see [assets.md](assets.md)), never from `system-ui`: the runner and a developer's machine resolve the generic families to different fonts, which left CI red on every panel with text from slice 028 until the font was bundled.
+
 Baselines are compared on Linux runners. A developer on macOS cannot generate matching images locally. Instead:
 
 1. Push the branch.

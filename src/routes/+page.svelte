@@ -16,7 +16,7 @@
     margin: 0;
     background: #1c2a2e;
     color: #e8d8b0;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
   }
   main {
     height: 100vh;

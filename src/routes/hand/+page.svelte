@@ -79,7 +79,7 @@
 </main>
 
 <style>
-  :global(body) { margin: 0; background: #1c2a2e; color: #e8d8b0; font-family: system-ui, sans-serif; }
+  :global(body) { margin: 0; background: #1c2a2e; color: #e8d8b0; font-family: 'Nile Sans', 'DejaVu Sans', sans-serif; }
   main { height: 100vh; display: grid; place-items: center; align-content: center; gap: 1.5rem; padding: env(safe-area-inset-top) 1rem env(safe-area-inset-bottom); }
   .status { min-height: 1.5rem; text-align: center; }
   .join { display: grid; gap: 1rem; }

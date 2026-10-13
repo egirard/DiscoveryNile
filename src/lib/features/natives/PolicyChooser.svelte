@@ -40,7 +40,7 @@
     display: grid;
     gap: calc(var(--gap) * 0.5);
     width: calc(var(--target) * 7.5);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     color: var(--ink);
   }
   .heading {

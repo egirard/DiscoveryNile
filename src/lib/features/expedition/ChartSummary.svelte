@@ -42,7 +42,7 @@
     display: inline-flex;
     gap: calc(var(--gap) * 0.8);
     margin-left: var(--gap);
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     font-size: calc(var(--target) * 0.34);
     color: var(--paper);

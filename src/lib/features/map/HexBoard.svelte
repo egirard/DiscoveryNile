@@ -388,7 +388,7 @@
     fill: #1c2a2e;
     text-anchor: middle;
     dominant-baseline: central;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     paint-order: stroke;
     stroke: #efe6cc;
@@ -423,7 +423,7 @@
   .fare-text {
     fill: #1c2a2e;
     text-anchor: middle;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     paint-order: stroke;
     stroke: #efe6cc;
@@ -450,7 +450,7 @@
   .height {
     text-anchor: middle;
     dominant-baseline: central;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
     paint-order: stroke;
     stroke: #efe6cc;
@@ -495,7 +495,7 @@
     fill: #efe6cc;
     text-anchor: middle;
     dominant-baseline: central;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 700;
   }
   .target {
@@ -524,7 +524,7 @@
   .label {
     fill: #1c2a2e;
     text-anchor: middle;
-    font-family: system-ui, sans-serif;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     font-weight: 600;
     paint-order: stroke;
     stroke: #efe6cc;
