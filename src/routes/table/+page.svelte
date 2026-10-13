@@ -7,7 +7,8 @@
   import { initialState } from '$lib/game/state';
   import SeatRail from '$features/seats/SeatRail.svelte';
   import { seatsFor, type Seat } from '$lib/tabletop/seats';
-  import { mmPerPx, pxFor, readDiagonalInches, screenGeometry } from '$lib/tabletop/screen';
+  import { mmPerPx, pxFor, readDiagonalInches, screenGeometry, writeDiagonalInches } from '$lib/tabletop/screen';
+  import OptionsPanel from '$lib/tabletop/OptionsPanel.svelte';
   import { attachTooltips } from '$lib/ui/tooltips';
   import HexBoard from '$features/map/HexBoard.svelte';
   import ExplorerSetup from '$features/explorers/ExplorerSetup.svelte';
@@ -236,6 +237,18 @@
     if (seat) await game?.append('hex/published', { seat, hex });
   }
   // Retiring: a tap on one's own explorer at the rail during one's turn asks for confirmation at the edge (rules §12).
+  // The options screen: opened from the gear at the north-west or south-east corner and turned toward it.
+  let options = $state<'nw' | 'se' | null>(null);
+  function setDiagonal(inches: number) {
+    diagonal = inches;
+    writeDiagonalInches(inches);
+    game?.publishGeometry(screenGeometry(diagonal, viewport.w, viewport.h));
+  }
+  async function endByAgreement() {
+    const seat = gameState.turn?.current ?? gameState.seats.find((s) => s.uid)?.id;
+    options = null;
+    await game?.append('game/ended', { seat });
+  }
   let retiringSeat = $state<string | null>(null);
   const retiring = $derived.by(() => {
     if (!retiringSeat || gameState.turn?.current !== retiringSeat) return null;
@@ -376,8 +389,7 @@
 
   {#if retiring}
     <EdgePanel seat={retiring.seat} {viewport} inset={railDepth + target * 0.4} testid="retire-edge-{retiring.seat.id}">
-      <RetirePanel seat={retiring.seat.id} where={retiring.where} voted={gameState.endVotes.includes(retiring.seat.id as SeatId)} votes={gameState.endVotes.length} voters={explorerSeats(gameState).length}
-        onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} onvote={() => game?.append('game/end-voted', { seat: retiring!.seat.id })} />
+      <RetirePanel seat={retiring.seat.id} where={retiring.where} onconfirm={() => retire(retiring!.seat.id)} oncancel={() => (retiringSeat = null)} />
     </EdgePanel>
   {/if}
 
@@ -547,6 +559,16 @@
     </div>
     <span class="code" data-testid="room-code" aria-label="Room code">{gameState.gameId ?? ''}</span>
   </div>
+  <!-- A gear at the north-west and the south-east corner of the board, so a player at any edge reaches one; each opens the options turned its way. -->
+  <button class="gear nw" data-testid="options-nw" aria-label="Options (screen size, phones, ending the game)" aria-pressed={options === 'nw'} style="left:{inset.left + target * 0.3}px; top:{inset.top + target * 0.3}px" onclick={() => (options = options === 'nw' ? null : 'nw')}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+  </button>
+  <button class="gear se" data-testid="options-se" aria-label="Options (screen size, phones, ending the game)" aria-pressed={options === 'se'} style="right:{inset.right + target * 0.3}px; bottom:{inset.bottom + target * 0.3}px" onclick={() => (options = options === 'se' ? null : 'se')}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+  </button>
+  {#if options}
+    <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} onend={endByAgreement} />
+  {/if}
   <p class="build" data-testid="build-marker">{__GIT_HASH__.slice(0, 7)}</p>
 </main>
 
@@ -805,6 +827,30 @@
     color: var(--ink);
     font-weight: 700;
     font-size: calc(var(--target) * 0.36);
+  }
+  .gear {
+    position: absolute;
+    width: var(--target);
+    height: var(--target);
+    border-radius: 50%;
+    border: 3px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    opacity: 0.85;
+  }
+  .gear[aria-pressed='true'] {
+    background: var(--accent);
+  }
+  .gear svg {
+    width: 60%;
+    height: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
   }
   .corner {
     position: absolute;

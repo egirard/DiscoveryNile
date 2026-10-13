@@ -279,6 +279,7 @@ The 4K project; physical sizing of touch targets, hexes and cards from the confi
 
 Slices landed after the plan's last numbered slice, at the user's direction (PROMPTS.md, prompt 10).
 
+- **035 Options** ✅ landed: a gear at the north-west and south-east corners opens the options screen, turned toward its corner: screen size with a bank-card outline (G-120), every seat's QR code (G-121), and "End this game" by agreement with a confirmation (G-118, G-119); the vote on the retire panel is gone (G-101). Scenario 035: `options-from-the-corner` → `screen-size-set` → `ended-by-agreement`.
 - **Hosted relay** ✅ landed (scenario 002): the relay protocol is the ARViewer relay's, which Jaipur uses; the deployed table points at the hosted relay so phones can take seats from it (G-117).
 - **Tooltips** ✅ landed (scenario 034, `hover-explains`): every labelled control and marker carries its label as a tooltip for a mouse (G-116).
 - **034 The table fills the screen** ✅ landed: once the game starts, seats nobody took show nothing and the board takes the free edges (G-114); the layout follows the window on resize (G-115). Scenario 034: `six-seats-offered` → `free-edges-to-the-board` → `window-resized`.

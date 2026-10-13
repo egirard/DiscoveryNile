@@ -71,6 +71,13 @@ describe('the game\'s end (rules: Description of Game; RQ-10)', () => {
     expect(both.ended).toMatchObject({ round: 5, reason: 'consensus', winners: ['bottom-1'] });
     expect(reduceOne(r5, event('game/end-voted', { seat: 'left-1' })).diagnostics.at(-1)?.reason).toBe('only a seat with an explorer votes');
   });
+  it('ends by agreement from the options screen, whoever sends it, once a game is under way', () => {
+    const { r5 } = fiveRounds();
+    const over = reduceOne(r5, event('game/ended', { seat: 'top-1' }));
+    expect(over.diagnostics).toEqual([]);
+    expect(over.ended).toMatchObject({ round: 5, reason: 'consensus', winners: ['bottom-1'] });
+    expect(reduceOne(reduce([created('ABCDE', LAYOUT, 26)]), event('game/ended', { seat: 'top-1' })).diagnostics.at(-1)?.reason).toBe('game not started');
+  });
   it('continues on the same map: published hexes and records stay, scores and explorers start afresh', () => {
     const { over } = fiveRounds();
     const next = reduceOne(over, event('game/continued', {}));

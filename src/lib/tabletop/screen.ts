@@ -21,6 +21,15 @@ export function readDiagonalInches(search = typeof location === 'undefined' ? ''
   return DEFAULT_DIAGONAL_INCHES;
 }
 
+/** Remember the diagonal chosen on the options screen for this browser. */
+export function writeDiagonalInches(inches: number): void {
+  try {
+    localStorage.setItem(KEY, String(inches));
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Millimetres per CSS pixel for a screen of the given diagonal and CSS viewport. */
 export function mmPerPx(diagonalInches: number, widthPx: number, heightPx: number): number {
   const diagonalPx = Math.hypot(widthPx, heightPx);

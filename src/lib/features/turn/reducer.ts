@@ -342,7 +342,7 @@ export function waterAvailable(state: GameState, explorer: ExplorerState): boole
 
 export const WATER_STEP = 10;
 
-const TURN_EVENTS = new Set<string>(['game/started', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted']);
+const TURN_EVENTS = new Set<string>(['game/started', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted', 'game/ended']);
 
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   if (state.ended && TURN_EVENTS.has(event.type)) return 'the game is over';
@@ -356,6 +356,11 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const endVotes = state.endVotes.includes(seat as SeatId) ? state.endVotes.filter((s) => s !== seat) : [...state.endVotes, seat as SeatId];
       if (voters.every((s) => endVotes.includes(s))) return endGame({ ...state, endVotes }, 'consensus');
       return { ...state, endVotes };
+    }
+    case 'game/ended': {
+      // Ending by agreement (RQ-10): any seat ends the game from the options screen once the players agree at the table.
+      if (!state.turn) return 'game not started';
+      return endGame(state, 'consensus');
     }
     case 'game/continued': {
       // A new game on the same map (rules: Description of Game): what was published stays known, with its tribes and the

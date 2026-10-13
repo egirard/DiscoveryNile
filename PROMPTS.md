@@ -83,3 +83,21 @@ Let's configure the game to use a relay server like Jaipur's (see GitHub.com/egi
 Non-playing positions should not be shown once the game starts.
 
 `Outcome: four slices landed and pushed. 033 map legibility (Luanda on the coast at c7r19; port names hand-placed in the sea, upright for the south edge, Khartoum and Port Elizabeth south, Calabar at its south-west corner; river names at the mouths). 034 the table fills the screen (seats nobody took vanish at the start, the board takes the free edges, the layout follows the window). Tooltips (every aria-label doubles as a title). Relay: the ARViewer session protocol Jaipur uses, the deployed table on wss://arviewer-relay.onrender.com/ws (smoke-tested), the local relay speaking the same subset. G-112..117.`
+
+## 11. 2026-10-12
+
+It's unclear how "every seat votes to end the game" is supposed to happen.  Please explain the usage pattern there.
+
+`Outcome: explained in the reply (the vote lives on the retire panel, reached by tapping one's own explorer on one's own turn; the last vote ends the game); no code change. The weakness noted: a vote is only visible and castable on the voter's turn, so consensus takes a round and nobody sees the tally between turns.`
+
+## 12. 2026-10-12
+
+Let's add a "configuration" or "options" screen launched from a gear icon that is displayed in the northwest and southeast corners of the board (so each player should be able to reach it).  In that screen we should get access to "End this game".  Also include the screen size configuration in the options screen along with qr codes to join or rejoin from a phone.
+
+## 13. 2026-10-12
+
+let's expand the log, which currently shows as a single line in each player's pod.  Add a "+" at the end of the section to expand the log, which opens to a fairly short but scrollable list.  the close button "-" will replace the "+" in place when the log is open.  This will show a more complete list of everything that's happened in the turn.
+
+## 14. 2026-10-12
+
+Please improve the alignment of the river names with the river lengths.... it's good for single digit rivers, but runs too close for double digit lengths.
