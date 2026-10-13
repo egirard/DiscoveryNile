@@ -81,3 +81,5 @@ Map should resize to fill most of the screen when the screen resizes.
 River names should appear at the mouth of the river
 Let's configure the game to use a relay server like Jaipur's (see GitHub.com/egirard/Jaipur)
 Non-playing positions should not be shown once the game starts.
+
+`Outcome: four slices landed and pushed. 033 map legibility (Luanda on the coast at c7r19; port names hand-placed in the sea, upright for the south edge, Khartoum and Port Elizabeth south, Calabar at its south-west corner; river names at the mouths). 034 the table fills the screen (seats nobody took vanish at the start, the board takes the free edges, the layout follows the window). Tooltips (every aria-label doubles as a title). Relay: the ARViewer session protocol Jaipur uses, the deployed table on wss://arviewer-relay.onrender.com/ws (smoke-tested), the local relay speaking the same subset. G-112..117.`

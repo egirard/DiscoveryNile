@@ -1,6 +1,10 @@
-// Relay attachment. The relay is a dumb JSON-over-WebSocket forwarder (see scripts/relay.ts):
-// one host publishes, any number of viewers receive, viewers send intents that are stamped
-// with the seat they claimed. Nothing here knows the game.
+// Relay attachment. The relay speaks the ARViewer session protocol (github.com/egirard/ARViewer,
+// server/server.js; the same relay Jaipur's tabletop uses), so the hosted relay at
+// wss://arviewer-relay.onrender.com/ws serves the table without any server of this project's own:
+// a client joins a session as the `table` or as a `viewer` holding a seat; the table publishes
+// `state`, which the relay caches for late joiners and forwards to every viewer; a viewer sends
+// `action` messages, which the relay stamps with its seat and forwards to the table. The local
+// relay (scripts/relay.ts) speaks the same subset for development and E2E. Nothing here knows the game.
 import type { GameEvent } from '$lib/game/events';
 
 export type RelayRole = 'host' | 'viewer';
@@ -11,15 +15,20 @@ export interface Intent {
   [key: string]: unknown;
 }
 
-export interface RelayMessage {
-  kind: 'publish' | 'intent' | 'hello';
-  session: string;
-  role?: RelayRole;
-  seat?: string;
-  events?: GameEvent[];
+/** What the table publishes: the whole event log and the screen's geometry. */
+export interface Published {
+  events: GameEvent[];
   geometry?: unknown;
-  intent?: Intent;
 }
+
+/** Wire messages, as the ARViewer relay defines them (only the kinds this project uses). */
+export type RelayMessage =
+  | { type: 'join'; session: string; role: 'table' | 'viewer'; seat?: string }
+  | { type: 'joined'; role: 'table' | 'viewer'; viewers: number; viewerId?: string; seat?: string; tableConnected: boolean }
+  | { type: 'state'; state: Published }
+  | { type: 'action'; action: string; viewerId?: string; seat?: string; [key: string]: unknown }
+  | { type: 'host'; connected: boolean }
+  | { type: 'peers'; viewers: number };
 
 export interface RelayHandle {
   publish(events: GameEvent[], geometry?: unknown): void;
@@ -32,6 +41,9 @@ export function relayUrlFromEnvironment(search = typeof location === 'undefined'
   const env = import.meta.env.VITE_RELAY_URL as string | undefined;
   return env && env.length > 0 ? env : null;
 }
+
+/** The relay's role name for ours: the table is the relay's `table`, a phone its `viewer`. */
+export const wireRole = (role: RelayRole): 'table' | 'viewer' => (role === 'host' ? 'table' : 'viewer');
 
 export function connectRelay(
   url: string,
@@ -59,8 +71,8 @@ export function connectRelay(
     ws = new WebSocket(url);
     ws.onopen = () => {
       retry = 500;
-      send({ kind: 'hello', session, role, seat: handlers.seat });
-      if (last) send(last); // a reconnecting host republishes for late joiners
+      send({ type: 'join', session, role: wireRole(role), seat: handlers.seat });
+      if (last) send(last); // a reconnecting table republishes for late joiners
       handlers.onStatus?.('synced');
     };
     ws.onmessage = (raw) => {
@@ -70,8 +82,11 @@ export function connectRelay(
       } catch {
         return;
       }
-      if (message.kind === 'publish' && message.events) handlers.onEvents?.(message.events, message.geometry);
-      if (message.kind === 'intent' && message.intent) handlers.onIntent?.(message.intent);
+      if (message.type === 'state' && message.state?.events) handlers.onEvents?.(message.state.events, message.state.geometry);
+      if (message.type === 'action' && typeof message.seat === 'string') {
+        const { type: _type, viewerId: _viewerId, ...rest } = message;
+        handlers.onIntent?.({ ...rest, seat: message.seat, action: message.action });
+      }
     };
     ws.onclose = () => {
       handlers.onStatus?.('offline');
@@ -83,7 +98,7 @@ export function connectRelay(
 
   return {
     publish(events, geometry) {
-      last = { kind: 'publish', session, events, geometry };
+      last = { type: 'state', state: { events, geometry } };
       send(last);
     },
     close() {
@@ -91,8 +106,4 @@ export function connectRelay(
       ws?.close();
     }
   };
-}
-
-export function sendIntent(handle: { send: (m: RelayMessage) => void }, session: string, intent: Intent) {
-  handle.send({ kind: 'intent', session, intent });
 }

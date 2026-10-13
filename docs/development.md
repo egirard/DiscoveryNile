@@ -67,7 +67,7 @@ Without direnv: prefix commands with `nix develop --command`, or enter the shell
 | `bun run test:e2e:report` | Open the last HTML report |
 | `bun run test:rules` | Firestore rules tests against the emulator (Firebase projects only) |
 | `bun run emulators` | Start the Firebase emulators for manual testing (Firebase projects only) |
-| `bun run relay` | Minimal WebSocket relay for phones on port 3001 |
+| `bun run relay` | Minimal WebSocket relay for phones on port 3001, speaking the ARViewer session protocol the hosted relay speaks |
 | `bun run diag` | Diagnostics capture server on port 3002 (see [diagnostics.md](diagnostics.md)) |
 | `bun run verify:change` | Everything the hooks and CI run. See below. |
 
@@ -117,7 +117,7 @@ It re-executes itself inside the Nix shell if it is not already there. It runs t
 | `VITE_FIREBASE_*` | Public Firebase client configuration (six variables) |
 | `VITE_USE_FIREBASE_EMULATORS` | `true` in E2E |
 | `VITE_FIRESTORE_EMULATOR_HOST/PORT`, `VITE_FIREBASE_AUTH_EMULATOR_HOST/PORT` | Emulator addresses |
-| `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through |
+| `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through: the local relay for dev and E2E, the hosted ARViewer relay (`wss://arviewer-relay.onrender.com/ws`) for the deployed table |
 | `VITE_DIAG_URL` | Diagnostics capture server (dev builds only) |
 | `VITE_GIT_HASH` | Build marker shown in the UI footer; `e2e-test-commit` in scenarios |
 | `PUBLIC_BASE_PATH` | `/<repo>` or `/<repo>/pr<N>` at deploy time |

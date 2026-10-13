@@ -11,6 +11,8 @@ Some games need more than the table. A phone gives a player a private display; a
 | Second screen / spectator | `/table?session=…&view=1` | Everything public | Nothing | Relay |
 | Remote player | `/table?gameId=…` | Everything public | Appends events | Firebase |
 
+The relay speaks the session protocol of the ARViewer project's relay (`github.com/egirard/ARViewer`, `server/server.js`), the one Jaipur's tabletop uses: a client sends `{type: 'join', session, role: 'table' | 'viewer', seat}`; the table publishes `{type: 'state', state: {events, geometry}}`, which the relay caches for late joiners and forwards to every viewer; a viewer sends `{type: 'action', action, …}`, which the relay stamps with the viewer's seat and forwards to the table. The deployed table uses the hosted relay at `wss://arviewer-relay.onrender.com/ws`; `scripts/relay.ts` is the same protocol for development and E2E.
+
 All roles project the same event stream. Shared-table mode is not a separate rules implementation. **The first three rows need no Firebase**; see the relay in [state-and-persistence.md](state-and-persistence.md).
 
 ## Room codes

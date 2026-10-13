@@ -24,7 +24,7 @@
   }
   function take() {
     localStorage.setItem(`tabletop:hand:${session}:name`, name);
-    send({ kind: 'intent', session, intent: { seat, action: 'seat/take', uid, name } });
+    send({ type: 'action', action: 'seat/take', uid, name });
   }
 
   onMount(() => {
@@ -46,13 +46,13 @@
     ws = new WebSocket(url);
     ws.onopen = () => {
       status = 'syncing';
-      send({ kind: 'hello', session, role: 'viewer', seat });
+      send({ type: 'join', session, role: 'viewer', seat });
       if (isDebugBuild && q.get('auto') === '1') take();
     };
     ws.onmessage = (raw) => {
       const m = JSON.parse(String(raw.data)) as RelayMessage;
-      if (m.kind === 'publish' && m.events) {
-        gameState = reduce(m.events);
+      if (m.type === 'state' && m.state?.events) {
+        gameState = reduce(m.state.events);
         status = 'synced';
       }
     };

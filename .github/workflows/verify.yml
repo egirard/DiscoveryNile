@@ -49,8 +49,8 @@ jobs:
             playwright-report/
 
   # The hosted table: the verified build of `main`, served from GitHub Pages at /<repo>/ through
-  # the Pages deployment action (Settings → Pages → source: GitHub Actions). The local backend only;
-  # no relay is hosted, so phones cannot take a seat from the hosted table yet.
+  # the Pages deployment action (Settings → Pages → source: GitHub Actions). The local backend, with
+  # phones joining through the hosted ARViewer relay.
   deploy:
     needs: verify
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -71,6 +71,8 @@ jobs:
           PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
           VITE_GIT_HASH: ${{ github.sha }}
           VITE_DEFAULT_BACKEND: local
+          # The hosted relay phones join through: the ARViewer project's, as Jaipur's tabletop uses.
+          VITE_RELAY_URL: wss://arviewer-relay.onrender.com/ws
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

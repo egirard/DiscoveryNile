@@ -279,6 +279,7 @@ The 4K project; physical sizing of touch targets, hexes and cards from the confi
 
 Slices landed after the plan's last numbered slice, at the user's direction (PROMPTS.md, prompt 10).
 
+- **Hosted relay** ✅ landed (scenario 002): the relay protocol is the ARViewer relay's, which Jaipur uses; the deployed table points at the hosted relay so phones can take seats from it (G-117).
 - **Tooltips** ✅ landed (scenario 034, `hover-explains`): every labelled control and marker carries its label as a tooltip for a mouse (G-116).
 - **034 The table fills the screen** ✅ landed: once the game starts, seats nobody took show nothing and the board takes the free edges (G-114); the layout follows the window on resize (G-115). Scenario 034: `six-seats-offered` → `free-edges-to-the-board` → `window-resized`.
 - **033 Map legibility** ✅ landed: Luanda moved one hex west onto the coast (c7r19, G-4); port names placed by hand in the sea beside their ports, upright for the south edge (G-112); river names at their mouths beside the drainage numbers (G-113). Scenario 033: `ports-named-in-the-sea`.
