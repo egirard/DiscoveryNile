@@ -101,3 +101,5 @@ let's expand the log, which currently shows as a single line in each player's po
 ## 14. 2026-10-12
 
 Please improve the alignment of the river names with the river lengths.... it's good for single digit rivers, but runs too close for double digit lengths.
+
+`Outcome: river names now sit clear of their drainage numbers by the number's width (two digits push the name half a radius further); every board baseline regenerated.`

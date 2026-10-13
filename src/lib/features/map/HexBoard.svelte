@@ -106,12 +106,14 @@
     return `${c.x.toFixed(1)},${c.y.toFixed(1)} ${(c.x + ux * k).toFixed(1)},${(c.y + uy * k).toFixed(1)}`;
   }
 
-  /** A river's name goes on the seaward side of its drainage number (screen x = map y when the board is rotated). */
+  /** A river's name goes on the seaward side of its drainage number (screen x = map y when the board is
+   *  rotated), clear of it whatever its width: a bold digit at that size is about 0.48 of a radius wide. */
   function nameSide(r: River): { x: number; anchor: 'start' | 'end' } {
     const m = centre(r.path[0]);
     const p = mouthLabel(r);
     const seaward = rotated ? p.y - m.y : p.x - m.x;
-    return seaward < 0 ? { x: -radius * 0.6, anchor: 'end' } : { x: radius * 0.6, anchor: 'start' };
+    const clear = radius * (0.24 * String(r.drainage).length + 0.3);
+    return seaward < 0 ? { x: -clear, anchor: 'end' } : { x: clear, anchor: 'start' };
   }
 
   /** Where each port's name sits, in the upright (screen) frame and radius units: in the water off the
