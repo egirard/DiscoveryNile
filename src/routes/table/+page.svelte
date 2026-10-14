@@ -47,6 +47,7 @@
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
+  import ReloadPrompt from '$lib/dev/ReloadPrompt.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
   import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { log as diagLog } from '$lib/diagnostics/diag';
@@ -475,6 +476,7 @@
     </span>
   {/if}
 
+  <ReloadPrompt />
   {#if gameState.ended}
     <GameOver ended={gameState.ended} game={gameState.games + 1} oncontinue={() => game?.append('game/continued', {})} />
   {/if}

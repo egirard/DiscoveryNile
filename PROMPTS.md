@@ -208,3 +208,11 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
 Please don't restart the running server unless there's a live fix that you absolutely need to test or if I've asked you to.
 
 `Outcome: adopted and saved to memory: the dev server on port 3000 is left running (Vite applies code changes live); only a change to its environment that a live fix needs, or a request, restarts it. The relay still stops for the hooks' scenarios and comes back afterwards.`
+
+## 30. 2026-10-14
+
+For a development server (localhost:3000, for example) let's implement an on-demand reload for vite.  Se details here: 
+
+> *(pasted guidance, summarised: a Vite plugin whose `hotUpdate` hook broadcasts a custom `vite-update-available` event instead of a full reload when no module handles the change; a client listener on `vite:beforeFullReload` that throws to block the automatic reload and raises a prompt; a banner with a "Reload" button that reloads on demand; HMR for CSS and components still applies.)*
+
+`Outcome: the dev server never reloads the page by itself: an `on-demand-reload` Vite plugin (dev only) turns every full-reload message into a `vite-update-available` event, and the table and hand pages answer it with a "New code is ready" prompt whose button reloads; CSS and component changes still apply in place, and `diag:reload` still reloads from here. The pasted guide's client-side block no longer works (Vite 6 settles its listeners), so the hold is server-side. Verified on a throwaway dev server: an app.html change left the page in place with the prompt up, and the reload happened on the tap. Takes effect on port 3000 at its next start.`

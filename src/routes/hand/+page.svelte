@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ReloadPrompt from '$lib/dev/ReloadPrompt.svelte';
   import { onMount } from 'svelte';
   import { reduce } from '$lib/game/reduce';
   import { initialState, type GameState } from '$lib/game/state';
@@ -61,6 +62,7 @@
   });
 </script>
 
+<ReloadPrompt />
 <main data-e2e-layout data-testid="hand" data-seat={seat}>
   <div class="status" role="status" data-status={status}>{message}</div>
   {#if status === 'error'}
