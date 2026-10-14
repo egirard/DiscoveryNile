@@ -70,6 +70,7 @@ Without direnv: prefix commands with `nix develop --command`, or enter the shell
 | `bun run relay` | Minimal WebSocket relay for phones on port 3001, speaking the ARViewer session protocol the hosted relay speaks |
 | `bun run diag` | Diagnostics capture server on port 3002 (see [diagnostics.md](diagnostics.md)) |
 | `bun run diag:context` | What the table saw and did in the latest captured session: the last lines worded, and the game as its stream reduces |
+| `bun run diag:reload` | Reload every table playing the latest captured session, so the game replays from its events on the code as it now is |
 | `bun run verify:change` | Everything the hooks and CI run. See below. |
 
 When the project uses Firebase, `test:e2e` and `test:rules` wrap their command in `firebase emulators:exec --project <project>-e2e --only auth,firestore "…"`.

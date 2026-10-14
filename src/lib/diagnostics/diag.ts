@@ -25,6 +25,17 @@ interface Configured {
 let configured: Configured | null = null;
 let queue: Promise<unknown> = Promise.resolve();
 let listening = false;
+let commands: { close(): void } | null = null;
+
+/** A command from the capture server's stream (PROMPTS.md, prompt 26): `reload` reloads the page, so the game replays on the code as it now is. */
+export function commandFrom(data: string): 'reload' | null {
+  try {
+    const parsed = JSON.parse(data) as { type?: unknown };
+    return parsed.type === 'reload' ? 'reload' : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Only simple names, mirroring the server's rule. */
 export function safeName(name: string): boolean {
@@ -47,9 +58,20 @@ export function configureDiagnostics(options: DiagnosticsOptions): boolean {
   const enabled = options.enabled ?? isDevOrE2e();
   if (!url || !enabled || !safeName(options.session)) {
     configured = null;
+    commands?.close();
+    commands = null;
     return false;
   }
   configured = { base: `${url}/diag/${options.session}`, fetchImpl: options.fetchImpl ?? fetch };
+  commands?.close();
+  commands = null;
+  if (typeof EventSource !== 'undefined' && typeof location !== 'undefined') {
+    const source = new EventSource(`${configured.base}/events`);
+    source.onmessage = (e) => {
+      if (commandFrom(String(e.data)) === 'reload') location.reload();
+    };
+    commands = source;
+  }
   if (!listening && typeof window !== 'undefined') {
     listening = true;
     window.addEventListener('error', (e) => log('window/error', { message: e.message, source: e.filename, line: e.lineno }));
@@ -106,5 +128,7 @@ export async function canvas(name: string, element: HTMLCanvasElement): Promise<
 /** Tests only. */
 export function resetDiagnostics(): void {
   configured = null;
+  commands?.close();
+  commands = null;
   queue = Promise.resolve();
 }

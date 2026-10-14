@@ -184,3 +184,9 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
 *(voice, summarised)* In the WebCamTool project the dicecam engine was pulled out of, add any configuration or updating wanted and annotations from this experience, so that future clients of the engine can learn from it.
 
 `Outcome: WebCamTool 9e07b13 (pushed, Pages deployed): docs/dicecam-engine.md gained "Reading a throw" (judge by the lie, not the roll id; two agreeing readings; neutral status; what to log), "Tuning the motion detector", "Testing a consumer without a camera" and "What the first consumer found"; the protocol's comments say what the roll id really is; protocol 2 gained a configure message for the motion detector's sensitivity and the motion score on every tick. Smoke-tested cross-origin: the rebuilt engine reads the pipped tray as 3, 5, 2, 6 after a configure, and this table's dev server reads it from the hosted build.`
+
+## 26. 2026-10-14
+
+*(voice, summarised)* Wire up a way to force a reload of the table on localhost:3000, possibly through the diagnostic system, so that a fix can be tried and its result seen at once; and is the game entirely replayable from its state, so that such a fix could be applied live?
+
+`Outcome: the capture server now carries a command stream (GET /diag/<session>/events) that a dev-build table listens to, and \`bun run diag:reload\` posts a reload to every table playing the latest session; the game replays from its stored events on the code as it now is, and the capture shows the reload. Verified on the dev table: reload delivered, page reloaded, the commissioned explorer still there. Replay: the game is an append-only event stream reduced deterministically (events only in localStorage, physical dice as events, no clock or Math.random in the rules), so a fix to the reducer is applied to the whole game on reload; the one caveat is a fix that changes what an earlier event meant, which replays as a different game.`

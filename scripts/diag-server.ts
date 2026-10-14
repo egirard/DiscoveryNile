@@ -8,6 +8,8 @@
 //   POST /diag/<session>/log           append one JSON line to diagnostics/<session>/log.ndjson
 //   GET  /diag/<session>/              list files in the session (?suffix=.json to filter)
 //   GET  /diag/<session>/<name>        read a file back
+//   GET  /diag/<session>/events        a command stream (server-sent events) the table listens to in dev builds
+//   POST /diag/<session>/command       send a command to every listener, e.g. { "type": "reload" } (bun run diag:reload)
 //   GET  /health
 //
 // Modelled on the PUT server from egirard/dicecam, which let the browser save captured frames
@@ -29,6 +31,40 @@ const respond = (body: BodyInit | null, status = 200, headers: Record<string, st
 /** Only simple names: letters, digits, dot, dash, underscore. Never a path. */
 const safe = (s: string) => /^[A-Za-z0-9._-]{1,120}$/.test(s) && !s.startsWith('.');
 
+/** The tables listening for commands, per session (PROMPTS.md, prompt 26): a reload after a fix, so the game replays on the new code. */
+const listeners = new Map<string, Set<ReadableStreamDefaultController<Uint8Array>>>();
+const encoder = new TextEncoder();
+function subscribe(session: string): Response {
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  const stream = new ReadableStream<Uint8Array>({
+    start(c) {
+      controller = c;
+      c.enqueue(encoder.encode(': listening\n\n'));
+      if (!listeners.has(session)) listeners.set(session, new Set());
+      listeners.get(session)!.add(c);
+    },
+    cancel() {
+      listeners.get(session)?.delete(controller);
+    }
+  });
+  return respond(stream, 200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' });
+}
+function broadcast(session: string, command: unknown): number {
+  const set = listeners.get(session);
+  if (!set) return 0;
+  const chunk = encoder.encode(`data: ${JSON.stringify(command)}\n\n`);
+  let delivered = 0;
+  for (const c of set) {
+    try {
+      c.enqueue(chunk);
+      delivered++;
+    } catch {
+      set.delete(c);
+    }
+  }
+  return delivered;
+}
+
 Bun.serve({
   port,
   async fetch(req) {
@@ -43,6 +79,20 @@ Bun.serve({
     const dir = normalize(join(root, session));
     await mkdir(dir, { recursive: true });
 
+    if (req.method === 'GET' && name === 'events') return subscribe(session);
+    if (req.method === 'POST' && name === 'command') {
+      let command: unknown;
+      try {
+        command = await req.json();
+      } catch {
+        return respond('bad command', 400);
+      }
+      const delivered = broadcast(session, command);
+      const file = join(dir, 'log.ndjson');
+      const existing = (await Bun.file(file).exists()) ? await Bun.file(file).text() : '';
+      await Bun.write(file, `${existing}${new Date().toISOString()} ${JSON.stringify({ kind: 'command', data: { command, delivered } })}\n`);
+      return respond(JSON.stringify({ delivered }), 200, { 'Content-Type': 'application/json' });
+    }
     if (req.method === 'PUT' && name) {
       await Bun.write(join(dir, name), await req.arrayBuffer());
       return respond('ok');

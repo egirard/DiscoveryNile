@@ -8,8 +8,7 @@ import {
   resetDiagnostics,
   safeName,
   serverUrlFrom,
-  snapshot
-} from './diag';
+  snapshot, commandFrom } from './diag';
 
 interface Sent {
   url: string;
@@ -85,5 +84,10 @@ describe('configureDiagnostics', () => {
     log('b');
     await expect(flushDiagnostics()).resolves.toBeUndefined();
     expect(sent).toHaveLength(2);
+  });
+  it('reads a reload command off the server\'s stream and nothing else', () => {
+    expect(commandFrom('{"type":"reload"}')).toBe('reload');
+    expect(commandFrom('{"type":"restart"}')).toBeNull();
+    expect(commandFrom('not json')).toBeNull();
   });
 });
