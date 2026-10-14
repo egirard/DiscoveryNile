@@ -127,7 +127,7 @@ At load, in order:
 3. If Firebase is selected but no configuration is present, fall back to local and say so in the status area.
 4. Independently, `?relay=<ws-url>` or `VITE_RELAY_URL` attaches the relay to whatever backend is active. Without a relay URL, phones cannot connect and QR codes are not shown.
 
-`?new=1` abandons the current local game and starts a fresh one; `?gameId=XXXXX` opens that game (or, with `?new=1`, recreates it, which is how E2E pins the room code). `?seed=<n>` pins the seed committed in `game/created`. All three are one-shot: the application removes them from the URL once applied so a reload resumes the same game.
+`?new=1` abandons the current local game and starts a fresh one; `?gameId=XXXXX` opens that game (or, with `?new=1`, recreates it, which is how E2E pins the room code). `?seed=<n>` pins the seed committed in `game/created`. `?first-player-pause=<ms>` (or `hold`) sets how long the decided roll for first player stands at the stations before the table begins play (G-143). All three are one-shot: the application removes them from the URL once applied so a reload resumes the same game.
 
 ## Identity, trust, and privacy
 

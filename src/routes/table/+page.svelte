@@ -46,6 +46,7 @@
   import type { Specialty } from '$lib/game/state';
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
+  import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
   import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { log as diagLog } from '$lib/diagnostics/diag';
@@ -261,6 +262,40 @@
   const DICECAM_URL: string = import.meta.env.VITE_DICECAM_URL ? (String(import.meta.env.VITE_DICECAM_URL).startsWith('/') ? `${base}${import.meta.env.VITE_DICECAM_URL}` : String(import.meta.env.VITE_DICECAM_URL)) : '';
   const physical = $derived(isPhysical(gameState.rng));
   const awaiting = $derived(gameState.awaiting);
+  // The roll for first player at every station (prompt 27): each seat's throw as it comes while the roll is asked
+  // for, then every seat's with the winner's glowing while the game is starting; `game/begun` after the pause.
+  const starting = $derived(gameState.starting);
+  const firstPlayerRolls = $derived.by(() => {
+    const out: { seat: Seat; values: number[]; winner: boolean; decided: boolean }[] = [];
+    if (starting && gameState.rollOff) {
+      for (const seat of seats) {
+        const values = gameState.rollOff[seat.id]?.at(-1);
+        if (values) out.push({ seat, values, winner: seat.id === starting, decided: true });
+      }
+    } else if (awaiting?.event.type === 'game/started') {
+      const latest = new Map<string, number[]>();
+      for (const r of awaiting.rolled) latest.set(r.seat, r.values);
+      for (const seat of seats) {
+        const values = latest.get(seat.id);
+        if (values && seat.id !== awaiting.seat) out.push({ seat, values, winner: false, decided: false });
+      }
+    }
+    return out;
+  });
+  /** How long the decided roll is shown before play begins: `?first-player-pause=<ms>` (`hold` never begins by itself), else the build's, else three seconds. */
+  const FIRST_PLAYER_PAUSE_MS: number | null = (() => {
+    const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('first-player-pause');
+    if (q === 'hold') return null;
+    if (q !== null && q !== '' && Number.isFinite(Number(q))) return Number(q);
+    const env = import.meta.env.VITE_FIRST_PLAYER_PAUSE_MS;
+    return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : 3000;
+  })();
+  $effect(() => {
+    if (!starting || FIRST_PLAYER_PAUSE_MS === null) return;
+    const g = game;
+    const t = setTimeout(() => void g?.append('game/begun', {}), FIRST_PLAYER_PAUSE_MS);
+    return () => clearTimeout(t);
+  });
   const awaitingSeat = $derived(awaiting ? (seats.find((s) => s.id === awaiting.seat) ?? null) : null);
   // The dicecam never moves in the DOM (that would restart its camera); it parks in the south-west corner and, while
   // a roll is asked, comes to the middle of the board turned toward the seat that rolls, over the dimmed table.
@@ -448,9 +483,18 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
     </EdgePanel>
   {/if}
+  {#if starting}
+    <!-- The first player is decided: the table stands still while every station reads its roll and the winner's glows. -->
+    <div class="scrim" data-testid="first-player-scrim" aria-hidden="true"></div>
+  {/if}
+  {#each firstPlayerRolls as r (r.seat.id)}
+    <EdgePanel seat={r.seat} {viewport} inset={railDepth + target * 0.4} testid="first-player-edge-{r.seat.id}" raised>
+      <FirstPlayerRoll seat={r.seat.id} values={r.values} winner={r.winner} decided={r.decided} />
+    </EdgePanel>
+  {/each}
   {#if physical && DICECAM_URL}
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
       <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} />

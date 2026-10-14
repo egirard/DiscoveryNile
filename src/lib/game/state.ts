@@ -167,6 +167,8 @@ export interface RollRecord {
   /** Human-readable result: 'lost', 'moved', 'mapped veldt', 'bounced: lake' … */
   outcome: string;
   lost?: boolean;
+  /** The roll for first player (prompt 28): each seat's final throw and total, the one line every seat's log holds. */
+  contenders?: { seat: SeatId; values: number[]; total: number }[];
 }
 
 /**
@@ -247,6 +249,8 @@ export interface GameState {
   /** Serialisable PRNG state; every die roll and shuffle advances it (docs/rules.md D-1). */
   rng: RngState | null;
   rollOff: RollOff | null;
+  /** The first player is decided and the table shows the roll at every station (prompt 27); `game/begun` starts play. */
+  starting: SeatId | null;
   turn: TurnState | null;
   deck: DeckState | null;
   /** Every turn played so far, oldest first; the current turn's log is in `turn`. */
@@ -293,7 +297,7 @@ export interface AwaitingDice {
   count: number;
   /** What the table asks, e.g. "Roll a D6 to see if you are lost; 4+ means you're okay". */
   prompt: string;
-  rolled: { prompt: string; values: number[] }[];
+  rolled: { prompt: string; values: number[]; seat: SeatId }[];
 }
 
 export interface GameEnd {
@@ -304,5 +308,5 @@ export interface GameEnd {
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, history: [], map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, awaiting: null, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, starting: null, turn: null, deck: null, history: [], map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, awaiting: null, diagnostics: [] };
 }

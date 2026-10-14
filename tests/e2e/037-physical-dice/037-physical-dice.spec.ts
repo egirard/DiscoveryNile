@@ -77,7 +77,7 @@ test.describe('037 - Physical dice', () => {
     // Seed 34: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
     // holds a free ticket to Mombasa and $1000, and the first card drawn in the field does not apply there, so the
     // expedition is free to try the unknown again. Every die of the scenario is rolled below.
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=34');
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=34&first-player-pause=hold');
     await page.getByTestId('options-se').click();
     await expect(page.getByTestId('physical-dice')).toHaveAttribute('aria-pressed', 'false');
     await page.getByTestId('physical-dice').click();
@@ -189,12 +189,15 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-edge-top-1')).toBeVisible();
 
     await steps.step('first-throw-read', {
-      description: 'The dicecam reads four sixes twice over and the throw is in: the ask moves to top-1, who sees bottom-1\'s throw listed above the dicecam line',
+      description: 'The dicecam reads four sixes twice over and the throw is in: bottom-1\'s four sixes and their total stand in front of bottom-1\'s own station, and the ask moves to top-1',
       verifications: [
-        { spec: 'bottom-1\'s four sixes are a dice/rolled event and listed for top-1; the ask is now top-1\'s', check: async () => {
+        { spec: 'bottom-1\'s four sixes are a dice/rolled event, shown at bottom-1\'s station and not in top-1\'s prompt; the ask is now top-1\'s', check: async () => {
           await expect(page.getByTestId('dice-ask-top-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first');
-          await expect(page.getByTestId('dice-so-far-top-1').locator('li')).toHaveCount(1);
-          await expect(page.getByTestId('dice-so-far-top-1').locator('.dice')).toHaveAttribute('data-total', '24');
+          await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-total', '24');
+          await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-decided', 'false');
+          await expect(page.getByTestId('first-player-edge-bottom-1')).toHaveAttribute('data-seat', 'bottom-1');
+          await expect(page.getByTestId('first-player-roll-top-1')).toHaveCount(0);
+          await expect(page.getByTestId('dice-so-far-top-1')).toHaveCount(0);
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ values: [6, 6, 6, 6] }] });
           expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [6, 6, 6, 6] }]);
@@ -218,20 +221,43 @@ test.describe('037 - Physical dice', () => {
     });
 
     await page.getByTestId('die-face-1-top-1').click();
+    await expect(page.getByTestId('first-player-scrim')).toBeVisible();
+
+    await steps.step('first-player-decided', {
+      description: 'The fourth tap sends four ones and the first player is decided: each station holds its own roll, bottom-1\'s twenty-four glowing as first player over top-1\'s four, and the table stands still for a few seconds before play begins',
+      verifications: [
+        { spec: 'Both rolls stand at their stations, bottom-1\'s as the winner; the game is held at the roll', check: async () => {
+          const s = await state(page);
+          expect(s.awaiting).toBeNull();
+          expect(s.starting).toBe('bottom-1');
+          expect(s.rollOff).toEqual({ 'bottom-1': [[6, 6, 6, 6]], 'top-1': [[1, 1, 1, 1]] });
+          await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-winner', 'true');
+          await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-total', '24');
+          await expect(page.getByTestId('first-player-roll-top-1')).toHaveAttribute('data-winner', 'false');
+          await expect(page.getByTestId('first-player-roll-top-1')).toHaveAttribute('data-total', '4');
+          await expect(page.getByTestId('dice-scrim')).toHaveCount(0);
+        } }
+      ]
+    });
+
+    await page.evaluate(() => window.__TABLETOP__!.append('game/begun', {}));
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('game-started', {
-      description: 'The fourth tap sends four ones: bottom-1 plays first, the roll for first player is in each log, and the table is free again',
+      description: 'Play begins: bottom-1 plays first, the roll for first player is one line in each log with both throws and who went first, and the table is free again',
       verifications: [
-        { spec: 'Nothing is awaited, the game is in round 1 with bottom-1 first, and both throws are in the log', check: async () => {
+        { spec: 'Nothing is awaited, the game is in round 1 with bottom-1 first, and the roll is one line in both logs', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toBeNull();
+          expect(s.starting).toBeNull();
           expect(s.turn).toMatchObject({ current: 'bottom-1', round: 1 });
           expect(s.rollOff).toEqual({ 'bottom-1': [[6, 6, 6, 6]], 'top-1': [[1, 1, 1, 1]] });
           await expect(page.getByTestId('dice-scrim')).toHaveCount(0);
-          await expect(page.getByTestId('roll-first-player-top-1')).toHaveAttribute('data-total', '4');
+          await expect(page.getByTestId('first-player-scrim')).toHaveCount(0);
+          await expect(page.getByTestId('roll-first-player-top-1')).toHaveAttribute('data-outcome', 'bottom-1 first');
+          await expect(page.getByTestId('first-player-bottom-1-top-1')).toHaveAttribute('data-total', '24');
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-first-player-bottom-1')).toHaveAttribute('data-total', '24');
+            await expect(page.getByTestId('roll-first-player-bottom-1')).toHaveAttribute('data-outcome', 'bottom-1 first');
           });
         } }
       ]

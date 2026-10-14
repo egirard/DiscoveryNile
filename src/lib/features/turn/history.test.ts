@@ -20,15 +20,15 @@ describe('the log of every turn so far (prompt 17)', () => {
   it('opens with the roll for first player, one entry per seat in round 0, read from the same dice as the roll-off', () => {
     const s = reduce(base());
     expect(s.history.map((t) => [t.round, t.seat])).toEqual([[0, 'bottom-1'], [0, 'top-1']]);
+    // One line, the same in every seat's log (prompt 28): each seat's dice and total, and who goes first.
     for (const t of s.history) {
-      expect(t.log.map((r) => r.kind)).toEqual(s.rollOff![t.seat].map(() => 'first-player'));
-      t.log.forEach((r, i) => {
-        expect(r.rolls.map((x) => x.value)).toEqual(s.rollOff![t.seat][i]);
-        expect(r.total).toBe(s.rollOff![t.seat][i].reduce((a, b) => a + b, 0));
-      });
+      expect(t.log.map((r) => r.kind)).toEqual(['first-player']);
+      expect(t.log[0].contenders).toEqual([{ seat: 'bottom-1', values: [6, 6, 6, 6], total: 24 }, { seat: 'top-1', values: [1, 1, 1, 1], total: 4 }]);
+      expect(t.log[0].rolls.map((x) => x.value)).toEqual([6, 6, 6, 6, 1, 1, 1, 1]);
+      expect(t.log[0].total).toBe(24);
     }
-    expect(lines(s, 'bottom-1')[0].log).toEqual(['first-player: total 24: first player']);
-    expect(lines(s, 'top-1')[0].log).toEqual(['first-player: total 4']);
+    expect(lines(s, 'bottom-1')[0].log).toEqual(['first-player: bottom-1 first']);
+    expect(lines(s, 'top-1')[0].log).toEqual(['first-player: bottom-1 first']);
   });
   it('a turn that ends joins the history with its lines, and the current turn starts afresh', () => {
     const started = reduce(base());
@@ -36,7 +36,7 @@ describe('the log of every turn so far (prompt 17)', () => {
     const ended = reduce([...base(), event('voyage/booked', { seat: 'bottom-1', port: 'mombasa' }), event('turn/ended', { seat: 'bottom-1' })]);
     expect(ended.turn!.current).toBe('top-1');
     expect(lines(ended, 'bottom-1')).toEqual([
-      { round: 0, log: ['first-player: total 24: first player'] },
+      { round: 0, log: ['first-player: bottom-1 first'] },
       { round: 1, log: [`action: drew ${describeCard(drawn)}`, 'action: booked passage to Mombasa for $500'] }
     ]);
     expect(ended.turn!.log.filter((r) => r.seat === 'bottom-1')).toEqual([]);

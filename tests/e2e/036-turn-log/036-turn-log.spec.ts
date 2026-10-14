@@ -94,7 +94,7 @@ test.describe('036 - The log', () => {
           await expect(page.getByTestId('turn-log-round-2-bottom-1')).toHaveText('Round 2');
           await expect(page.getByTestId('turn-log-round-3-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('turn-log-entry-0-bottom-1')).toHaveAttribute('data-kind', 'first-player');
-          await expect(page.getByTestId('turn-log-entry-0-bottom-1').locator('.die')).toHaveCount(4);
+          await expect(page.getByTestId('turn-log-entry-0-bottom-1').locator('.die')).toHaveCount(8);
           await expect(page.getByTestId('turn-log-entry-1-bottom-1')).toHaveText(/^drew /);
           await expect(page.getByTestId('turn-log-entry-2-bottom-1')).toHaveText('booked passage to Mombasa on a free ticket');
           await expect(page.getByTestId('turn-log-entry-3-bottom-1')).toHaveText('landed at Mombasa');

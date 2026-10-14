@@ -190,3 +190,21 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
 *(voice, summarised)* Wire up a way to force a reload of the table on localhost:3000, possibly through the diagnostic system, so that a fix can be tried and its result seen at once; and is the game entirely replayable from its state, so that such a fix could be applied live?
 
 `Outcome: the capture server now carries a command stream (GET /diag/<session>/events) that a dev-build table listens to, and \`bun run diag:reload\` posts a reload to every table playing the latest session; the game replays from its stored events on the code as it now is, and the capture shows the reload. Verified on the dev table: reload delivered, page reloaded, the commissioned explorer still there. Replay: the game is an append-only event stream reduced deterministically (events only in localStorage, physical dice as events, no clock or Math.random in the rules), so a fix to the reducer is applied to the whole game on reload; the one caveat is a fix that changes what an earlier event meant, which replays as a different game.`
+
+## 27. 2026-10-14
+
+*(voice, summarised)* A UI fix for the roll for first player: after a seat rolls, its number appears in front of its station, the next seat's number against theirs when it rolls, the winner gets a big glowing highlight to say it won, and the game starts about three seconds later.
+
+`Outcome: each seat's roll for first player stands in front of its own station as it comes (a panel turned toward the seat: the four dice and the total; the prompt no longer lists other seats' throws); once every seat has rolled the winner's glows as first player under a scrim and play begins about three seconds later through a game/begun event (\`?first-player-pause=<ms>|hold\`, \`VITE_FIRST_PLAYER_PAUSE_MS\`, 0 in E2E builds) (G-143). Scenarios 006 and 037 hold the pause and gain first-player-decided; every baseline regenerated for the log line of prompt 28.`
+
+## 28. 2026-10-14
+
+*(voice, summarised)* All the first-player rolls collapse into a single log entry that records each seat's roll and then says who won, as one line that appears in every player's log.
+
+`Outcome: the roll for first player is one line in every seat's log: each seat's four dice and total in seat order (RollRecord.contenders), a tie's totals and the throw again on the same line, and who goes first (G-144).`
+
+## 29. 2026-10-14
+
+Please don't restart the running server unless there's a live fix that you absolutely need to test or if I've asked you to.
+
+`Outcome: adopted and saved to memory: the dev server on port 3000 is left running (Vite applies code changes live); only a change to its environment that a live fix needs, or a request, restarts it. The relay still stops for the hooks' scenarios and comes back afterwards.`

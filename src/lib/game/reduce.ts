@@ -14,7 +14,7 @@ export type Step = (state: GameState, event: GameEvent) => GameState | string;
 // why the event is illegal (which becomes a diagnostic and leaves state untouched).
 const steps: Step[] = [reduceSeats, reduceExplorers, reduceTurn, reduceExploration];
 
-const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/continued', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled']);
+const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled']);
 
 /**
  * A choice not yet resolved by dice can be taken back within the turn (docs/tabletop-ux.md): the event rolled no die,
@@ -46,7 +46,7 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
     if (seat !== waiting.seat) return reject(state, event, `it is ${waiting.seat}'s roll`);
     if (!Array.isArray(values) || values.length !== waiting.count || !values.every((v) => Number.isInteger(v) && v >= 1 && v <= 6))
       return reject(state, event, `${waiting.count} ${waiting.count === 1 ? 'die' : 'dice'} of 1 to 6 expected`);
-    const rolled = [...waiting.rolled, { prompt: waiting.prompt, values: values as number[] }];
+    const rolled = [...waiting.rolled, { prompt: waiting.prompt, values: values as number[], seat: waiting.seat }];
     return resume({ ...state, rng: withRolled(state.rng!, waiting.stream, values as number[]), awaiting: null }, waiting.event, rolled);
   }
   if (event.type === 'turn/undone') {

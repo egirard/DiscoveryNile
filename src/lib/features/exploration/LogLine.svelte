@@ -38,7 +38,15 @@
     {#if r.needed}
       <span class="needed" data-testid="{note}-needed-{seat}">needs {r.needed}</span>
     {/if}
-    {#if r.rolls.length}
+    {#if r.contenders}
+      {#each r.contenders as c (c.seat)}
+        <span class="contender" data-testid="first-player-{c.seat}-{seat}" data-total={c.total}>
+          <span class="who">{c.seat}</span>
+          <DiceRoll values={c.values} label="{c.seat} for first player" size="calc(var(--target) * 0.4)" />
+          <span class="sum">{c.total}</span>
+        </span>
+      {/each}
+    {:else if r.rolls.length}
       <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" />
       {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
     {/if}
@@ -61,6 +69,17 @@
     line-height: 1.2;
   }
   .kind {
+    font-weight: 700;
+  }
+  .contender {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--gap) * 0.3);
+  }
+  .contender .who {
+    opacity: 0.8;
+  }
+  .contender .sum {
     font-weight: 700;
   }
   .mods {

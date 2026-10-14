@@ -68,14 +68,14 @@ describe('the reducer with physical dice', () => {
 
     const second = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] })]);
     expect(second.diagnostics).toEqual([]);
-    expect(second.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ prompt: 'Roll 4 D6 for first player; the highest total goes first', values: [6, 6, 6, 6] }] });
+    expect(second.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ prompt: 'Roll 4 D6 for first player; the highest total goes first', values: [6, 6, 6, 6], seat: 'bottom-1' }] });
 
     const started = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] }), event('dice/rolled', { seat: 'top-1', values: [1, 1, 1, 1] })]);
     expect(started.diagnostics).toEqual([]);
     expect(started.awaiting).toBeNull();
     expect(started.turn).toMatchObject({ current: 'bottom-1', round: 1 });
     expect(started.rollOff).toEqual({ 'bottom-1': [[6, 6, 6, 6]], 'top-1': [[1, 1, 1, 1]] });
-    expect(started.history.map((h) => h.log[0].outcome)).toEqual(['total 24: first player', 'total 4']);
+    expect(started.history.map((h) => h.log[0].outcome)).toEqual(['bottom-1 first', 'bottom-1 first']);
     // The dice used are gone from the state; the shuffle that followed did not read them.
     expect(started.rng).toMatchObject({ physical: true, scripts: { main: [] }, next: {} });
     expect(started.explorers.map((e) => e.hand.length)).toEqual([6, 5]); // five each, and the first player has drawn

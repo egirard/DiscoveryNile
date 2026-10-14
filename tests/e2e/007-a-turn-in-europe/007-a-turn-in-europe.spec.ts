@@ -45,10 +45,10 @@ test.describe('007 - A turn in Europe', () => {
           await expect(page.locator('[data-testid^="end-turn-"]')).toHaveCount(1);
           await expect(page.locator('[data-testid^="discard-prompt-"]')).toHaveCount(0);
         } },
-        { spec: 'The first player\'s latest line is the card drawn; the other seat\'s is its roll for first player, with four dice and no dice at the rail besides', check: async () => {
+        { spec: 'The first player\'s latest line is the card drawn; the other seat\'s is the roll for first player, both seats\' four dice and the winner named, and no dice at the rail besides', check: async () => {
           await expect(page.getByTestId(`action-note-${first}`)).toHaveText(/^drew /);
-          await expect(page.getByTestId(`roll-first-player-${second}`).locator('.die')).toHaveCount(4);
-          await expect(page.getByTestId(`roll-first-player-${second}`)).toHaveAttribute('data-outcome', /^total \d+$/);
+          await expect(page.getByTestId(`roll-first-player-${second}`).locator('.die')).toHaveCount(8);
+          await expect(page.getByTestId(`roll-first-player-${second}`)).toHaveAttribute('data-outcome', `${first} first`);
           await expect(page.locator('[data-testid^="roll-off-"]')).toHaveCount(0);
         } },
         { spec: 'Each rail totals the money in its hand', check: async () => {

@@ -1,6 +1,7 @@
 import { describeCard } from './actions';
 import type { GameEvent } from '$lib/game/events';
 import type { ExplorerState, GameState, LoggedTurn, RollOff, RollRecord } from '$lib/game/state';
+import type { Roll } from '$features/map/generate';
 import type { HexId } from '$features/map/hex';
 import { d6, dice, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
@@ -376,7 +377,7 @@ export function waterAvailable(state: GameState, explorer: ExplorerState): boole
 
 export const WATER_STEP = 10;
 
-const TURN_EVENTS = new Set<string>(['game/started', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted', 'game/ended']);
+const TURN_EVENTS = new Set<string>(['game/started', 'game/begun', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted', 'game/ended']);
 
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   if (state.ended && TURN_EVENTS.has(event.type)) return 'the game is over';
@@ -414,8 +415,10 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       // First player: four dice apiece, high total; ties re-roll among the tied (RQ-1).
       let rng = state.rng;
       const rollOff: RollOff = Object.fromEntries(seats.map((s) => [s, [] as number[][]]));
-      // The roll is read in the log, not at the rail (prompt 17): a line per attempt for each seat.
-      const rolled: Record<string, RollRecord[]> = Object.fromEntries(seats.map((s) => [s, [] as RollRecord[]]));
+      // The roll is read in the log (prompt 17), as one line in every seat's log (prompt 28): each seat's dice and
+      // total, a tie and the throw again, and who goes first.
+      const rolls: Roll[] = [];
+      const attempts: string[] = [];
       let contenders = seats;
       let winner: SeatId | null = null;
       while (winner === null) {
@@ -425,18 +428,23 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
           rng = r.state;
           rollOff[seat].push(r.values);
           totals.set(seat, r.values.reduce((a, b) => a + b, 0));
+          rolls.push(...r.values.map((value, i) => ({ label: `${seat} die ${i + 1}`, value })));
         }
         const high = Math.max(...totals.values());
         const tied = contenders.filter((s) => totals.get(s) === high);
         if (tied.length === 1) winner = tied[0];
-        for (const seat of contenders) {
-          const total = totals.get(seat)!;
-          const outcome = tied.length > 1 && tied.includes(seat) ? `total ${total}, a tie: rolled again` : seat === winner ? `total ${total}: first player` : `total ${total}`;
-          rolled[seat].push({ kind: 'first-player', seat, rolls: rollOff[seat].at(-1)!.map((value, i) => ({ label: `die ${i + 1}`, value })), total, outcome });
-        }
+        // The line's dice groups show the final throws, so only a tie's totals are worth words.
+        attempts.push(winner === null ? contenders.map((s) => `${s} ${totals.get(s)}`).join(', ') + ', a tie' : `${winner} first`);
         if (winner === null) contenders = tied;
       }
-      const history: LoggedTurn[] = seats.map((seat) => ({ round: 0, seat, log: rolled[seat] }));
+      const firstPlayer: Omit<RollRecord, 'seat'> = {
+        kind: 'first-player',
+        rolls,
+        total: rollOff[winner].at(-1)!.reduce((a, b) => a + b, 0),
+        outcome: attempts.join('; again '),
+        contenders: seats.map((seat) => ({ seat, values: rollOff[seat].at(-1)!, total: rollOff[seat].at(-1)!.reduce((a, b) => a + b, 0) }))
+      };
+      const history: LoggedTurn[] = seats.map((seat) => ({ round: 0, seat, log: [{ ...firstPlayer, seat }] }));
       const start = seats.indexOf(winner);
       const order = [...seats.slice(start), ...seats.slice(0, start)];
 
@@ -452,6 +460,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         ...state,
         rng,
         rollOff,
+        starting: winner,
         history,
         turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', moved: false, movement: null, policy: null, trade: null, log: [] },
         deck: { draw, discard: [] },
@@ -460,6 +469,11 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         )
       };
       return beginTurn(started, winner);
+    }
+    case 'game/begun': {
+      // The roll for first player has been shown at every station (prompt 27): play begins.
+      if (!state.starting) return 'the game is not starting';
+      return { ...state, starting: null };
     }
     case 'turn/ended': {
       const { seat } = event.payload as { seat?: string };

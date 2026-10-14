@@ -121,6 +121,7 @@ It re-executes itself inside the Nix shell if it is not already there. It runs t
 | `VITE_FIRESTORE_EMULATOR_HOST/PORT`, `VITE_FIREBASE_AUTH_EMULATOR_HOST/PORT` | Emulator addresses |
 | `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through: the local relay for dev and E2E, the hosted ARViewer relay (`wss://arviewer-relay.onrender.com/ws`) for the deployed table |
 | `VITE_DICECAM_URL` | The dicecam engine the table loads as a worker for physical dice (see [dicecam.md](dicecam.md)): WebCamTool's hosted `dicecam/engine.js` for the deployed table and the dev server, `/dicecam-stub.worker.js` (a stand-in that the scenario speaks for) in E2E builds; unset, the table offers only the faces to tap |
+| `VITE_FIRST_PLAYER_PAUSE_MS` | How long the decided roll for first player stands at the stations before play begins (default 3000; 0 in E2E builds, where scenarios 006 and 037 hold it with `?first-player-pause=hold` and begin play themselves) |
 | `VITE_DIAG_URL` | Diagnostics capture server (dev builds only; `bun run dev` defaults it to `http://127.0.0.1:3002`) |
 | `VITE_GIT_HASH` | Build marker shown in the UI footer; `e2e-test-commit` in scenarios |
 | `PUBLIC_BASE_PATH` | `/<repo>` or `/<repo>/pr<N>` at deploy time |
