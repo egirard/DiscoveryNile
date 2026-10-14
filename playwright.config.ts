@@ -1,8 +1,12 @@
 import { defineConfig } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 
 // E2E runs the real built client, not the dev server, so Vite's on-demand compilation and
 // dependency re-optimisation cannot reload the page mid-scenario.
 const BASE = 'http://127.0.0.1:4000';
+// The camera every scenario's Chromium has: a synthetic dice tray (tests/e2e/fixtures/dicecam-tray.y4m, one still
+// frame) that the dicecam shows once physical dice are on (docs/dicecam.md). No scenario sees it otherwise.
+const TRAY = fileURLToPath(new URL('./tests/e2e/fixtures/dicecam-tray.y4m', import.meta.url));
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -28,8 +32,12 @@ export default defineConfig({
     deviceScaleFactor: 1,
     timezoneId: 'UTC',
     locale: 'en-US',
+    permissions: ['camera'],
     launchOptions: {
       args: [
+        '--use-fake-device-for-media-stream',
+        '--use-fake-ui-for-media-stream',
+        `--use-file-for-fake-video-capture=${TRAY}`,
         '--font-render-hinting=none',
         '--disable-font-subpixel-positioning',
         '--disable-lcd-text',

@@ -1,5 +1,3 @@
 # Verbatim records: whitespace in these files is the source's, not ours.
 docs/rules-reference/* -whitespace
 PROMPTS.md -whitespace
-# A patch for another repository: its context lines carry that repository's indentation.
-docs/dicecam-embed.patch -whitespace

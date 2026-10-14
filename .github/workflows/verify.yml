@@ -73,8 +73,8 @@ jobs:
           VITE_DEFAULT_BACKEND: local
           # The hosted relay phones join through: the ARViewer project's, as Jaipur's tabletop uses.
           VITE_RELAY_URL: wss://arviewer-relay.onrender.com/ws
-          # The dicecam the hosted table embeds for physical dice (docs/dicecam.md): WebCamTool's embed route.
-          VITE_DICECAM_URL: https://egirard.github.io/WebCamTool/embed
+          # The dicecam engine the hosted table loads for physical dice (docs/dicecam.md): WebCamTool's hosted build.
+          VITE_DICECAM_URL: https://egirard.github.io/WebCamTool/dicecam/engine.js
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

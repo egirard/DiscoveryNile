@@ -118,7 +118,7 @@ It re-executes itself inside the Nix shell if it is not already there. It runs t
 | `VITE_USE_FIREBASE_EMULATORS` | `true` in E2E |
 | `VITE_FIRESTORE_EMULATOR_HOST/PORT`, `VITE_FIREBASE_AUTH_EMULATOR_HOST/PORT` | Emulator addresses |
 | `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through: the local relay for dev and E2E, the hosted ARViewer relay (`wss://arviewer-relay.onrender.com/ws`) for the deployed table |
-| `VITE_DICECAM_URL` | The dicecam page the table embeds for physical dice (see [dicecam.md](dicecam.md)): WebCamTool's hosted `/embed` route for the deployed table, `/dicecam-stub.html` (a static stand-in) in E2E builds; unset, the table offers only the faces to tap |
+| `VITE_DICECAM_URL` | The dicecam engine the table loads as a worker for physical dice (see [dicecam.md](dicecam.md)): WebCamTool's hosted `dicecam/engine.js` for the deployed table and the dev server, `/dicecam-stub.worker.js` (a stand-in that the scenario speaks for) in E2E builds; unset, the table offers only the faces to tap |
 | `VITE_DIAG_URL` | Diagnostics capture server (dev builds only) |
 | `VITE_GIT_HASH` | Build marker shown in the UI footer; `e2e-test-commit` in scenarios |
 | `PUBLIC_BASE_PATH` | `/<repo>` or `/<repo>/pr<N>` at deploy time |
@@ -139,4 +139,5 @@ The agent runner is prepared by `.github/workflows/agent-setup-steps.yml` (renam
 | Playwright cannot find Chromium | `bunx playwright install --with-deps chromium` inside the shell |
 | Chromium: `error while loading shared libraries: libnspr4.so` (fresh Ubuntu/WSL) | The browser downloaded but its system libraries did not: `sudo bunx playwright install-deps chromium` once, then rerun |
 | Screenshots differ from CI | See "Determinism" in [e2e-test-guidelines.md](e2e-test-guidelines.md); fonts and GPU flags are pinned, never loosen tolerance |
+| The dicecam says "No camera" in a scenario | Chromium's fake camera plays `tests/e2e/fixtures/dicecam-tray.y4m` ([dicecam.md](dicecam.md)); the path given to `--use-file-for-fake-video-capture` must be absolute and plain (no `..`), or Chromium silently offers no device |
 | Firebase emulator will not start | `jdk` must be in the flake; check ports 8186 and 9200 |

@@ -46,8 +46,8 @@
   import type { Specialty } from '$lib/game/state';
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
-  import DicecamDock from '$features/dice/DicecamDock.svelte';
-  import { consider, watching, type DicecamMessage, type DicecamStatus, type Watch } from '$features/dice/dicecam';
+  import Dicecam from '$features/dice/Dicecam.svelte';
+  import { consider, watching, type DicecamStatus, type EngineMessage, type Watch } from '$features/dice/dicecam';
   import { isPhysical } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
@@ -253,15 +253,16 @@
   // The options screen: opened from the gear at the north-west or south-east corner and turned toward it.
   let options = $state<'nw' | 'se' | null>(null);
 
-  // Physical dice (PROMPTS.md, prompt 18): the reducer holds an event at a roll and names the seat to roll; the
-  // dicecam, a WebCamTool page in a frame (docs/dicecam.md), reports the tray, and two readings that agree send
-  // the throw as `dice/rolled`; a tapped face does the same. The frame is on for the whole game, in a corner.
+  // Physical dice (PROMPTS.md, prompts 18 and 19): the reducer holds an event at a roll and names the seat to roll;
+  // the dicecam (the table's camera on a canvas, read by WebCamTool's engine loaded as a worker, docs/dicecam.md)
+  // reports the tray, and two readings that agree send the throw as `dice/rolled`; a tapped face does the same.
+  // The dicecam is on for the whole game, in a corner.
   const DICECAM_URL: string = import.meta.env.VITE_DICECAM_URL ? (String(import.meta.env.VITE_DICECAM_URL).startsWith('/') ? `${base}${import.meta.env.VITE_DICECAM_URL}` : String(import.meta.env.VITE_DICECAM_URL)) : '';
   const physical = $derived(isPhysical(gameState.rng));
   const awaiting = $derived(gameState.awaiting);
   const awaitingSeat = $derived(awaiting ? (seats.find((s) => s.id === awaiting.seat) ?? null) : null);
-  // The dicecam frame never moves in the DOM (that would reload it); it parks in the south-west corner and, while a
-  // roll is asked, comes to the middle of the board turned toward the seat that rolls, over the dimmed table.
+  // The dicecam never moves in the DOM (that would restart its camera); it parks in the south-west corner and, while
+  // a roll is asked, comes to the middle of the board turned toward the seat that rolls, over the dimmed table.
   const dockW = $derived(target * 7);
   const dockH = $derived(target * 4.7);
   const dockPlace = $derived.by(() => {
@@ -272,7 +273,7 @@
     }
     return { x: inset.left + target * 0.4, y: viewport.h - inset.bottom - target * 0.4 - dockH, rotation: 0, centred: false };
   });
-  let dicecamStatus = $state<DicecamStatus>('connecting');
+  let dicecamStatus = $state<DicecamStatus>('starting');
   let dicecamSeen = $state<number | null>(null);
   let watch: Watch | null = null;
   let lastThrow: string | null = null;
@@ -281,12 +282,10 @@
     watch = awaiting ? watching(awaiting.count, lastThrow) : null;
     dicecamSeen = null;
   });
-  function onDicecam(m: DicecamMessage) {
-    if (m.dicecam === 'ready') { if (dicecamStatus === 'connecting') dicecamStatus = 'initializing'; }
-    else if (m.dicecam === 'camera') dicecamStatus = m.status;
-    else if (m.dicecam === 'rolling') dicecamSeen = 0;
-    else if (m.dicecam === 'removed') dicecamSeen = m.remaining;
-    else if (m.dicecam === 'settled') {
+  function onDicecam(m: EngineMessage) {
+    if (m.type === 'rolling') dicecamSeen = 0;
+    else if (m.type === 'removed') dicecamSeen = m.remaining;
+    else if (m.type === 'settled') {
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
       const judged = consider(watch, m);
       watch = judged.watch;
@@ -438,7 +437,7 @@
   {/if}
   {#if physical && DICECAM_URL}
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
-      <DicecamDock url={DICECAM_URL} status={dicecamStatus} onmessage={onDicecam} />
+      <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => (dicecamStatus = s)} />
     </div>
   {/if}
 

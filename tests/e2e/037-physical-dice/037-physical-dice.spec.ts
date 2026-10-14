@@ -17,20 +17,53 @@ async function tap(page: Page, id: string, times: number) {
   for (let i = 0; i < times; i++) await page.getByTestId(id).click();
 }
 /**
- * The dicecam on the table is a stand-in page in E2E builds (static/dicecam-stub.html, docs/dicecam.md): the
- * scenario speaks for it, posting the messages the real WebCamTool embed posts, from inside its frame.
+ * The dicecam's camera in E2E is Chromium's fake device playing tests/e2e/fixtures/dicecam-tray.y4m, a still
+ * synthetic tray (playwright.config.ts), and its engine is a stand-in worker (static/dicecam-stub.worker.js,
+ * docs/dicecam.md) that repeats to the table whatever the scenario posts on the 'dicecam-stub' broadcast channel:
+ * the scenario speaks for the engine, in its protocol.
  */
 async function dicecamSays(page: Page, message: Record<string, unknown>) {
-  const frame = page.frames().find((f) => f.url().includes('dicecam-stub'));
-  expect(frame, 'the dicecam frame is on the table').toBeTruthy();
-  await frame!.evaluate((m) => parent.postMessage(m, '*'), message);
+  await page.evaluate((m) => new BroadcastChannel('dicecam-stub').postMessage(m), message);
+}
+/** The synthetic tray: 640×360, four 72-pixel dice in a row, the tray's floor inside its rim. */
+const TRAY = { width: 640, height: 360, dice: [160, 280, 400, 520], y: 180, size: 72, floor: [{ x: 58, y: 58 }, { x: 582, y: 58 }, { x: 582, y: 302 }, { x: 58, y: 302 }] };
+const PIPS: Record<number, [number, number][]> = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] };
+/** One die of a reading, with the geometry of the i-th die of the tray so the overlay draws where the die is. */
+function seenDie(i: number, value: number, confidence = 0.92) {
+  const cx = TRAY.dice[i];
+  const half = TRAY.size / 2;
+  const box = { x: cx - half, y: TRAY.y - half, width: TRAY.size, height: TRAY.size };
+  const corners = [{ x: box.x, y: box.y }, { x: box.x + box.width, y: box.y }, { x: box.x + box.width, y: box.y + box.height }, { x: box.x, y: box.y + box.height }];
+  const step = TRAY.size * 0.26;
+  return { value, confidence, askew: false, position: { x: cx, y: TRAY.y }, normalizedPosition: { x: cx / TRAY.width, y: TRAY.y / TRAY.height }, boundingBox: box, contour: corners, face: corners.map((p) => ({ x: p.x + (p.x < cx ? 4 : -4), y: p.y + (p.y < TRAY.y ? 4 : -4) })), pips: PIPS[value].map(([px, py]) => ({ x: cx + px * step, y: TRAY.y + py * step })) };
+}
+let frameNumber = 0;
+/** One settled reading of the tray as the engine posts it: the first `values.length` dice of the tray. */
+function settled(rollId: string, values: number[]) {
+  return { type: 'settled', rollId, kind: 'initial', timestamp: 0, frameNumber: ++frameNumber, frame: { width: TRAY.width, height: TRAY.height }, processingTimeMs: 420, activePath: 'cpu', dice: values.map((v, i) => seenDie(i, v)) };
+}
+/** The colours of the dicecam's canvas at points given in the camera frame's own pixels (the frame is letterboxed). */
+async function sample(page: Page, points: Record<string, [number, number]>): Promise<Record<string, number[]>> {
+  return page.getByTestId('dicecam-canvas').evaluate((c: HTMLCanvasElement, { points, frame }) => {
+    const ctx = c.getContext('2d')!;
+    const scale = Math.min(c.width / frame.width, c.height / frame.height);
+    const ox = (c.width - frame.width * scale) / 2;
+    const oy = (c.height - frame.height * scale) / 2;
+    const out: Record<string, number[]> = {};
+    for (const [name, [x, y]] of Object.entries(points)) {
+      out[name] = Array.from(ctx.getImageData(Math.round(ox + x * scale), Math.round(oy + y * scale), 1, 1).data.slice(0, 3));
+    }
+    return out;
+  }, { points, frame: { width: TRAY.width, height: TRAY.height } });
+}
+function expectColour(got: number[], want: number[], within = 6) {
+  for (let i = 0; i < 3; i++) expect(Math.abs(got[i] - want[i]), `channel ${i} of ${got} vs ${want}`).toBeLessThanOrEqual(within);
 }
 /** A throw as the dicecam reads it: every die sure, read twice over so the two readings agree. */
 async function dicecamReads(page: Page, rollId: string, values: number[]) {
-  const reading = { dicecam: 'settled', rollId, dice: values.map((value) => ({ value, confidence: 0.92, askew: false })) };
-  await dicecamSays(page, reading);
+  await dicecamSays(page, settled(rollId, values));
   await expect(page.locator('[data-testid^="dice-prompt-"]')).toHaveAttribute('data-seen', String(values.length));
-  await dicecamSays(page, reading);
+  await dicecamSays(page, settled(rollId, values));
 }
 
 test.describe('037 - Physical dice', () => {
@@ -38,7 +71,7 @@ test.describe('037 - Physical dice', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Physical dice',
-      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam, the WebCamTool page in a frame in the corner of the board, reads the tray and two agreeing readings enter the roll; a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game.'
+      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game.'
     );
 
     // Seed 24: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
@@ -48,8 +81,12 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('physical-dice')).toHaveAttribute('aria-pressed', 'false');
     await page.getByTestId('physical-dice').click();
 
+    await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'active');
+    await dicecamSays(page, { type: 'roi', roi: { detected: true, polygon: TRAY.floor, confidence: 0.93 } });
+    await expect.poll(async () => Number(await page.getByTestId('dicecam-dock').getAttribute('data-frames'))).toBeGreaterThan(2);
+
     await steps.step('physical-dice-on', {
-      description: 'The options screen has a dice section: "Physical dice" is switched on, and the dicecam appears in the south-west corner of the board',
+      description: 'The options screen has a dice section: "Physical dice" is switched on, and the dicecam appears in the south-west corner of the board: the table\'s camera on a canvas, its picture of the tray with the tray\'s floor outlined as the engine finds it',
       verifications: [
         { spec: 'The toggle is on and the state says so; the game records it as a dice/physical event', check: async () => {
           await expect(page.getByTestId('physical-dice')).toHaveAttribute('aria-pressed', 'true');
@@ -57,9 +94,19 @@ test.describe('037 - Physical dice', () => {
           expect((await state(page)).rng).toMatchObject({ physical: true });
           expect((await events(page)).filter((e) => e.type === 'dice/physical').map((e) => e.payload)).toEqual([{ on: true }]);
         } },
-        { spec: 'The dicecam frame is on the table, still connecting', check: async () => {
-          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'connecting');
-          await expect(page.frameLocator('[data-testid="dicecam-frame"]').getByText('dicecam')).toBeVisible();
+        { spec: 'The dicecam is active: the camera streams, the engine is up and takes the frames, the tray is settled, and the canvas shows the camera\'s picture', check: async () => {
+          const dock = page.getByTestId('dicecam-dock');
+          await expect(dock).toHaveAttribute('data-status', 'active');
+          await expect(dock).toHaveAttribute('data-motion', 'settled');
+          await expect(page.getByTestId('dicecam-note')).toHaveCount(0);
+          await expect(page.getByTestId('dicecam-motion')).toHaveText('settled');
+          // The canvas carries the camera's frame, letterboxed: the felt at its corner, the brown rim, and the dark
+          // floor in its middle under the engine's orange wash of the tray it found (the camera's colours within a
+          // few steps, the picture having been through the camera's YUV).
+          const pixels = await sample(page, { felt: [20, 20], rim: [48, 180], floor: [320, 180] });
+          expectColour(pixels.felt, [46, 72, 52]);
+          expectColour(pixels.rim, [120, 86, 52]);
+          expectColour(pixels.floor, [55, 41, 36]);
         } }
       ]
     });
@@ -69,8 +116,6 @@ test.describe('037 - Physical dice', () => {
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
     await expect(page.getByTestId('dice-edge-bottom-1')).toBeVisible();
-    await dicecamSays(page, { dicecam: 'ready' });
-    await dicecamSays(page, { dicecam: 'camera', status: 'active' });
 
     await steps.step('first-player-asked', {
       description: 'The game starts with the roll for first player: the table stands still and asks bottom-1, at its edge, for four dice; the dicecam is watching for them, and the six faces are there to tap instead',
@@ -82,9 +127,10 @@ test.describe('037 - Physical dice', () => {
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 4, rolled: [] });
           expect(s.awaiting!.event.type).toBe('game/started');
         } },
-        { spec: 'The dicecam is active and watching for four dice; the faces wait for four taps; the rest of the table is held', check: async () => {
+        { spec: 'The dicecam is active and watching for four dice, brought to the middle of the board; the faces wait for four taps; the rest of the table is held', check: async () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Watching the dicecam for 4 dice');
           await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'active');
+          await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-centred', 'true');
           await expect(page.getByTestId('dice-taps-bottom-1')).toHaveAttribute('data-count', '0');
           await expect(page.locator('[data-testid^="die-face-"][data-testid$="-bottom-1"]')).toHaveCount(6);
           await expect(page.getByTestId('dice-scrim')).toBeVisible();
@@ -92,7 +138,36 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
-    await dicecamReads(page, 'throw-1', [6, 6, 6, 6]);
+    await dicecamSays(page, settled('throw-1', [6, 6, 6, 6]));
+    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-seen', '4');
+
+    await steps.step('tray-read-once', {
+      description: 'The engine reads the settled tray: four sixes, each die outlined on the picture with its value above it and its confidence along its foot, the way the Yahtzee page draws them; one reading is not enough, the table waits for a second that agrees',
+      verifications: [
+        { spec: 'The prompt says four dice are seen and their faces are being read; the dock holds one reading and the throw is not yet taken', check: async () => {
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('4 dice seen, reading the faces…');
+          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '1');
+          expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [] });
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled')).toEqual([]);
+        } },
+        { spec: 'The overlay is drawn on the canvas: the green of a die\'s face where the first die lies, the label\'s dark box above it', check: async () => {
+          // The label's box sits 8 pixels above the die, as tall as its type (0.4 of the die) plus padding: a row
+          // through its middle crosses the dark box and the white glyph.
+          const labelMid = TRAY.y - TRAY.size / 2 - 8 - (TRAY.size * 0.4 + 4) / 2;
+          const row: Record<string, [number, number]> = {};
+          for (let i = -4; i <= 4; i++) row[`label${i}`] = [TRAY.dice[0] + i * 4, labelMid];
+          const pixels = await sample(page, { face: [TRAY.dice[0], TRAY.y - 10], ...row });
+          // The white die under a green wash reads greenish; the label row holds near-black and near-white.
+          expect(pixels.face[1]).toBeGreaterThan(pixels.face[0]);
+          expect(pixels.face[1]).toBeGreaterThan(pixels.face[2]);
+          const brightness = Object.keys(row).map((k) => Math.max(...pixels[k]));
+          expect(Math.min(...brightness)).toBeLessThan(60);
+          expect(Math.max(...brightness)).toBeGreaterThan(200);
+        } }
+      ]
+    });
+
+    await dicecamSays(page, settled('throw-1', [6, 6, 6, 6]));
     await expect(page.getByTestId('dice-edge-top-1')).toBeVisible();
 
     await steps.step('first-throw-read', {
@@ -262,16 +337,16 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
 
     await steps.step('persists-after-reload', {
-      description: 'After a reload the log replays the same game from the recorded throws: the same map, the same log, physical dice still on and the dicecam back in its corner',
+      description: 'After a reload the log replays the same game from the recorded throws: the same map, the same log, physical dice still on and the dicecam back in its corner, its camera and engine started again',
       verifications: [
-        { spec: 'The state is the same as before the reload and the dicecam frame is up again', check: async () => {
+        { spec: 'The state is the same as before the reload and the dicecam is active again', check: async () => {
           const after = await state(page);
           expect(after.map).toEqual(before.map);
           expect(after.turn).toEqual(before.turn);
           expect(after.history).toEqual(before.history);
           expect(after.rng).toEqual(before.rng);
           expect(after.awaiting).toBeNull();
-          await expect(page.getByTestId('dicecam-dock')).toBeVisible();
+          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'active');
           await expect(page.getByTestId('physical-dice')).toHaveCount(0);
         } }
       ]

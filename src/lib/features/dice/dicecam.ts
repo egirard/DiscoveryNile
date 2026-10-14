@@ -1,27 +1,68 @@
-// The dicecam (PROMPTS.md, prompt 18): the WebCamTool page (https://github.com/egirard/WebCamTool) runs in a
-// frame on the table and reports what its camera sees with `postMessage`; see docs/dicecam.md for the
-// protocol. This module is the pure part: reading a report into the throw the table is waiting for.
+// The dicecam (PROMPTS.md, prompts 18 and 19): WebCamTool's dice analysis (https://github.com/egirard/WebCamTool),
+// loaded as a worker from that project's hosted build, reads the camera frames the table posts it and reports the
+// tray; see docs/dicecam.md. This module is the pure part: the engine's messages as the table reads them, the
+// reading of a report into the throw the table is waiting for, and the words of the status line.
 
-/** The camera's state as the dicecam reports it (its `CameraState['status']`), or the frame's own. */
-export type DicecamStatus = 'off' | 'connecting' | 'initializing' | 'awaiting-consent' | 'active' | 'permission-denied' | 'no-camera' | 'camera-in-use' | 'reconnecting' | 'unsupported' | 'error';
+/** The engine's protocol the table speaks (WebCamTool's `src/lib/dicecam/protocol.ts`). */
+export const PROTOCOL = 2;
 
-/** One settled reading of the tray: the dice left to right, as the dicecam's `dice-settled` event carries them. */
+/** The dicecam's state on the table: the camera's, then the engine's. */
+export type DicecamStatus =
+  | 'starting'
+  | 'loading'
+  | 'active'
+  | 'permission-denied'
+  | 'no-camera'
+  | 'camera-in-use'
+  | 'unsupported'
+  | 'reconnecting'
+  | 'error'
+  | 'no-engine';
+
+export type MotionStatus = 'calibrating' | 'rolling' | 'settled' | 'recalibrating';
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/** One die as read, with the geometry (frame pixels) the overlay draws. */
+export interface SeenDie {
+  value: number;
+  confidence: number;
+  askew?: boolean;
+  boundingBox: { x: number; y: number; width: number; height: number };
+  contour: Point[];
+  face: Point[];
+  pips: Point[];
+}
+
+/** The tray as the engine finds it. */
+export interface Roi {
+  detected: boolean;
+  polygon: Point[];
+  confidence: number;
+}
+
+/** One settled reading of the tray: the dice left to right. */
 export interface Reading {
-  /** The dicecam's id for the throw; a throw is read once, however many readings it sends. */
+  /** The engine's id for the throw; a throw is read once, however many readings it sends. */
   rollId: string;
   dice: { value: number; confidence: number; askew?: boolean }[];
 }
 
-/** A message from the dicecam frame. */
-export type DicecamMessage =
-  | { dicecam: 'ready' }
-  | { dicecam: 'camera'; status: DicecamStatus }
-  | { dicecam: 'rolling' }
-  | ({ dicecam: 'settled' } & Reading)
-  | { dicecam: 'removed'; remaining: number };
+/** What the engine posts (the part of its protocol the table reads). */
+export type EngineMessage =
+  | { type: 'ready'; protocol: number; version: string }
+  | { type: 'tick'; motion: { status: MotionStatus; progress?: number }; frame: { width: number; height: number } }
+  | { type: 'roi'; roi: Roi | null }
+  | { type: 'rolling' }
+  | { type: 'removed'; remaining: number }
+  | { type: 'settled'; rollId: string; kind: 'initial' | 'update'; frame: { width: number; height: number }; dice: SeenDie[] }
+  | { type: 'error'; message: string };
 
-export function isDicecamMessage(data: unknown): data is DicecamMessage {
-  return typeof data === 'object' && data !== null && typeof (data as { dicecam?: unknown }).dicecam === 'string';
+export function isEngineMessage(data: unknown): data is EngineMessage {
+  return typeof data === 'object' && data !== null && typeof (data as { type?: unknown }).type === 'string';
 }
 
 /** A reading counts only when every die is read this surely; the dicecam's own "confident" bar. */
@@ -68,19 +109,58 @@ export function statusText(status: DicecamStatus, count: number, seen: number | 
   const dice = count === 1 ? 'one die' : `${count} dice`;
   if (!configured) return 'No dicecam on this table: tap the face you rolled';
   switch (status) {
-    case 'off': return 'The dicecam is off';
-    case 'connecting': return 'Connecting to the dicecam…';
-    case 'initializing': return 'The dicecam is starting its camera…';
-    case 'awaiting-consent': return 'The dicecam needs the camera: allow it in the dicecam, or tap the face you rolled';
-    case 'permission-denied': return 'The dicecam may not use the camera: tap the face you rolled';
-    case 'no-camera': return 'The dicecam finds no camera: tap the face you rolled';
+    case 'starting': return 'Starting the camera…';
+    case 'loading': return 'Loading the dicecam…';
+    case 'permission-denied': return 'The table may not use the camera: tap the face you rolled';
+    case 'no-camera': return 'No camera found: tap the face you rolled';
     case 'camera-in-use': return 'The camera is in use elsewhere: tap the face you rolled';
-    case 'reconnecting': return 'The dicecam is reconnecting its camera…';
-    case 'unsupported': return 'This browser cannot run the dicecam: tap the face you rolled';
-    case 'error': return 'The dicecam has lost its camera: tap the face you rolled';
+    case 'unsupported': return 'This browser has no camera access: tap the face you rolled';
+    case 'reconnecting': return 'Reconnecting the camera…';
+    case 'error': return 'The camera was lost: tap the face you rolled';
+    case 'no-engine': return 'The dicecam could not be loaded: tap the face you rolled';
     case 'active':
       if (seen === null || seen === 0) return `Watching the dicecam for ${dice}`;
       if (seen === count) return `${dice[0].toUpperCase()}${dice.slice(1)} seen, reading the faces…`;
       return `${seen === 1 ? 'One die' : `${seen} dice`} seen, ${dice} wanted`;
+  }
+}
+
+/** The short note in the dicecam's own corner while it is not reading. */
+export function dockNote(status: DicecamStatus): string | null {
+  switch (status) {
+    case 'starting': return 'Starting the camera…';
+    case 'loading': return 'Loading the dicecam…';
+    case 'permission-denied': return 'Camera not allowed';
+    case 'no-camera': return 'No camera';
+    case 'camera-in-use': return 'Camera in use elsewhere';
+    case 'unsupported': return 'No camera access';
+    case 'reconnecting': return 'Reconnecting…';
+    case 'error': return 'Camera lost';
+    case 'no-engine': return 'Dicecam not loaded';
+    case 'active': return null;
+  }
+}
+
+/** What a failed camera request means, from the error's name as `getUserMedia` reports it. */
+export function cameraFailure(error: unknown): DicecamStatus {
+  const name = error instanceof DOMException ? error.name : error instanceof Error ? error.name : '';
+  switch (name) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+    case 'SecurityError':
+      return 'permission-denied';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+    case 'OverconstrainedError':
+    case 'ConstraintNotSatisfiedError':
+      return 'no-camera';
+    case 'NotReadableError':
+    case 'TrackStartError':
+    case 'AbortError':
+      return 'camera-in-use';
+    case 'TypeError':
+      return 'unsupported';
+    default:
+      return 'error';
   }
 }

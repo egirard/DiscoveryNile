@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consider, isDicecamMessage, statusText, watching, type Reading } from './dicecam';
+import { cameraFailure, consider, dockNote, isEngineMessage, statusText, watching, type Reading } from './dicecam';
 
 const reading = (rollId: string, values: number[], confidence = 0.9, askew = false): Reading => ({ rollId, dice: values.map((value) => ({ value, confidence, askew })) });
 
@@ -37,16 +37,28 @@ describe('reading the dicecam', () => {
     c = consider(c.watch, reading('r1', [3, 5]));
     expect(c.accept).toBeNull();
   });
-  it('recognises the dicecam\'s messages and words the status line', () => {
-    expect(isDicecamMessage({ dicecam: 'ready' })).toBe(true);
-    expect(isDicecamMessage({ source: 'other' })).toBe(false);
-    expect(isDicecamMessage(null)).toBe(false);
+  it("recognises the engine's messages and words the status line and the dock's note", () => {
+    expect(isEngineMessage({ type: 'ready', protocol: 2, version: 'x' })).toBe(true);
+    expect(isEngineMessage({ dicecam: 'ready' })).toBe(false);
+    expect(isEngineMessage(null)).toBe(false);
     expect(statusText('active', 1, null, true)).toBe('Watching the dicecam for one die');
     expect(statusText('active', 4, 0, true)).toBe('Watching the dicecam for 4 dice');
     expect(statusText('active', 4, 2, true)).toBe('2 dice seen, 4 dice wanted');
     expect(statusText('active', 1, 3, true)).toBe('3 dice seen, one die wanted');
     expect(statusText('active', 4, 4, true)).toBe('4 dice seen, reading the faces…');
-    expect(statusText('no-camera', 1, null, true)).toBe('The dicecam finds no camera: tap the face you rolled');
+    expect(statusText('no-camera', 1, null, true)).toBe('No camera found: tap the face you rolled');
+    expect(statusText('no-engine', 1, null, true)).toBe('The dicecam could not be loaded: tap the face you rolled');
+    expect(statusText('loading', 1, null, true)).toBe('Loading the dicecam…');
     expect(statusText('active', 1, null, false)).toBe('No dicecam on this table: tap the face you rolled');
+    expect(dockNote('active')).toBeNull();
+    expect(dockNote('starting')).toBe('Starting the camera…');
+    expect(dockNote('permission-denied')).toBe('Camera not allowed');
+  });
+  it('names what a failed camera request means', () => {
+    expect(cameraFailure(new DOMException('denied', 'NotAllowedError'))).toBe('permission-denied');
+    expect(cameraFailure(new DOMException('none', 'NotFoundError'))).toBe('no-camera');
+    expect(cameraFailure(new DOMException('busy', 'NotReadableError'))).toBe('camera-in-use');
+    expect(cameraFailure(new TypeError('no mediaDevices'))).toBe('unsupported');
+    expect(cameraFailure('?')).toBe('error');
   });
 });
