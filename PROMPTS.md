@@ -177,10 +177,10 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
 
 *(voice, summarised)* Feed this project's experience of the TabletopTemplate back into that template: recommendations and clarifications that make it more useful, a chapter on integrating the dicecam, and a chapter on direct communication through the relay without a database backing store.
 
-`Outcome: `
+`Outcome: TabletopTemplate 3a778a2 (pushed, its verifier green): the gitignore pattern that hid its diagnostics module fixed and the module tracked; the relay ported at both ends to the ARViewer session protocol this project uses, so a deployed table needs no server; new chapters docs/relay.md (direct play without a database), docs/dicecam.md (physical dice through WebCamTool's engine) and docs/lessons-from-discoverynile.md (bugs, clarifications, patterns, process); clarifications in state-and-persistence, ai-agent-workflow, development, e2e guidelines, ci-and-deployment, diagnostics, AGENTS.md and the README; logged there as its prompt 14.`
 
 ## 25. 2026-10-14
 
 *(voice, summarised)* In the WebCamTool project the dicecam engine was pulled out of, add any configuration or updating wanted and annotations from this experience, so that future clients of the engine can learn from it.
 
-`Outcome: `
+`Outcome: WebCamTool 9e07b13 (pushed, Pages deployed): docs/dicecam-engine.md gained "Reading a throw" (judge by the lie, not the roll id; two agreeing readings; neutral status; what to log), "Tuning the motion detector", "Testing a consumer without a camera" and "What the first consumer found"; the protocol's comments say what the roll id really is; protocol 2 gained a configure message for the motion detector's sensitivity and the motion score on every tick. Smoke-tested cross-origin: the rebuilt engine reads the pipped tray as 3, 5, 2, 6 after a configure, and this table's dev server reads it from the hosted build.`
