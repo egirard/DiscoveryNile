@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "prepare": "svelte-kit sync && husky || true",
-    "dev": "vite dev --host 127.0.0.1 --port 3000 --strictPort",
+    "dev": "VITE_RELAY_URL=${VITE_RELAY_URL:-ws://127.0.0.1:3001} VITE_DIAG_URL=${VITE_DIAG_URL:-http://127.0.0.1:3002} VITE_DICECAM_URL=${VITE_DICECAM_URL:-https://egirard.github.io/WebCamTool/dicecam/engine.js} vite dev --host 127.0.0.1 --port 3000 --strictPort",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1 --port 4000 --strictPort",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -20,7 +20,8 @@
     "verify:change": "bash scripts/verify-change.sh",
     "build:e2e": "VITE_E2E=true VITE_GIT_HASH=e2e-test-commit VITE_DEFAULT_BACKEND=local VITE_RELAY_URL=ws://127.0.0.1:3001 VITE_DICECAM_URL=/dicecam-stub.worker.js vite build",
     "test:e2e:only": "playwright test",
-    "diag": "bun run scripts/diag-server.ts"
+    "diag": "bun run scripts/diag-server.ts",
+    "diag:context": "bun run scripts/diag-context.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4"

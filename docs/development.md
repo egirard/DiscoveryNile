@@ -52,7 +52,7 @@ Without direnv: prefix commands with `nix develop --command`, or enter the shell
 
 | Script | What it does |
 |---|---|
-| `bun run dev` | Vite dev server on port 3000 (`--strictPort`, fails rather than moving) |
+| `bun run dev` | Vite dev server on port 3000 (`--strictPort`, fails rather than moving), pointed at the local relay, the diagnostics capture server and the hosted dicecam engine unless `VITE_RELAY_URL`, `VITE_DIAG_URL` or `VITE_DICECAM_URL` say otherwise |
 | `bun run build` | Static production build into `build/` |
 | `bun run preview` | Serve the production build on port 4000 |
 | `bun run check` | `svelte-check` type and template checking |
@@ -69,6 +69,7 @@ Without direnv: prefix commands with `nix develop --command`, or enter the shell
 | `bun run emulators` | Start the Firebase emulators for manual testing (Firebase projects only) |
 | `bun run relay` | Minimal WebSocket relay for phones on port 3001, speaking the ARViewer session protocol the hosted relay speaks |
 | `bun run diag` | Diagnostics capture server on port 3002 (see [diagnostics.md](diagnostics.md)) |
+| `bun run diag:context` | What the table saw and did in the latest captured session: the last lines worded, and the game as its stream reduces |
 | `bun run verify:change` | Everything the hooks and CI run. See below. |
 
 When the project uses Firebase, `test:e2e` and `test:rules` wrap their command in `firebase emulators:exec --project <project>-e2e --only auth,firestore "…"`.
@@ -119,7 +120,7 @@ It re-executes itself inside the Nix shell if it is not already there. It runs t
 | `VITE_FIRESTORE_EMULATOR_HOST/PORT`, `VITE_FIREBASE_AUTH_EMULATOR_HOST/PORT` | Emulator addresses |
 | `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through: the local relay for dev and E2E, the hosted ARViewer relay (`wss://arviewer-relay.onrender.com/ws`) for the deployed table |
 | `VITE_DICECAM_URL` | The dicecam engine the table loads as a worker for physical dice (see [dicecam.md](dicecam.md)): WebCamTool's hosted `dicecam/engine.js` for the deployed table and the dev server, `/dicecam-stub.worker.js` (a stand-in that the scenario speaks for) in E2E builds; unset, the table offers only the faces to tap |
-| `VITE_DIAG_URL` | Diagnostics capture server (dev builds only) |
+| `VITE_DIAG_URL` | Diagnostics capture server (dev builds only; `bun run dev` defaults it to `http://127.0.0.1:3002`) |
 | `VITE_GIT_HASH` | Build marker shown in the UI footer; `e2e-test-commit` in scenarios |
 | `PUBLIC_BASE_PATH` | `/<repo>` or `/<repo>/pr<N>` at deploy time |
 

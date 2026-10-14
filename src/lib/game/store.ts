@@ -84,6 +84,7 @@ export async function openGame(options: OpenGameOptions): Promise<Game> {
   // Diagnostics capture (docs/diagnostics.md): inactive unless a server URL is configured.
   configureDiagnostics({ session: gameId, search });
   let diagnosticCount = 0;
+  let loggedCount: number | null = null;
   let relay: RelayHandle | null = null;
   let geometry: unknown = undefined;
 
@@ -111,7 +112,12 @@ export async function openGame(options: OpenGameOptions): Promise<Game> {
       game.events = events;
       game.state = reduce(events);
       relay?.publish(events, geometry);
-      diagLog('events/changed', { count: events.length, last: events.at(-1)?.type ?? null });
+      // Diagnostics capture (docs/diagnostics.md): the stream as it was found, then every event as it is
+      // appended, and the whole stream as a file that replays the game (`bun run diag:context`).
+      if (loggedCount === null) diagLog('events/loaded', { count: events.length, last: events.at(-1)?.type ?? null });
+      else for (const e of events.slice(loggedCount)) diagLog('event/appended', e);
+      loggedCount = events.length;
+      diagSnapshot('events', events);
       if (game.state.diagnostics.length > diagnosticCount) {
         // Save the exact stream that produced a reducer diagnostic; it can become a unit-test fixture.
         diagnosticCount = game.state.diagnostics.length;

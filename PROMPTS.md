@@ -166,3 +166,21 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
 *(voice, summarised)* Prompts given by voice are logged here as a summary rather than verbatim; typed prompts stay verbatim.
 
 `Outcome: the convention is recorded here and in memory: a prompt that comes as transcribed speech is logged as a one- or two-line summary marked "(voice, summarised)"; typed prompts and the OTR: rule are unchanged.`
+
+## 23. 2026-10-14
+
+*(voice, summarised)* Wire up a diagnostic system that captures the game state while the user plays, so that feedback on a moment of gameplay comes with the context it happened in; a separate instance on the development machine may be needed to track it, or something already running (the relay) may serve.
+
+`Outcome: the template's diagnostics capture, present but unused, is now wired in: \`bun run dev\` points the table at the capture server on 3002 (and the local relay and the hosted engine) by default, the table writes every event, the whole stream as a replayable file, every ask for dice (with what lay in the tray) and every reading the dicecam judged, and \`bun run diag:context\` words the latest session's last lines on the local clock with the game as its stream reduces; AGENTS.md says to read it first when the user reports a moment of play. The capture server and the dev server are running on the development machine.`
+
+## 24. 2026-10-14
+
+*(voice, summarised)* Feed this project's experience of the TabletopTemplate back into that template: recommendations and clarifications that make it more useful, a chapter on integrating the dicecam, and a chapter on direct communication through the relay without a database backing store.
+
+`Outcome: `
+
+## 25. 2026-10-14
+
+*(voice, summarised)* In the WebCamTool project the dicecam engine was pulled out of, add any configuration or updating wanted and annotations from this experience, so that future clients of the engine can learn from it.
+
+`Outcome: `

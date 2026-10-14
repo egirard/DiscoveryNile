@@ -52,6 +52,7 @@ A task is one slice. It is done when all of the following are true:
 - Do not contact production Firebase from any test. Tests use the local backend or the emulators.
 - When a rule is unclear or sources disagree, add an `RQ-n` to `docs/rules.md`, implement the smallest interpretation, and cite it from the test and the commit message. Never silently pick a reading.
 - Keep commits small. If a task turns out to need two visible changes, make two commits, each with its own scenario step or scenario.
+- When the user reports something seen while playing on the dev server, read the diagnostics capture first (`bun run diag:context`, [docs/diagnostics.md](docs/diagnostics.md)): it holds every event, every ask for dice and every reading the dicecam judged, with the time.
 
 ## When something is unclear
 

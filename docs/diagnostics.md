@@ -68,6 +68,27 @@ This is the fastest route from "something odd happened on the table" to a red un
 3. Play. Files accumulate under `diagnostics/<room code>/`.
 4. Read `log.ndjson`, replay snapshots in unit tests, open canvases.
 
+## On this table (DiscoveryNile)
+
+Wired in for prompt 23 (PROMPTS.md), so that feedback on a moment of play comes with what the table saw and did. `bun run dev` points the table at the capture server on 3002 (and at the local relay and the hosted dicecam engine) unless the variables are set otherwise, so playing on the dev server is enough; production builds never send.
+
+What the table writes to `diagnostics/<room code>/`:
+
+| Line or file | When |
+|---|---|
+| `events/loaded` | the table opened a game: how many events it found |
+| `event/appended` with the whole event | every event appended from then on |
+| `events.json` | the whole stream, rewritten on every change: `reduce` it to stand where the table stood |
+| `events-diagnostic-<n>.json` | the reducer refused an event: the stream that did it, to become a unit-test fixture |
+| `dice/asked` | the table asked a seat for a throw: the prompt, the throws already made for the action, what lay in the tray |
+| `dicecam/reading` | the dicecam judged a reading: the roll id, each die's face, confidence and place, and the verdict (`taken 5`, `lying there already`, `read once`, `1 of 2 wanted`) |
+| `dicecam/rolling`, `dicecam/status`, `dicecam/error` | the engine saw the dice move; the camera or the engine changed state; the engine failed |
+| `window/error`, `window/unhandledrejection` | the page broke |
+
+Read it back with `bun run diag:context`: the latest session's last lines, each worded, and the game as the captured stream reduces to (the turn, what is asked, the latest lines of the turn's log, any diagnostics). `--since 12:30` (a clock time today, or an ISO time) narrows to the moment; `--last 100` widens; `--list` names the sessions; a room code picks one. When a report says "the hunt die was ignored just now", that is the first thing to run.
+
+The capture server runs on the development machine; the hosted table at GitHub Pages cannot reach it, so a report from the hosted table has only the browser console (the `dicecam` lines are there too).
+
 ## In E2E
 
 Scenarios do not use the diagnostics server; their evidence is the step journal, the screenshots, and the trace. Playwright's `trace: 'retain-on-failure'` already captures the console and network for a failed step. The diagnostics server is for the table in use, not for CI.

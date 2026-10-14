@@ -48,6 +48,7 @@
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
   import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
+  import { log as diagLog } from '$lib/diagnostics/diag';
   import { isPhysical } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
@@ -287,10 +288,12 @@
     watch = awaiting ? watching(awaiting.count, lastThrow, lastReading) : null;
     dicecamSeen = null;
     dicecamStale = false;
+    if (awaiting) diagLog('dice/asked', { seat: awaiting.seat, count: awaiting.count, prompt: awaiting.prompt, rolled: awaiting.rolled, lying: lastReading?.dice ?? null });
   });
   function onDicecam(m: EngineMessage) {
-    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); }
+    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
     else if (m.type === 'removed') { dicecamSeen = m.remaining; dicecamStale = false; }
+    else if (m.type === 'error') diagLog('dicecam/error', m.message);
     else if (m.type === 'settled') {
       lastReading = lieOf(m);
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
@@ -298,8 +301,11 @@
       watch = judged.watch;
       dicecamSeen = judged.seen;
       dicecamStale = judged.stale;
-      // A line per reading judged, for the console: what lay where, and what the table made of it.
-      console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count} wanted`);
+      // A line per reading judged, for the console and the diagnostics capture: what lay where, and what the
+      // table made of it.
+      const verdict = judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count} wanted`;
+      console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), verdict);
+      diagLog('dicecam/reading', { rollId: m.rollId, kind: m.kind, dice: m.dice.map((d) => ({ value: d.value, confidence: Number(d.confidence.toFixed(2)), askew: d.askew ?? false, at: d.normalizedPosition ?? null })), verdict });
       if (judged.accept) { lastThrow = lastReading; watch = null; rolled(awaiting.seat, judged.accept); }
     }
   }
@@ -447,7 +453,7 @@
   {/if}
   {#if physical && DICECAM_URL}
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
-      <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => (dicecamStatus = s)} />
+      <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} />
     </div>
   {/if}
 
