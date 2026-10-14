@@ -3,7 +3,7 @@ import type { Chart } from '$features/expedition/prices';
 import type { Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
 import { hasPart, type Modifier, type Roll } from '$features/map/generate';
-import { d6, type RngState } from '$lib/game/random';
+import { d6, type DiceAsk, type RngState } from '$lib/game/random';
 
 export interface Camp {
   terrain: Terrain | null;
@@ -95,8 +95,9 @@ export interface HuntResult {
 
 /** One die for the expedition (RQ-7), applied per hunter; a zoologist explorer adds one to his own share. */
 export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: boolean): { rng: RngState; result: HuntResult } {
-  const r = d6(rng, 'hunting');
   const modifiers = huntingModifiers(camp);
+  const bonus = modifiers.reduce((a, m) => a + m.value, 0);
+  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags a ration a hunter at 2, two at 4, three at 6` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
   const game = rationsPerHunter(total) * askaris + rationsPerHunter(total + (zoologist ? 1 : 0));
   return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, game } };
@@ -215,8 +216,8 @@ const MEN: MenType[] = ['bearers', 'guides', 'askaris'];
  */
 export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starving: StarvationResult['starving'], doctor: boolean): SicknessRound {
   const rolls: Roll[] = [];
-  const roll = (label: string) => {
-    const r = d6(rng, 'sickness');
+  const roll = (label: string, ask: DiceAsk = { what: `for the ${label}` }) => {
+    const r = d6(rng, 'sickness', ask);
     rng = r.state;
     rolls.push({ label, value: r.value });
     return r.value;
@@ -226,12 +227,19 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   const died = { guides: 0, bearers: 0, askaris: 0 };
   const notes: string[] = [];
   const healthyDoctor = doctor && !sick.explorer;
+  // Recovers at 1 or less, dies at 5 or more, after −1 for a healthy doctor and +3 for starving.
+  const sickHint = (doc: boolean, isStarving: boolean) => {
+    const shift = (doc ? 1 : 0) - (isStarving ? 3 : 0);
+    const lo = 1 + shift;
+    const hi = 5 + shift;
+    return `${lo >= 1 ? `${lo} or less recovers` : 'no recovery'}, ${hi <= 6 ? `${hi} or more dies` : 'no death'}`;
+  };
   // The sick: recovery or death.
   for (const t of MEN) {
     let recovered = 0;
     for (let i = 0; i < sick[t]; i++) {
       const isStarving = i < starving[t];
-      const v = roll(`sick ${t.slice(0, -1)}`) - (healthyDoctor ? 1 : 0) + (isStarving ? 3 : 0);
+      const v = roll(`sick ${t.slice(0, -1)}`, { what: `for the sick ${t.slice(0, -1)}`, hint: sickHint(healthyDoctor, isStarving) }) - (healthyDoctor ? 1 : 0) + (isStarving ? 3 : 0);
       if (v <= 1) { nextSick[t]--; recovered++; }
       else if (v >= 5) { nextSick[t]--; next[t]--; died[t]++; }
     }
@@ -240,7 +248,7 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   }
   let explorerDied = false;
   if (sick.explorer) {
-    const v = roll('sick explorer') + (starving.explorer ? 3 : 0);
+    const v = roll('sick explorer', { what: 'for the sick explorer', hint: sickHint(false, starving.explorer) }) + (starving.explorer ? 3 : 0);
     if (v <= 1) { nextSick.explorer = false; notes.push('the explorer recovers'); }
     else if (v >= 5) { explorerDied = true; notes.push('the explorer dies of sickness'); }
   }
@@ -248,11 +256,11 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   for (const t of MEN) {
     let fell = 0;
     const wellStarving = Math.max(0, starving[t] - sick[t]);
-    for (let i = 0; i < wellStarving; i++) if (roll(`starving ${t.slice(0, -1)}`) >= 4) fell++;
+    for (let i = 0; i < wellStarving; i++) if (roll(`starving ${t.slice(0, -1)}`, { what: `for the starving ${t.slice(0, -1)}`, hint: '4+ and he falls sick' }) >= 4) fell++;
     nextSick[t] += fell;
     if (fell) notes.push(`${fell} starving ${fell === 1 ? t.slice(0, -1) : t} fall${fell === 1 ? 's' : ''} sick`);
   }
-  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer') >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
+  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer', { what: 'for the starving explorer', hint: '4+ and he falls sick' }) >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
   return { rng, rolls, chart: next, sick: nextSick, died, explorerDied, summary: notes.join(', ') };
 }
 

@@ -10,9 +10,11 @@
     /** Distance from the edge to the panel's near side, in px (rail depth plus a gap). */
     inset: number;
     testid?: string;
+    /** Above the scrim that holds the table still while the dice are rolled. */
+    raised?: boolean;
     children: Snippet;
   }
-  let { seat, viewport, inset, testid, children }: Props = $props();
+  let { seat, viewport, inset, testid, raised = false, children }: Props = $props();
 
   const along = $derived(positionAlongEdge(seat));
   const rotation = $derived(rotationFor(seat.edge));
@@ -26,7 +28,7 @@
   });
 </script>
 
-<div class="panel" data-testid={testid} data-seat={seat.id} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg">
+<div class="panel" class:raised data-testid={testid} data-seat={seat.id} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg">
   {@render children()}
 </div>
 
@@ -41,5 +43,8 @@
     border-radius: 12px;
     padding: calc(var(--gap) * 1.2);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  }
+  .raised {
+    z-index: 6;
   }
 </style>

@@ -118,6 +118,7 @@ It re-executes itself inside the Nix shell if it is not already there. It runs t
 | `VITE_USE_FIREBASE_EMULATORS` | `true` in E2E |
 | `VITE_FIRESTORE_EMULATOR_HOST/PORT`, `VITE_FIREBASE_AUTH_EMULATOR_HOST/PORT` | Emulator addresses |
 | `VITE_RELAY_URL` | WebSocket relay the table publishes to and phones join through: the local relay for dev and E2E, the hosted ARViewer relay (`wss://arviewer-relay.onrender.com/ws`) for the deployed table |
+| `VITE_DICECAM_URL` | The dicecam page the table embeds for physical dice (see [dicecam.md](dicecam.md)): WebCamTool's hosted `/embed` route for the deployed table, `/dicecam-stub.html` (a static stand-in) in E2E builds; unset, the table offers only the faces to tap |
 | `VITE_DIAG_URL` | Diagnostics capture server (dev builds only) |
 | `VITE_GIT_HASH` | Build marker shown in the UI footer; `e2e-test-commit` in scenarios |
 | `PUBLIC_BASE_PATH` | `/<repo>` or `/<repo>/pr<N>` at deploy time |

@@ -2,7 +2,7 @@
 // as a pure function over the seeded dice on the 'combat' stream.
 import type { Chart } from '$features/expedition/prices';
 import type { Modifier, Roll } from '$features/map/generate';
-import { d6, dice, type RngState } from '$lib/game/random';
+import { d6, dice, type DiceAsk, type RngState } from '$lib/game/random';
 
 export interface ReactionInput {
   policy: number;
@@ -48,10 +48,10 @@ export function reactionModifiers(input: ReactionInput): Modifier[] {
 }
 
 export function react(rng: RngState, input: ReactionInput): ReactionResult {
-  const three = dice(rng, 3, 'combat');
-  rng = three.state;
   const modifiers = reactionModifiers(input);
   const target = modifiers.reduce((a, m) => a + m.value, 0);
+  const three = dice(rng, 3, 'combat', { what: "for the natives' reaction", hint: `${target} or less keeps them calm` });
+  rng = three.state;
   const total = three.values.reduce((a, b) => a + b, 0);
   const hostile = target < total;
   const reaction = { rolls: three.values.map((value) => ({ label: 'reaction', value })), modifiers, target, total, hostile };
@@ -65,8 +65,8 @@ export function hostilities(rng: RngState, input: ReactionInput): Omit<ReactionR
   const chart = { ...input.chart };
   let warriors = input.warriors;
   const combat: Roll[] = [];
-  const roll = (label: string) => {
-    const r = d6(rng, 'combat');
+  const roll = (label: string, ask: DiceAsk = { what: `for ${label}` }) => {
+    const r = d6(rng, 'combat', ask);
     rng = r.state;
     combat.push({ label, value: r.value });
     return r.value;
@@ -74,13 +74,13 @@ export function hostilities(rng: RngState, input: ReactionInput): Omit<ReactionR
   const done = (outcome: Outcome, summary: string): Omit<ReactionResult, 'reaction'> => ({ rng, combat, outcome, summary, chart, warriors });
 
   // Hostile: strong enough to attack? d6 × askaris ÷ policy against the warriors.
-  const strength = Math.floor((roll('strength') * chart.askaris) / input.policy);
+  const strength = Math.floor((roll('strength', { what: "for the natives' nerve", hint: `the die × ${chart.askaris} askaris ÷ policy ${input.policy} over ${warriors} warriors and they hide` }) * chart.askaris) / input.policy);
   if (strength > warriors) return done('hide', `hostile, but the natives hide from the expedition (${strength} against ${warriors} warriors)`);
   const notes: string[] = ['hostile: the natives attack'];
   const original = chart.askaris;
 
   // Surprise: two dice, mounted or desert adjustments, under the policy number means surprised.
-  const s2 = dice(rng, 2, 'combat');
+  const s2 = dice(rng, 2, 'combat', { what: 'for surprise', hint: `${input.policy}+ ${!input.inDesert && input.mounted ? 'with 1 for riding ' : input.inDesert && !input.mounted ? 'less 1 on foot in the desert ' : ''}and the expedition is ready` });
   rng = s2.state;
   s2.values.forEach((value) => combat.push({ label: 'surprise', value }));
   let surprise = s2.values[0] + s2.values[1];
@@ -93,23 +93,23 @@ export function hostilities(rng: RngState, input: ReactionInput): Omit<ReactionR
     warriors -= killed;
     notes.push(`the volley kills ${killed}`);
     if (warriors === 0) { notes.push('the natives are destroyed'); return done('victory', notes.join('; ')); }
-    const morale = roll('driven off?') * killed;
+    const morale = roll('driven off?', { what: 'to drive them off', hint: `the die × ${killed} killed over ${warriors} warriors drives them off` }) * killed;
     if (morale > warriors) { notes.push('the natives are driven off'); return done('victory', notes.join('; ')); }
     notes.push('they close in');
   } else notes.push('the expedition is surprised');
 
   // Melee: the natives strike, then the askaris, until one side is finished.
   for (let round = 0; round < 50; round++) {
-    const casualties = Math.min(chart.askaris, Math.floor(warriors / roll('natives strike')));
+    const casualties = Math.min(chart.askaris, Math.floor(warriors / roll('natives strike', { what: "for the natives' strike", hint: `${warriors} warriors ÷ the die askaris fall` })));
     chart.askaris -= casualties;
     if (casualties) notes.push(`${casualties} askari${casualties > 1 ? 's fall' : ' falls'}`);
     if (chart.askaris === 0) { notes.push('every askari is dead: defeat'); return done('defeat', notes.join('; ')); }
-    if (casualties > 0 && roll('askaris break?') * casualties > original) { notes.push('the askaris break and run: defeat'); return done('defeat', notes.join('; ')); }
-    const slain = Math.min(warriors, Math.floor(chart.askaris / roll('askaris strike')) + 1);
+    if (casualties > 0 && roll('askaris break?', { what: 'to see if the askaris break', hint: `the die × ${casualties} fallen over ${original} and they run` }) * casualties > original) { notes.push('the askaris break and run: defeat'); return done('defeat', notes.join('; ')); }
+    const slain = Math.min(warriors, Math.floor(chart.askaris / roll('askaris strike', { what: "for the askaris' strike", hint: `${chart.askaris} askaris ÷ the die, plus one, warriors fall` })) + 1);
     warriors -= slain;
     notes.push(`${slain} warrior${slain > 1 ? 's fall' : ' falls'}`);
     if (warriors === 0) { notes.push('the natives are destroyed'); return done('victory', notes.join('; ')); }
-    if (roll('natives break?') * slain > warriors) { notes.push('the natives are driven off'); return done('victory', notes.join('; ')); }
+    if (roll('natives break?', { what: 'to see if the natives break', hint: `the die × ${slain} fallen over ${warriors} warriors drives them off` }) * slain > warriors) { notes.push('the natives are driven off'); return done('victory', notes.join('; ')); }
   }
   return done('defeat', notes.join('; '));
 }

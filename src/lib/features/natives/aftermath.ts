@@ -3,7 +3,7 @@
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
 import type { Roll } from '$features/map/generate';
 import type { Terrain } from '$features/map/manifest';
-import { d6, dice, type RngState } from '$lib/game/random';
+import { d6, dice, type DiceAsk, type RngState } from '$lib/game/random';
 
 export type Fate = 'killed' | 'prisoner' | 'alone' | 'musket' | 'one-roll' | 'two-rolls';
 
@@ -33,15 +33,15 @@ export function fateOf(total: number): Fate {
  * One die (less three for a captive's escape attempt) on the consequences-of-defeat table. Survival
  * rolls yield only what the expedition had (`had`), re-rolling impossible results.
  */
-export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0): DefeatResult {
+export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0, seat?: string): DefeatResult {
   const rolls: Roll[] = [];
-  const roll = (label: string) => {
-    const r = d6(rng, 'combat');
+  const roll = (label: string, ask: DiceAsk = { what: `for ${label}`, seat }) => {
+    const r = d6(rng, 'combat', ask);
     rng = r.state;
     rolls.push({ label, value: r.value });
     return r.value;
   };
-  const die = roll(modifier ? 'escape' : 'defeat');
+  const die = roll(modifier ? 'escape' : 'defeat', { what: modifier ? 'for an escape' : 'on the consequences of defeat', hint: `${modifier ? `with ${modifier > 0 ? '+' : '−'}${Math.abs(modifier)}: ` : ''}1 killed, 2 prisoner, 3 escapes alone, 4 a musket and rations, 5 and 6 survival rolls`, seat });
   const fate = fateOf(die + modifier);
   const chart: Chart = { ...EMPTY };
   const notes: string[] = [];
@@ -57,7 +57,7 @@ export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0): D
       for (let i = 0; i < tries; i++) {
         let item: (typeof ITEMS)[number] | null = null;
         for (let attempt = 0; attempt < 12 && !item; attempt++) {
-          const candidate = ITEMS[roll('survival') - 1];
+          const candidate = ITEMS[roll('survival', { what: 'on the survival table', hint: '1 guide, 2 bearer, 3 askari, 4 camel, 5 horse, 6 canoe', seat }) - 1];
           if (had[candidate] > 0) item = candidate;
         }
         if (!item) { notes.push('nothing more to be found'); continue; }
@@ -65,7 +65,7 @@ export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0): D
         const noun = item.slice(0, -1);
         let note = `${/^[aeiou]/.test(noun) ? 'an' : 'a'} ${noun}`;
         if (LOADED.has(item)) {
-          const load = roll('load');
+          const load = roll('load', { what: `for what the ${noun} carries`, hint: '1–3 rations, 4–5 gifts, 6 muskets', seat });
           if (load <= 3) { chart.food += 10; note += ' with 10 rations'; }
           else if (load <= 5) { chart.gifts += 10; note += ' with 10 gifts'; }
           else { chart.muskets += 10; note += ' with 10 muskets'; }
@@ -89,12 +89,12 @@ export interface VictoryResult {
 
 /** Prisoners (surviving askaris less a die, at most the surviving warriors) and the search for the village. */
 export function resultsOfVictory(rng: RngState, askaris: number, warriors: number, policy: number): VictoryResult {
-  const p = d6(rng, 'combat');
+  const p = d6(rng, 'combat', { what: 'for prisoners', hint: `${askaris} askaris less the die; 6 takes none` });
   rng = p.state;
   const rolls: Roll[] = [{ label: 'prisoners', value: p.value }];
   const noQuarter = p.value === 6;
   const prisoners = noQuarter ? 0 : Math.min(Math.max(0, askaris - p.value), warriors);
-  const v = dice(rng, 2, 'combat');
+  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it` });
   rng = v.state;
   v.values.forEach((value) => rolls.push({ label: 'village', value }));
   const villageFound = v.values[0] + v.values[1] <= prisoners + policy;
@@ -103,8 +103,8 @@ export function resultsOfVictory(rng: RngState, askaris: number, warriors: numbe
 }
 
 /** Another search for the village on a later turn (rules §8.4). */
-export function searchVillage(rng: RngState, prisoners: number, policy: number): { rng: RngState; rolls: Roll[]; found: boolean } {
-  const v = dice(rng, 2, 'combat');
+export function searchVillage(rng: RngState, prisoners: number, policy: number, seat?: string): { rng: RngState; rolls: Roll[]; found: boolean } {
+  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it`, seat });
   return { rng: v.state, rolls: v.values.map((value) => ({ label: 'village', value })), found: v.values[0] + v.values[1] <= prisoners + policy };
 }
 
@@ -120,7 +120,7 @@ export interface LootResult {
 
 /** One die per original warrior: 1–4 that many rations, 5 a gift, 6 a camel in the desert or a canoe on water. */
 export function loot(rng: RngState, original: number, terrain: Terrain | null, water: boolean): LootResult {
-  const r = dice(rng, original, 'combat');
+  const r = dice(rng, original, 'combat', { what: 'for the loot', hint: `one die a warrior: 1–4 that many rations, 5 a gift, 6 ${terrain === 'desert' ? 'a camel' : water ? 'a canoe' : 'nothing'}` });
   let rations = 0, gifts = 0, camels = 0, canoes = 0;
   for (const v of r.values) {
     if (v <= 4) rations += v;

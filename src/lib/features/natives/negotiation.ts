@@ -2,6 +2,7 @@
 import type { Item } from '$features/expedition/prices';
 import type { Roll } from '$features/map/generate';
 import { d6, dice, type RngState } from '$lib/game/random';
+import { okayFrom } from '$features/dice/prompt';
 
 export interface OfferResult {
   rng: RngState;
@@ -12,7 +13,7 @@ export interface OfferResult {
 
 /** Gifts offered times the larger of two dice must reach the tribe's warriors, or the chief is insulted. */
 export function offerGifts(rng: RngState, gifts: number, warriors: number): OfferResult {
-  const two = dice(rng, 2, 'combat');
+  const two = dice(rng, 2, 'combat', { what: `for the offer of ${gifts} gift${gifts === 1 ? '' : 's'}`, hint: `the larger die times ${gifts} must reach ${warriors} warriors` });
   const larger = Math.max(...two.values);
   const satisfied = gifts * larger >= warriors;
   return {
@@ -25,14 +26,14 @@ export function offerGifts(rng: RngState, gifts: number, warriors: number): Offe
 
 /** Giving everything but the men always satisfies; the chief returns three dice of gifts. */
 export function giveEverything(rng: RngState): { rng: RngState; rolls: Roll[]; gifts: number } {
-  const three = dice(rng, 3, 'combat');
+  const three = dice(rng, 3, 'combat', { what: "for the chief's gifts in return", hint: 'the total in gifts' });
   return { rng: three.state, rolls: three.values.map((value) => ({ label: 'chief’s gifts', value })), gifts: three.values.reduce((a, b) => a + b, 0) };
 }
 
 export type PoisonResult = 'dies' | 'recovers' | 'fails';
 
 export function attemptPoison(rng: RngState, bonus: number): { rng: RngState; rolls: Roll[]; result: PoisonResult; summary: string } {
-  const r = d6(rng, 'combat');
+  const r = d6(rng, 'combat', { what: "for the chief's poison", hint: okayFrom(4 - bonus, 'you shrug it off', 'it takes hold') });
   const total = r.value + bonus;
   const result: PoisonResult = total <= 2 ? 'dies' : total === 3 ? 'recovers' : 'fails';
   const summary = result === 'dies' ? 'the chief’s poison kills the explorer' : result === 'recovers' ? 'poisoned, the explorer recovers (hardened against the next attempt)' : 'the chief’s poisoning attempt fails';
@@ -57,7 +58,7 @@ export function tradeGoods(ctx: TradeContext): Item[] {
 /** One die per item for sale, this tribe, this turn. */
 export function tradePrices(rng: RngState, ctx: TradeContext): { rng: RngState; rolls: Roll[]; prices: Partial<Record<Item, number>> } {
   const goods = tradeGoods(ctx);
-  const r = dice(rng, goods.length, 'combat');
+  const r = dice(rng, goods.length, 'combat', { what: `for the prices of ${goods.join(', ')}`, hint: 'one die each, in gifts' });
   const prices: Partial<Record<Item, number>> = {};
   goods.forEach((item, i) => (prices[item] = r.values[i]));
   return { rng: r.state, rolls: goods.map((item, i) => ({ label: `price of ${item}`, value: r.values[i] })), prices };

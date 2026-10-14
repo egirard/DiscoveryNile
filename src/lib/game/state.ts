@@ -1,5 +1,6 @@
 import type { SeatId } from '$lib/tabletop/seats';
-import type { RngState } from './random';
+import type { RngState, Stream } from './random';
+import type { GameEvent } from './events';
 import type { CardId } from '$features/cards/deck';
 import type { PortId } from '$features/map/manifest';
 import type { Chart, Item } from '$features/expedition/prices';
@@ -273,7 +274,24 @@ export interface GameState {
    * ended no turn (docs/tabletop-ux.md: an undo within the same turn). `before` is the state it was applied to.
    */
   undo: { eventId: string; seat: SeatId; type: string; before: GameState } | null;
+  /** The event waiting for physical dice, if any; every other event is refused until the roll is in. */
+  awaiting: AwaitingDice | null;
   diagnostics: Diagnostic[];
+}
+
+/**
+ * The game stands at a roll of physical dice (PROMPTS.md, prompt 18): `event` is held until the seat
+ * named has rolled `count` dice, which arrive as `dice/rolled`; `rolled` lists the throws already made
+ * for this same event, so the table can show them while it asks for the next.
+ */
+export interface AwaitingDice {
+  event: GameEvent;
+  seat: SeatId;
+  stream: Stream;
+  count: number;
+  /** What the table asks, e.g. "Roll a D6 to see if you are lost; 4+ means you're okay". */
+  prompt: string;
+  rolled: { prompt: string; values: number[] }[];
 }
 
 export interface GameEnd {
@@ -284,5 +302,5 @@ export interface GameEnd {
 }
 
 export function initialState(): GameState {
-  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, history: [], map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, diagnostics: [] };
+  return { gameId: null, hostUid: null, seats: [], explorers: [], rng: null, rollOff: null, turn: null, deck: null, history: [], map: {}, tribes: {}, caches: {}, scores: {}, superlatives: [], transits: [], parties: {}, endVotes: [], ended: null, games: 0, undo: null, awaiting: null, diagnostics: [] };
 }

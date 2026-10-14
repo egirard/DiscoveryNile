@@ -40,7 +40,7 @@ export function drawDisaster(state: GameState, e: ExplorerState): GameState {
   }
   const [top, ...rest] = draw as CardId[];
   const situation = situationOf(state, e)!;
-  const result = resolveDisaster(rng, card(top), situation, { chart: e.chart!, sick: e.sick, specialties: e.specialties });
+  const result = resolveDisaster(rng, card(top), situation, { chart: e.chart!, sick: e.sick, specialties: e.specialties }, e.seat);
   const record: RollRecord = { kind: 'disaster', seat: e.seat, hex: (e.location as { hex: string }).hex as RollRecord['hex'], card: top, applies: result.applies, rolls: result.rolls, outcome: result.outcome };
   const next: ExplorerState = { ...e, chart: result.chart, sick: result.sick };
   const turn = state.turn!;

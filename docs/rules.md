@@ -228,7 +228,7 @@ Players may pool money (not tickets) and move as one expedition on the last memb
 
 These are not in the rules; they are recorded so the code and the plan agree.
 
-- **D-1 Dice are seeded.** Every roll comes from the game's seeded PRNG in rule order; events carry choices, never outcomes. Rolls are displayed as dice faces at the acting seat so the game stays legible as a dice game.
+- **D-1 Dice are seeded.** Every roll comes from the game's seeded PRNG in rule order; events carry choices, never outcomes. Rolls are displayed as dice faces at the acting seat so the game stays legible as a dice game. With **physical dice** switched on (options screen, [dicecam.md](dicecam.md)), the generator rolls nothing: the game stops at each roll, the seat whose roll it is reads what to roll and why, and the throw, read by the dicecam or tapped in, is recorded as a `dice/rolled` event before the rule goes on, so a replay gives the same game.
 - **D-2 No hidden information.** Donations are face up by rule and the map is shared by rule; private-to-explorer knowledge (oases, cataracts, native mood, "known" hexes) is tracked per explorer and enforced by the reducer, but displayed on the table as the physical board does. No phones are required.
 - **D-3 Up to six explorers.** The rules give no maximum; the table offers six seats (two on each long edge, one on each short edge). `RQ-9`.
 - **D-4 Game length.** The table records an agreed round limit at start (default: none, ended by consensus from the table). `RQ-10`.

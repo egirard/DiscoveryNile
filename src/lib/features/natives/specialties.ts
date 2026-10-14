@@ -30,7 +30,7 @@ export function geologyFinds(terrain: Terrain, river: boolean): number[] {
 
 export function study(rng: RngState, specialty: 'zoology' | 'geology', terrain: Terrain, river: boolean, oasis: boolean): { rng: RngState; rolls: Roll[]; found: boolean; summary: string } {
   const finds = specialty === 'zoology' ? zoologyFinds(terrain, river || oasis) : geologyFinds(terrain, river);
-  const r = d6(rng, 'specialty');
+  const r = d6(rng, 'specialty', { what: `for a ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen`, hint: finds.length ? `a specimen on ${finds.join(', ')}` : 'nothing to find here' });
   const found = finds.includes(r.value);
   return { rng: r.state, rolls: [{ label: specialty, value: r.value }], found, summary: found ? `a ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen is found` : `no ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen here` };
 }
@@ -46,7 +46,7 @@ export interface PreachResult {
 
 /** The missionary preaches: one die (rules §9). */
 export function preach(rng: RngState): PreachResult {
-  const r = d6(rng, 'specialty');
+  const r = d6(rng, 'specialty', { what: 'for the preaching', hint: '1 jeers, 2 ignores, 3 listens, 4 applauds, 5 the witch doctor converts, 6 the chief' });
   const table: Record<number, [number, number, string]> = {
     1: [0, 0, 'the natives jeer and taunt'],
     2: [1, 0, 'the natives ignore him'],
@@ -67,7 +67,7 @@ export interface TreatResult extends PreachResult {
 
 /** The doctor treats the tribe: one die, −1 without the chief's permission (in captivity) (rules §9). */
 export function treat(rng: RngState, captive: boolean): TreatResult {
-  const r = d6(rng, 'specialty');
+  const r = d6(rng, 'specialty', { what: 'for the treatment', hint: `${captive ? 'less 1 in captivity: ' : ''}1 a fatal disease, 2 sick, 3 the epidemic spreads, 4 nothing, 5 minor cases, 6 major cases` });
   const v = r.value - (captive ? 1 : 0);
   const base = { rng: r.state, rolls: [{ label: 'medicine', value: r.value }], attitude: 0, poisonAttempts: 0, explorerDies: false, explorerSick: false, points: 0 };
   if (v <= 1) return { ...base, explorerDies: true, summary: 'the explorer contracts a strange disease and dies' };

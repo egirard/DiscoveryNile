@@ -35,15 +35,44 @@ export function shuffle<T>(items: readonly T[], random: Random): T[] {
 /** The stream a roll belongs to. */
 export type Stream = 'main' | 'hunting' | 'water' | 'natives' | 'combat' | 'sickness' | 'specialty' | 'cache';
 
+/**
+ * What a roll is for, in the words the table uses to ask for it when the dice are physical
+ * (PROMPTS.md, prompt 18): "Roll a D6 {what}; {hint}". `seat` names the roller when it is not
+ * the seat that sent the event (the roll for first player, a disaster at the start of a turn).
+ */
+export interface DiceAsk {
+  what: string;
+  hint?: string;
+  seat?: string;
+}
+
+/**
+ * Thrown by `d6` and `dice` when the game's dice are physical and no value has been rolled yet:
+ * the reducer holds the event and the table asks the seat to roll. Nothing has been changed when
+ * it is thrown, the reducers being pure, so the event is simply applied again once the dice are in.
+ */
+export class DiceNeeded extends Error {
+  constructor(
+    public readonly stream: Stream,
+    public readonly count: number,
+    public readonly ask: DiceAsk
+  ) {
+    super(`${count} physical ${count === 1 ? 'die' : 'dice'} needed on the ${stream} stream ${ask.what}`);
+    this.name = 'DiceNeeded';
+  }
+}
+
 export interface RngObject {
   seed: number;
   /** The main stream's generator state. */
   state: number;
   /** Other streams' generator states, created on first use. */
   streams: Partial<Record<Stream, number>>;
-  /** Scripted die values per stream, consumed by `d6` before the generator (tests and scenarios). */
+  /** Scripted die values per stream, consumed by `d6` before the generator (tests and scenarios), and the physical dice as they are rolled. */
   scripts: Partial<Record<Stream, number[]>>;
   next: Partial<Record<Stream, number>>;
+  /** The dice are rolled at the table: a roll with no value scripted asks for one instead of drawing from the generator. */
+  physical?: boolean;
 }
 
 /** Either the bare 32-bit state of the main stream, or the full form with streams and scripts. */
@@ -92,26 +121,75 @@ export function nextRandom(state: RngState, stream: Stream = 'main'): { state: R
   return { state: withRaw(state, stream, a), value: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
 }
 
-/** One six-sided die from a stream: the next scripted value for that stream if any, else from its generator. */
-export function d6(state: RngState, stream: Stream = 'main'): { state: RngState; value: number } {
+const UNNAMED: DiceAsk = { what: 'for the game' };
+
+/** Scripted values not yet consumed on a stream. */
+function scriptedLeft(state: RngState, stream: Stream): number {
+  if (typeof state === 'number') return 0;
+  return (state.scripts[stream]?.length ?? 0) - (state.next[stream] ?? 0);
+}
+
+/**
+ * One six-sided die from a stream: the next scripted value for that stream if any, else from its generator.
+ * With physical dice (`physical`), a stream with nothing scripted asks the table instead (`DiceNeeded`).
+ */
+export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; value: number } {
   if (typeof state !== 'number') {
     const script = state.scripts[stream];
     const i = state.next[stream] ?? 0;
     if (script && i < script.length) return { state: { ...state, next: { ...state.next, [stream]: i + 1 } }, value: script[i] };
+    if (state.physical) throw new DiceNeeded(stream, 1, ask);
   }
   const r = nextRandom(state, stream);
   return { state: r.state, value: 1 + Math.floor(r.value * 6) };
 }
 
-/** Several dice, in order. */
-export function dice(state: RngState, count: number, stream: Stream = 'main'): { state: RngState; values: number[] } {
+/** Several dice, in order; with physical dice they are asked for together, as one throw. */
+export function dice(state: RngState, count: number, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; values: number[] } {
+  if (typeof state !== 'number' && state.physical && scriptedLeft(state, stream) < count) throw new DiceNeeded(stream, count, ask);
   const values: number[] = [];
   for (let i = 0; i < count; i++) {
-    const r = d6(state, stream);
+    const r = d6(state, stream, ask);
     state = r.state;
     values.push(r.value);
   }
   return { state, values };
+}
+
+// ---- Physical dice ---------------------------------------------------------------------------
+
+function asObject(state: RngState): RngObject {
+  return typeof state === 'number' ? { seed: state, state, streams: {}, scripts: {}, next: {} } : state;
+}
+
+/** Whether the game's dice are rolled at the table. */
+export function isPhysical(state: RngState | null): boolean {
+  return typeof state === 'object' && state !== null && state.physical === true;
+}
+
+/** Turn physical dice on or off; the generator keeps its place either way. */
+export function withPhysical(state: RngState, on: boolean): RngState {
+  const o = asObject(state);
+  if (on) return { ...o, physical: true };
+  const { physical: _off, ...rest } = o;
+  void _off;
+  return rest;
+}
+
+/** Add dice rolled at the table to a stream's script, after anything already there, so the next draws read them in order. */
+export function withRolled(state: RngState, stream: Stream, values: number[]): RngState {
+  const o = asObject(state);
+  return { ...o, scripts: { ...o.scripts, [stream]: [...(o.scripts[stream] ?? []), ...values] } };
+}
+
+/** Drop the physical dice a finished event consumed, so the state does not carry every roll of the game. */
+export function settled(state: RngState): RngState {
+  if (typeof state === 'number' || !state.physical) return state;
+  const used = Object.entries(state.next).filter(([, n]) => (n ?? 0) > 0);
+  if (used.length === 0) return state;
+  const scripts = { ...state.scripts };
+  for (const [stream, n] of used) scripts[stream as Stream] = (scripts[stream as Stream] ?? []).slice(n);
+  return { ...state, scripts, next: {} };
 }
 
 /** Fisher–Yates with the serialisable PRNG, always on the main stream. */

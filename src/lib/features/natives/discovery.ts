@@ -29,15 +29,15 @@ export interface DiscoveryResult {
 export function discoverNatives(rng: RngState, terrain: Terrain, water: boolean, hex: HexId): { rng: RngState; result: DiscoveryResult } {
   const on = nativesOn(terrain, water);
   if (on.length === 0) return { rng, result: { rolls: [], found: false, warriors: 0 } };
-  const two = dice(rng, 2, 'natives');
+  const two = dice(rng, 2, 'natives', { what: 'for natives', hint: `natives on ${on.join(', ')}` });
   rng = two.state;
   const rolls: Roll[] = two.values.map((value) => ({ label: 'natives', value }));
   const found = on.includes(two.values[0] + two.values[1]);
   if (!found) return { rng, result: { rolls, found, warriors: 0 } };
-  const three = dice(rng, 3, 'natives');
+  const cap = distanceToNearestPort(hex);
+  const three = dice(rng, 3, 'natives', { what: 'for the warriors', hint: `the product, the largest die no more than ${cap}` });
   rng = three.state;
   three.values.forEach((value) => rolls.push({ label: 'warriors', value }));
-  const cap = distanceToNearestPort(hex);
   const sorted = [...three.values].sort((a, b) => b - a);
   sorted[0] = Math.min(sorted[0], cap);
   return { rng, result: { rolls, found, warriors: sorted[0] * sorted[1] * sorted[2] } };

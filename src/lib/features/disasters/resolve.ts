@@ -7,7 +7,7 @@ import type { Specialty, Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
 import { hasPart } from '$features/map/generate';
 import type { Roll } from '$features/map/generate';
-import { d6, dice as rollDice, type RngState } from '$lib/game/random';
+import { d6, dice as rollDice, type DiceAsk, type RngState } from '$lib/game/random';
 
 /** The expedition's circumstances when the card is drawn. */
 export interface Situation {
@@ -68,12 +68,13 @@ class Resolver {
   sick: Sickness;
   halted = false;
   explorerDies = false;
-  constructor(public rng: RngState, party: Party, private specialties: Specialty[]) {
+  constructor(public rng: RngState, party: Party, private specialties: Specialty[], private seat?: string) {
     this.chart = { ...party.chart };
     this.sick = { ...party.sick };
   }
-  private roll(label: string): number {
-    const r = d6(this.rng);
+  /** The card is drawn at the start of the explorer's turn by the previous seat's `turn/ended`: the ask names him. */
+  private roll(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
+    const r = d6(this.rng, 'main', { ...ask, seat: this.seat });
     this.rng = r.state;
     this.rolls.push({ label, value: r.value });
     return r.value;
@@ -82,14 +83,14 @@ class Resolver {
   shoot(label: string): number {
     let kills = 0;
     const explorerHits = this.specialties.includes('zoology') ? 5 : 6;
-    if (this.roll(`${label}: explorer`) >= explorerHits) kills++;
-    for (let i = 0; i < this.chart.askaris; i++) if (this.roll(`${label}: askari`) === 6) kills++;
+    if (this.roll(`${label}: explorer`, { what: `for the explorer's shot (${label})`, hint: `${explorerHits}+ kills` }) >= explorerHits) kills++;
+    for (let i = 0; i < this.chart.askaris; i++) if (this.roll(`${label}: askari`, { what: `for an askari's shot (${label})`, hint: '6 kills' }) === 6) kills++;
     return kills;
   }
   /** A doctor's 6 averts sickness, poison and snakebite. */
   doctorAverts(): boolean {
     if (!this.specialties.includes('medicine')) return false;
-    const v = this.roll('doctor');
+    const v = this.roll('doctor', { what: 'for the doctor', hint: '6 averts it' });
     if (v === 6) this.notes.push('averted by the doctor');
     return v === 6;
   }
@@ -159,8 +160,8 @@ class Resolver {
     }
     this.notes.push(`${plural(Math.min(n, canoes), 'canoe')} overturned`);
   }
-  twoDice(label: string): number {
-    const r = rollDice(this.rng, 2);
+  twoDice(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
+    const r = rollDice(this.rng, 2, 'main', { ...ask, seat: this.seat });
     this.rng = r.state;
     r.values.forEach((v) => this.rolls.push({ label, value: v }));
     return r.values[0] + r.values[1];
@@ -177,8 +178,8 @@ const MEN_ALL: readonly (keyof Chart & string)[] = ['bearers', 'askaris', 'guide
 const ANIMALS: readonly (keyof Chart & string)[] = ['camels', 'horses'];
 const GOODS: readonly (keyof Chart & string)[] = ['canoes', 'muskets', 'food', 'gifts', 'water'];
 
-export function resolveDisaster(rng: RngState, card: Card, situation: Situation, party: Party): DisasterResult {
-  const r = new Resolver(rng, party, party.specialties);
+export function resolveDisaster(rng: RngState, card: Card, situation: Situation, party: Party, seat?: string): DisasterResult {
+  const r = new Resolver(rng, party, party.specialties, seat);
   const done = (applies: boolean, outcome?: string): DisasterResult => ({
     rng: r.rng, applies, outcome: outcome ?? (r.notes.join(', ') || 'no effect'), rolls: r.rolls, chart: r.chart, sick: r.sick, halted: r.halted, explorerDies: r.explorerDies
   });
@@ -200,7 +201,7 @@ export function resolveDisaster(rng: RngState, card: Card, situation: Situation,
     case 13: { const shot = r.shoot('crocodile'); if (shot >= 4) r.notes.push('all four crocodiles shot: the askari is saved'); else { r.notes.push(`${plural(shot, 'crocodile')} shot`); r.kill('askaris', 1); } break; }
     case 14: { const stay = Math.max(0, r.chart.bearers - r.chart.askaris); r.chart.bearers -= stay; r.notes.push(stay ? `${plural(stay, 'bearer')} refuse to go on and desert` : 'the askaris keep every bearer in line'); break; }
     case 15: r.halve(ANIMALS, 'lost in the sandstorm'); if (!r.notes.length) r.notes.push('no animals to lose'); break;
-    case 16: { const toll = r.twoDice('toll'); if (r.chart.gifts >= toll) { r.chart.gifts -= toll; r.notes.push(`toll of ${toll} gifts paid`); } else r.notes.push(`toll of ${toll} gifts cannot be paid: the raiders attack (combat arrives with slice 017)`); break; }
+    case 16: { const toll = r.twoDice('toll', { what: 'for the toll', hint: 'in gifts' }); if (r.chart.gifts >= toll) { r.chart.gifts -= toll; r.notes.push(`toll of ${toll} gifts paid`); } else r.notes.push(`toll of ${toll} gifts cannot be paid: the raiders attack (combat arrives with slice 017)`); break; }
     case 17: r.kill('askaris', 4); break;
     case 18: return done(true, 'the oasis is poisoned (the poisoning table arrives with slice 019)');
     case 19: if (!r.geologistSafe()) { r.halve(MEN_ALL, 'lost'); r.halve(ANIMALS, 'lost'); r.halve(GOODS, 'lost'); r.chart.water = Math.max(r.chart.water, 0); r.notes.push('plenty of water found'); } break;
@@ -227,10 +228,10 @@ export function resolveDisaster(rng: RngState, card: Card, situation: Situation,
     case 40: sickness(() => r.sicken('bearers', 4)); break;
     case 41: r.halted = true; r.notes.push('bad omens: the bearers will not leave camp this turn'); break;
     case 42: r.kill('guides', 1); break;
-    case 43: { const raiders = r.twoDice('raiders') ; const shot = r.shoot('raider'); const stolen = Math.max(0, Math.min(raiders, r.chart.camels + r.chart.horses) - shot); r.notes.push(`${plural(shot, 'raider')} shot`); r.loseAnimals(stolen, 'animal'); if (!stolen) r.notes.push('no animal stolen'); break; }
+    case 43: { const raiders = r.twoDice('raiders', { what: 'for the raiders', hint: 'how many animals they are after' }); const shot = r.shoot('raider'); const stolen = Math.max(0, Math.min(raiders, r.chart.camels + r.chart.horses) - shot); r.notes.push(`${plural(shot, 'raider')} shot`); r.loseAnimals(stolen, 'animal'); if (!stolen) r.notes.push('no animal stolen'); break; }
     case 44: r.kill('askaris', 1); break;
     case 45: sickness(() => r.sicken('bearers', 1)); break;
-    case 46: { const roll = d6(r.rng); r.rng = roll.state; r.rolls.push({ label: 'defeat', value: roll.value }); return done(true, `the camp is destroyed: defeat roll ${roll.value} + 2 (the consequences of defeat table arrives with slice 018)`); }
+    case 46: { const roll = d6(r.rng, 'main', { what: 'on the consequences of defeat', hint: 'plus 2: 3 escapes alone, 4 a musket and rations, 5 and 6 survival rolls', seat }); r.rng = roll.state; r.rolls.push({ label: 'defeat', value: roll.value }); return done(true, `the camp is destroyed: defeat roll ${roll.value} + 2 (the consequences of defeat table arrives with slice 018)`); }
     case 47: if (!r.doctorAverts()) r.kill('bearers', 1); break;
     case 48: r.kill('bearers', 1); break;
     default: return done(true, 'no effect');

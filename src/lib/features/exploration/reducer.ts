@@ -79,7 +79,7 @@ export function oasisSearchable(m: MappedHex, seat: string): boolean {
 
 /** One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). */
 export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[] } {
-  const r = d6(rng, 'water');
+  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'an even roll finds it, if there is one to find', seat });
   const found = m.oasis && r.value % 2 === 0;
   return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }] };
 }
@@ -243,7 +243,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       // Canoes first discovering a cataract going downstream: d6 − 3 canoes go over the falls (rules §7.5).
       let nextChart = chart;
       if (mode === 'canoe' && newlyMapped && map[target].river?.cataract && riverDirection(courseAt(state, from), directionTo(from, target) as Direction) === 'downstream') {
-        const r = d6(rng);
+        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: 'each point over 3 loses a canoe' });
         rng = r.state;
         const lostCanoes = Math.min(chart.canoes, Math.max(0, r.value - 3));
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };

@@ -6,7 +6,7 @@
   import type { GameState, LoggedTurn } from '$lib/game/state';
   import { initialState } from '$lib/game/state';
   import SeatRail from '$features/seats/SeatRail.svelte';
-  import { seatsFor, type Seat } from '$lib/tabletop/seats';
+  import { rotationFor, seatsFor, type Seat } from '$lib/tabletop/seats';
   import { mmPerPx, pxFor, readDiagonalInches, screenGeometry, writeDiagonalInches } from '$lib/tabletop/screen';
   import OptionsPanel from '$lib/tabletop/OptionsPanel.svelte';
   import { attachTooltips } from '$lib/ui/tooltips';
@@ -45,6 +45,10 @@
   import { SEAT_LAYOUT } from '$lib/game/config';
   import type { Specialty } from '$lib/game/state';
   import type { SeatId } from '$lib/tabletop/seats';
+  import DicePrompt from '$features/dice/DicePrompt.svelte';
+  import DicecamDock from '$features/dice/DicecamDock.svelte';
+  import { consider, watching, type DicecamMessage, type DicecamStatus, type Watch } from '$features/dice/dicecam';
+  import { isPhysical } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
   const seats = seatsFor(layout);
@@ -248,6 +252,54 @@
   // Retiring: a tap on one's own explorer at the rail during one's turn asks for confirmation at the edge (rules §12).
   // The options screen: opened from the gear at the north-west or south-east corner and turned toward it.
   let options = $state<'nw' | 'se' | null>(null);
+
+  // Physical dice (PROMPTS.md, prompt 18): the reducer holds an event at a roll and names the seat to roll; the
+  // dicecam, a WebCamTool page in a frame (docs/dicecam.md), reports the tray, and two readings that agree send
+  // the throw as `dice/rolled`; a tapped face does the same. The frame is on for the whole game, in a corner.
+  const DICECAM_URL: string = import.meta.env.VITE_DICECAM_URL ? (String(import.meta.env.VITE_DICECAM_URL).startsWith('/') ? `${base}${import.meta.env.VITE_DICECAM_URL}` : String(import.meta.env.VITE_DICECAM_URL)) : '';
+  const physical = $derived(isPhysical(gameState.rng));
+  const awaiting = $derived(gameState.awaiting);
+  const awaitingSeat = $derived(awaiting ? (seats.find((s) => s.id === awaiting.seat) ?? null) : null);
+  // The dicecam frame never moves in the DOM (that would reload it); it parks in the south-west corner and, while a
+  // roll is asked, comes to the middle of the board turned toward the seat that rolls, over the dimmed table.
+  const dockW = $derived(target * 7);
+  const dockH = $derived(target * 4.7);
+  const dockPlace = $derived.by(() => {
+    if (awaitingSeat) {
+      const cx = (inset.left + viewport.w - inset.right) / 2;
+      const cy = (inset.top + viewport.h - inset.bottom) / 2;
+      return { x: cx - dockW / 2, y: cy - dockH / 2, rotation: rotationFor(awaitingSeat.edge), centred: true };
+    }
+    return { x: inset.left + target * 0.4, y: viewport.h - inset.bottom - target * 0.4 - dockH, rotation: 0, centred: false };
+  });
+  let dicecamStatus = $state<DicecamStatus>('connecting');
+  let dicecamSeen = $state<number | null>(null);
+  let watch: Watch | null = null;
+  let lastThrow: string | null = null;
+  $effect(() => {
+    // Each ask watches afresh; the throw the last ask took is still in the tray and must not be read twice.
+    watch = awaiting ? watching(awaiting.count, lastThrow) : null;
+    dicecamSeen = null;
+  });
+  function onDicecam(m: DicecamMessage) {
+    if (m.dicecam === 'ready') { if (dicecamStatus === 'connecting') dicecamStatus = 'initializing'; }
+    else if (m.dicecam === 'camera') dicecamStatus = m.status;
+    else if (m.dicecam === 'rolling') dicecamSeen = 0;
+    else if (m.dicecam === 'removed') dicecamSeen = m.remaining;
+    else if (m.dicecam === 'settled') {
+      if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
+      const judged = consider(watch, m);
+      watch = judged.watch;
+      dicecamSeen = judged.seen;
+      if (judged.accept) { lastThrow = m.rollId; watch = null; rolled(awaiting.seat, judged.accept); }
+    }
+  }
+  async function rolled(seat: string, values: number[]) {
+    await game?.append('dice/rolled', { seat, values });
+  }
+  async function toggleDice(on: boolean) {
+    await game?.append('dice/physical', { on });
+  }
   function setDiagonal(inches: number) {
     diagonal = inches;
     writeDiagonalInches(inches);
@@ -375,6 +427,19 @@
 
   {#if gameState.ended}
     <GameOver ended={gameState.ended} game={gameState.games + 1} oncontinue={() => game?.append('game/continued', {})} />
+  {/if}
+
+  {#if awaiting && awaitingSeat}
+    <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
+    <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
+    <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
+    </EdgePanel>
+  {/if}
+  {#if physical && DICECAM_URL}
+    <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
+      <DicecamDock url={DICECAM_URL} status={dicecamStatus} onmessage={onDicecam} />
+    </div>
   {/if}
 
   {#if outfitting}
@@ -588,7 +653,7 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
   </button>
   {#if options}
-    <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} onend={endByAgreement} />
+    <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} {physical} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} ontoggledice={toggleDice} onend={endByAgreement} />
   {/if}
   <p class="build" data-testid="build-marker">{__GIT_HASH__.slice(0, 7)}</p>
 </main>
@@ -848,6 +913,19 @@
     color: var(--ink);
     font-weight: 700;
     font-size: calc(var(--target) * 0.36);
+  }
+  .scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    background: rgba(28, 42, 46, 0.35);
+  }
+  .dock-area {
+    /* Parked, it sits under the seats' panels (the outfitting chart reaches the corner); centred, above the scrim. */
+    position: absolute;
+  }
+  .dock-area[data-centred='true'] {
+    z-index: 6;
   }
   .gear {
     position: absolute;

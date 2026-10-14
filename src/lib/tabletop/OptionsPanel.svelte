@@ -12,13 +12,16 @@
     mmPerPx: number;
     /** A game is under way, so it can be ended. */
     running: boolean;
+    /** The dice are rolled at the table and read by the dicecam (PROMPTS.md, prompt 18). */
+    physical: boolean;
     /** 0 for the south-east gear (facing the bottom edge), 180 for the north-west one. */
     rotation: 0 | 180;
     onclose: () => void;
     ondiagonal: (inches: number) => void;
+    ontoggledice: (on: boolean) => void;
     onend: () => void;
   }
-  let { seats, qr, diagonal, mmPerPx, running, rotation, onclose, ondiagonal, onend }: Props = $props();
+  let { seats, qr, diagonal, mmPerPx, running, physical, rotation, onclose, ondiagonal, ontoggledice, onend }: Props = $props();
   let confirming = $state(false);
   const set = (inches: number) => ondiagonal(Math.min(120, Math.max(5, Math.round(inches * 2) / 2)));
   // An ISO ID-1 card (85.6 × 54.0 mm) at the configured size: hold a bank card against it to check the diagonal.
@@ -60,6 +63,18 @@
         {/if}
       {/each}
     </div>
+  </section>
+
+  <section class="dice" data-testid="options-dice">
+    <h3>Dice</h3>
+    <div class="row">
+      <button class="toggle" data-testid="physical-dice" aria-pressed={physical} aria-label="Physical dice: {physical ? 'on, the table asks for every roll' : 'off, the table rolls for you'}" onclick={() => ontoggledice(!physical)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3" /><circle class="pip" cx="8" cy="8" r="1.6" /><circle class="pip" cx="16" cy="8" r="1.6" /><circle class="pip" cx="12" cy="12" r="1.6" /><circle class="pip" cx="8" cy="16" r="1.6" /><circle class="pip" cx="16" cy="16" r="1.6" /></svg>
+        <span>Physical dice</span>
+      </button>
+      <span class="state" data-testid="physical-dice-state">{physical ? 'on' : 'off'}</span>
+    </div>
+    <p class="note">{physical ? 'The table asks for every roll: the dicecam reads the tray, or tap the face you rolled.' : 'The table rolls the dice itself.'}</p>
   </section>
 
   <section class="end" data-testid="options-end">
@@ -157,8 +172,19 @@
     width: var(--target);
     padding: 0;
   }
-  .preset[aria-pressed='true'] {
+  .preset[aria-pressed='true'],
+  .toggle[aria-pressed='true'] {
     background: var(--accent);
+  }
+  .toggle svg .pip {
+    fill: currentColor;
+    stroke: none;
+  }
+  .state {
+    font-size: calc(var(--target) * 0.3);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   .readout {
     min-width: 2.4em;

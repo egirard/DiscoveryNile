@@ -216,7 +216,7 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
 /** A captive's turn: one die less three on the consequences-of-defeat table (rules §8.4). */
 function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
   const { hex, tribe, had, goodwill } = explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number };
-  const r = consequencesOfDefeat(state.rng!, had, -3 + goodwill);
+  const r = consequencesOfDefeat(state.rng!, had, -3 + goodwill, explorer.seat);
   const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? 'still held prisoner' : r.summary };
   const turn = { ...state.turn!, log: [...state.turn!.log, record], moved: true };
   if (r.fate === 'killed') {
@@ -235,7 +235,7 @@ function villageRetry(state: GameState, explorer: ExplorerState): GameState {
   const id = state.map[hex]?.tribe;
   const tribe = id != null ? state.tribes[id] : undefined;
   if (!tribe?.pending || tribe.pending.by !== explorer.seat) return state;
-  const s = searchVillage(state.rng!, tribe.pending.prisoners, tribe.pending.policy);
+  const s = searchVillage(state.rng!, tribe.pending.prisoners, tribe.pending.policy, explorer.seat);
   const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: s.rolls, outcome: s.found ? 'the village is found' : 'the village cannot be found' };
   const next = { ...state, rng: s.rng, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
   return s.found ? spoilsOrLoot(next, explorer, tribe, tribe.pending.prisoners, tribe.pending.policy, tribe.pending.original) : next;
@@ -404,7 +404,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       while (winner === null) {
         const totals = new Map<SeatId, number>();
         for (const seat of contenders) {
-          const r = dice(rng, 4);
+          const r = dice(rng, 4, 'main', { what: 'for first player', hint: 'the highest total goes first', seat });
           rng = r.state;
           rollOff[seat].push(r.values);
           totals.set(seat, r.values.reduce((a, b) => a + b, 0));
@@ -857,7 +857,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (cache.seat !== explorer.seat && !state.map[hex]?.publishedBy) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
       if (cache.round >= state.turn.round) return 'a cache is dug up on a later turn';
       // Returning to a cache: on a 1 or 2 it has disappeared (rules §5).
-      const r = d6(state.rng!, 'cache');
+      const r = d6(state.rng!, 'cache', { what: 'for the cache', hint: '1 or 2 and it has gone' });
       const { [cache.id]: _gone, ...rest } = state.caches;
       void _gone;
       const gone = r.value <= 2;

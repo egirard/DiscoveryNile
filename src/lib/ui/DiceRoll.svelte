@@ -6,16 +6,9 @@
     testid?: string;
     size?: string;
   }
+  import { PIPS } from './pips';
   let { values, label, testid, size = 'calc(var(--target) * 0.7)' }: Props = $props();
   const total = $derived(values.reduce((a, b) => a + b, 0));
-  const PIPS: Record<number, [number, number][]> = {
-    1: [[12, 12]],
-    2: [[6, 6], [18, 18]],
-    3: [[6, 6], [12, 12], [18, 18]],
-    4: [[6, 6], [18, 6], [6, 18], [18, 18]],
-    5: [[6, 6], [18, 6], [12, 12], [6, 18], [18, 18]],
-    6: [[6, 6], [18, 6], [6, 12], [18, 12], [6, 18], [18, 18]]
-  };
 </script>
 
 <span class="dice" data-testid={testid} data-total={total} aria-label="{label}: rolled {values.join(', ')}, total {total}" style="--die:{size}">
