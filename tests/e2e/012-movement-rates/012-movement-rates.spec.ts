@@ -133,9 +133,20 @@ test.describe('012 - Movement rates', () => {
 
     await passTurn(page);
     await outfit(page, 'top-1', CANOES);
-    // From Brass only the Niger is open: the other land neighbour is jungle-swamp, closed to canoes.
-    await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(1);
     await expect(page.getByTestId('move-target-c2r7')).toHaveAttribute('data-mode', 'canoe');
+
+    await steps.step('shore-open-to-canoes', {
+      description: 'From Brass the canoes may go up the Niger or along the ocean shore into the delta\'s jungle-swamp, which canoes may never enter inland but always traverse on the coast (RQ-17)',
+      verifications: [
+        { spec: 'Both land neighbours are offered by canoe: the Niger hex and the coastal jungle-swamp', check: async () => {
+          await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(2);
+          await expect(page.getByTestId('move-target-c2r7')).toHaveAttribute('data-mode', 'canoe');
+          await expect(page.getByTestId('move-target-c3r8')).toHaveAttribute('data-mode', 'canoe');
+          await expect(page.getByTestId('terrain-c3r8')).toHaveAttribute('data-terrain', 'jungle-swamp');
+        } }
+      ]
+    });
+
     await stepTo(page, 'top-1', 'c2r7');
     await expect(page.getByTestId('movement-top-1')).toHaveAttribute('data-mode', 'canoe');
     await expect(page.getByTestId('move-target-c3r7')).toHaveCount(0); // dry jungle beside the river: not for canoes this turn

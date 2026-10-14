@@ -2,6 +2,7 @@ import type { TabletopDebug } from '$lib/game/debug';
 
 declare global {
   const __GIT_HASH__: string;
+  const __BUILD_DATE__: string;
   interface Window {
     __TABLETOP__?: TabletopDebug;
   }

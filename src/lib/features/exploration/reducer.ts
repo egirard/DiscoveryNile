@@ -8,7 +8,7 @@ import { directionTo, neighbours, opposite, type Direction, type HexId } from '$
 import { printedCourse, resolveWater, riverDirection, isWater, type HexKnowledge, type RiverCourse } from '$features/map/rivers';
 import { RIVERS } from '$features/map/manifest';
 import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
-import { budgetFor, coastal, modeFor, passable, type Mode, type MovementBudget } from './movement';
+import { budgetFor, canEnter, coastal, modeFor, type Mode, type MovementBudget } from './movement';
 import { d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
@@ -123,7 +123,7 @@ function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): {
   const mode: Mode = state.turn!.movement?.mode ?? modeFor(laden, water);
   const terrain = terrainOf(state, to);
   if (mode === 'canoe' && !water) return 'canoes must follow the water';
-  if (terrain && !passable(mode, terrain, chart)) return `cannot enter ${terrain} ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}`;
+  if (terrain && !canEnter(mode, terrain, chart, to)) return `cannot enter ${terrain} ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}`;
   if (mode === 'canoe' && cataractAt(state, to) && chart.bearers < 8) return 'fewer than eight bearers cannot portage the cataract';
   const budget = state.turn!.movement ?? budgetFor(mode, chart);
   const unknown = unknownTo(state, e, to);
@@ -235,7 +235,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       }
 
       // Terrain conflict (rules §7.1): the hex is mapped and claimed, but the expedition turns back.
-      if (!passable(mode, terrain, chart)) {
+      if (!canEnter(mode, terrain, chart, target)) {
         log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back` });
         return finish({ ...learn(state), map }, { ...movement, spent: movement.spent + cost, halted: true });
       }

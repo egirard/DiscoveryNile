@@ -222,3 +222,9 @@ For a development server (localhost:3000, for example) let's implement an on-dem
 *(voice, summarised)* A bug in the current local session: a canoe expedition at Quelimane trying to reach the Zambezi cannot get there; only the hexes to the west and the north-west/south-west are lit as targets, while due south should be a coast hex it can move to.
 
 `Outcome: assessed, not changed: by the rulebook canoes may never enter jungle-swamp, and the hex west of Quilimane (the screen's south, the board being turned) is jungle-swamp on the printed board as in the transcription; the Zambezi's mouth is not adjacent to the port, so the canoes go round by portage (RQ-17, G-145). The board photograph shows the mouth hex as jungle where the transcription has veldt, noted for RQ-5. The table should say why a hex is unlit; offered as a follow-up. The session was not captured: the table's page predated the capture defaults.`
+
+## 32. 2026-10-14
+
+canoes can always traverse ocean shore hexes.  Let's also add status information using icons (connected to diagnostics, running version's brief git id, date of the last build, update ready) - this can be at the top line of the page next to the options.  Please force a reload once that lands.
+
+`Outcome: canoes now always traverse ocean shore hexes, a coastal jungle-swamp included (RQ-17 re-read, G-145): the Zambezi delta west of Quilimane opens, and scenario 012's canoes at Brass are offered the Niger delta's jungle-swamp (step shore-open-to-canoes). A status line beside the north-west gear (G-146) shows, icons first, whether the diagnostics capture answers, the running build's short git id, the build's date and an update waiting with a reload button; the footer marker is gone and 001 reads the line. The Vite config change restarted the dev server, which reloaded the table once; a second reload is sent through the capture once the commit lands.`

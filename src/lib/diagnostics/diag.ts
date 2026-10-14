@@ -18,6 +18,7 @@ export interface DiagnosticsOptions {
 }
 
 interface Configured {
+  url: string;
   base: string; // `${url}/diag/${session}`
   fetchImpl: typeof fetch;
 }
@@ -62,7 +63,7 @@ export function configureDiagnostics(options: DiagnosticsOptions): boolean {
     commands = null;
     return false;
   }
-  configured = { base: `${url}/diag/${options.session}`, fetchImpl: options.fetchImpl ?? fetch };
+  configured = { url, base: `${url}/diag/${options.session}`, fetchImpl: options.fetchImpl ?? fetch };
   commands?.close();
   commands = null;
   if (typeof EventSource !== 'undefined' && typeof location !== 'undefined') {
@@ -78,6 +79,18 @@ export function configureDiagnostics(options: DiagnosticsOptions): boolean {
     window.addEventListener('unhandledrejection', (e) => log('window/unhandledrejection', { reason: String(e.reason) }));
   }
   return true;
+}
+
+/** Whether the capture server answers: `off` when none is configured (the status line, prompt 32). */
+export async function probeDiagnostics(): Promise<'off' | 'up' | 'down'> {
+  const target = configured;
+  if (!target) return 'off';
+  try {
+    const res = await target.fetchImpl(`${target.url}/health`);
+    return res.ok ? 'up' : 'down';
+  } catch {
+    return 'down';
+  }
 }
 
 export function isDiagnosticsActive(): boolean {

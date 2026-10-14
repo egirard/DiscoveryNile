@@ -58,6 +58,15 @@ export function coastal(id: HexId): boolean {
 }
 
 /**
+ * Whether the mode may enter the hex `to`: its terrain's rule, except that canoes always traverse the ocean shore,
+ * a coastal jungle-swamp (the Zambezi delta at Quilimane, the Niger's at Brass) included (RQ-17, prompt 32).
+ */
+export function canEnter(mode: Mode, terrain: Terrain | null, chart: Chart, to: HexId): boolean {
+  if (mode === 'canoe' && coastal(to)) return true;
+  return passable(mode, terrain, chart);
+}
+
+/**
  * The mode an expedition travels by this turn, decided when it first moves: canoes when they seat
  * everyone and the move is on water; mounts when everyone rides and the riders' and led animals'
  * loads cover the supplies (rules §5: a ridden animal carries 5, a led one 20); otherwise on foot.

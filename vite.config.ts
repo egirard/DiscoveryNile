@@ -1,5 +1,16 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig, type Plugin } from 'vite';
+import { execSync } from 'node:child_process';
+
+/** The running build's git id: `VITE_GIT_HASH` when the build names it (CI, E2E), else the checkout's own HEAD. */
+function gitHash(): string {
+  if (process.env.VITE_GIT_HASH) return process.env.VITE_GIT_HASH;
+  try {
+    return execSync('git rev-parse HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'local';
+  } catch {
+    return 'local';
+  }
+}
 
 /**
  * On-demand reload for the dev server (PROMPTS.md, prompt 30; src/lib/dev/reload-prompt.ts). Vite applies CSS and
@@ -33,6 +44,8 @@ function onDemandReload(): Plugin {
 export default defineConfig({
   plugins: [sveltekit(), onDemandReload()],
   define: {
-    __GIT_HASH__: JSON.stringify(process.env.VITE_GIT_HASH ?? 'local')
+    __GIT_HASH__: JSON.stringify(gitHash()),
+    // When this build (or dev server) was made: `VITE_BUILD_DATE` pins it for E2E baselines (the status line, prompt 32).
+    __BUILD_DATE__: JSON.stringify(process.env.VITE_BUILD_DATE ?? new Date().toISOString())
   }
 });

@@ -47,7 +47,7 @@
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
-  import ReloadPrompt from '$lib/dev/ReloadPrompt.svelte';
+  import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
   import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { log as diagLog } from '$lib/diagnostics/diag';
@@ -476,7 +476,6 @@
     </span>
   {/if}
 
-  <ReloadPrompt />
   {#if gameState.ended}
     <GameOver ended={gameState.ended} game={gameState.games + 1} oncontinue={() => game?.append('game/continued', {})} />
   {/if}
@@ -716,7 +715,8 @@
   {#if options}
     <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} {physical} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} ontoggledice={toggleDice} onend={endByAgreement} />
   {/if}
-  <p class="build" data-testid="build-marker">{__GIT_HASH__.slice(0, 7)}</p>
+  <!-- The status line beside the north-west gear (prompt 32): the capture, the version, the build, an update waiting. -->
+  <StatusLine left={inset.left + target * 1.5} top={inset.top + target * 0.3} height={target} />
 </main>
 
 <style>
@@ -1038,12 +1038,4 @@
   }
   .status[data-status='syncing'] .dot { background: #cb5; }
   .status[data-status='offline'] .dot { background: #c55; }
-  .build {
-    position: absolute;
-    right: 0.5rem;
-    bottom: 0.25rem;
-    margin: 0;
-    font-size: 0.7rem;
-    opacity: 0.4;
-  }
 </style>

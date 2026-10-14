@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
-import { budgetFor, canoeRate, coastal, modeFor, passable } from './movement';
+import { budgetFor, canEnter, canoeRate, coastal, modeFor, passable } from './movement';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
 
@@ -51,5 +51,16 @@ describe('mode of travel', () => {
     expect(modeFor(canoes, true)).toBe('canoe');
     expect(modeFor(canoes, false)).toBe('foot');
     expect(modeFor(chart({ canoes: 1, bearers: 16, askaris: 6 }), true)).toBe('foot'); // 24 men, 12 seats
+  });
+});
+
+describe('the ocean shore (RQ-17, prompt 32)', () => {
+  const chart = { canoes: 2, bearers: 16, guides: 0, askaris: 0, muskets: 0, gifts: 0, food: 0, horses: 0, camels: 0, water: 0 } as unknown as Parameters<typeof canEnter>[2];
+  it('canoes always traverse a coastal hex, jungle-swamp included, but never an inland jungle-swamp', () => {
+    expect(canEnter('canoe', 'jungle-swamp', chart, 'c20r25')).toBe(true); // the Zambezi delta west of Quilimane
+    expect(canEnter('canoe', 'jungle-swamp', chart, 'c3r8')).toBe(true); // the Niger's delta beside Brass
+    expect(canEnter('canoe', 'jungle-swamp', chart, 'c12r12')).toBe(false); // an inland jungle-swamp
+    expect(canEnter('foot', 'jungle-swamp', chart, 'c20r25')).toBe(false); // men on foot still cannot
+    expect(canEnter('canoe', 'veldt', chart, 'c21r24')).toBe(true);
   });
 });

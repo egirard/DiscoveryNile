@@ -21,9 +21,12 @@ test.describe('001 - App shell and seats', () => {
           await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(6);
           await expect(page.locator('[data-taken="true"]')).toHaveCount(0);
         } },
-        { spec: 'The pinned room code and the build marker are shown', check: async () => {
+        { spec: 'The pinned room code is shown, and the status line beside the north-west gear reads the build\'s short git id and date, no capture server, and no update waiting', check: async () => {
           await expect(page.getByTestId('room-code')).toHaveText('ABCDE');
-          await expect(page.getByTestId('build-marker')).toHaveText('e2e-tes');
+          await expect(page.getByTestId('status-version')).toHaveText('e2e-tes');
+          await expect(page.getByTestId('status-build')).toHaveText('2026-10-14');
+          await expect(page.getByTestId('status-diag')).toHaveAttribute('data-state', 'off');
+          await expect(page.getByTestId('status-update')).toHaveCount(0);
         } },
         { spec: 'The game was created with the seed from the URL', check: async () => {
           const seed = await page.evaluate(() => window.__TABLETOP__!.getSeed());

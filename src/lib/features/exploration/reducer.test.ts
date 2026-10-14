@@ -197,8 +197,9 @@ describe('movement rates with scripted dice (rules §7.1)', () => {
     const events = [...setup(), event('turn/ended', { seat: 'bottom-1' }), event('expedition/outfitted', { seat: 'top-1', purchases: CANOES })];
     const s = reduce(events);
     expect(s.turn!.current).toBe('top-1');
-    // From Brass (c2r8) the Niger leads to c2r7; the other land neighbour c3r8 is jungle-swamp, closed to canoes.
-    expect(moveTargets(s, s.explorers[1])).toEqual([{ hex: 'c2r7', unknown: false, mode: 'canoe', cost: 1 }]);
+    // From Brass (c2r8) the Niger leads to c2r7; the other land neighbour c3r8 is the delta's jungle-swamp, on the
+    // ocean shore and so open to canoes (RQ-17), though it would be closed inland.
+    expect(moveTargets(s, s.explorers[1])).toEqual([{ hex: 'c2r7', unknown: false, mode: 'canoe', cost: 1 }, { hex: 'c3r8', unknown: false, mode: 'canoe', cost: 1 }]);
     const trip = ['c2r7', 'c2r6', 'c2r5', 'c2r4'];
     const s4 = reduce([...events, ...trip.map((hex) => event('expedition/moved', { seat: 'top-1', path: [hex] }))]);
     expect(s4.diagnostics).toEqual([]);
