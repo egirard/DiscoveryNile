@@ -150,3 +150,13 @@ when starting a new player, remember the dice pool. I've seen the lost die be re
 for direction of terrain we need to have a 1-6 compass visible on map.
 
 `Outcome: the turn is ended with an arrow in Africa, the hourglass staying a wait in Europe (G-136); a failed lost check ends the turn there and then, straight on to the hunt's die, or with "no hunting needed at Mombasa" on the lost check's line where the expedition is provisioned (G-137); the trade prices are one die per item, each asked for by name and listed as it comes (G-138); a check's log line reads what it needed, the dice, the modifiers, the total and the outcome (G-139); the dicecam remembers the last throw's dice across asks and seats, by their places and faces, and asks for them to be picked up instead of reading them again under a new name (G-140); a compass on the board numbers the six directions as a die does (G-141). Scenario 037 gained straight-to-the-hunt, last-throw-still-lying and hunted-and-passed (seed 34); 010's lost step ends the turn; 007 and 010 check the control's icon; every baseline regenerated for the compass and the arrow.`
+
+## 21. 2026-10-14
+
+we've over-corrected on ignoring old dice.... now we're ignoring the first die rolled.  Let me suggest that you take
+  an image of the dicecam content at the very start (start of the run, or start of a player's turn) and not interpret
+  until that image has changed.  Alternately, correct the logic for ignoring the previous player's last roll.  Also,
+  let's not prompt with "the last throw is still in the tray"... that's just irritating to the player... try "waiting
+  for a D6 roll" instead.
+
+`Outcome: the dicecam judges a throw by what lies in the tray and never by the engine's roll id, which a hand reaching in renews and a single die tossed in from outside the picture can keep (that was the die ignored): when an ask opens, the tray as it lies and the throw last taken are the lies to ignore, each die by its face and place within a die's width, and any other reading is a throw; at the start of the run the engine's first reading is the tray as found; the status line says "Waiting for a D6 roll" (G-142, G-140 revised). Each reading judged is logged to the browser console. Scenario 037 gained tray-as-found, its hunt is thrown under the lost die's name, and its baselines are regenerated.`

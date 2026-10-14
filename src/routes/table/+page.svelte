@@ -47,7 +47,7 @@
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
-  import { consider, watching, type DicecamStatus, type EngineMessage, type Taken, type Watch } from '$features/dice/dicecam';
+  import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { isPhysical } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
@@ -275,27 +275,32 @@
   });
   let dicecamStatus = $state<DicecamStatus>('starting');
   let dicecamSeen = $state<number | null>(null);
-  /** The reading is the last throw's dice still lying there (prompt 20): the status line says to pick them up. */
+  /** The reading is the tray as it already lay, not a throw (prompts 20 and 21): the status line waits for a roll. */
   let dicecamStale = $state(false);
   let watch: Watch | null = null;
-  /** The throw last taken, whichever seat threw it: remembered across asks and turns, until the dice move. */
-  let lastThrow: Taken | null = null;
+  /** The throw last taken, whichever seat threw it, and the tray as the engine last read it. */
+  let lastThrow: Lie | null = null;
+  let lastReading: Lie | null = null;
   $effect(() => {
-    // Each ask watches afresh; the throw the last ask took is still in the tray and must not be read twice.
-    watch = awaiting ? watching(awaiting.count, lastThrow) : null;
+    // Each ask watches afresh: what lies in the tray as it opens (the last throw taken, or dice left from before)
+    // is not the throw, and the engine's first reading at the start of the run is the tray as found.
+    watch = awaiting ? watching(awaiting.count, lastThrow, lastReading) : null;
     dicecamSeen = null;
     dicecamStale = false;
   });
   function onDicecam(m: EngineMessage) {
-    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; }
+    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); }
     else if (m.type === 'removed') { dicecamSeen = m.remaining; dicecamStale = false; }
     else if (m.type === 'settled') {
+      lastReading = lieOf(m);
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
       const judged = consider(watch, m);
       watch = judged.watch;
       dicecamSeen = judged.seen;
       dicecamStale = judged.stale;
-      if (judged.accept) { lastThrow = judged.watch.taken; watch = null; rolled(awaiting.seat, judged.accept); }
+      // A line per reading judged, for the console: what lay where, and what the table made of it.
+      console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count} wanted`);
+      if (judged.accept) { lastThrow = lastReading; watch = null; rolled(awaiting.seat, judged.accept); }
     }
   }
   async function rolled(seat: string, values: number[]) {

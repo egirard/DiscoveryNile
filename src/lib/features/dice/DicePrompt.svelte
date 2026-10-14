@@ -15,7 +15,7 @@
     status: DicecamStatus;
     /** Dice the dicecam sees in the tray, or null before it has said. */
     seen: number | null;
-    /** What it sees is the last throw still lying there. */
+    /** What it sees is the tray as it already lay, not a throw. */
     stale?: boolean;
     /** A dicecam is set up on this table. */
     configured: boolean;

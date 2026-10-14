@@ -139,15 +139,32 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
+    // The engine's first reading of the run is of the dice lying in the tray from before the game.
+    await dicecamSays(page, settled('lying', [2, 2, 2, 2]));
+    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
+
+    await steps.step('tray-as-found', {
+      description: 'The engine\'s first reading is of four twos lying in the tray from before the game: the table takes them for the tray as found, not for the throw, draws them on the picture and waits for a roll',
+      verifications: [
+        { spec: 'The reading is not taken: the prompt waits for a roll of four dice, the dock holds the reading, and nothing is rolled', check: async () => {
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a roll of 4 D6');
+          await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-seen', '4');
+          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '1');
+          expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [] });
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled')).toEqual([]);
+        } }
+      ]
+    });
+
     await dicecamSays(page, settled('throw-1', [6, 6, 6, 6]));
-    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-seen', '4');
+    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'false');
 
     await steps.step('tray-read-once', {
-      description: 'The engine reads the settled tray: four sixes, each die outlined on the picture with its value above it and its confidence along its foot, the way the Yahtzee page draws them; one reading is not enough, the table waits for a second that agrees',
+      description: 'The dice are thrown and the engine reads the settled tray: four sixes, each die outlined on the picture with its value above it and its confidence along its foot, the way the Yahtzee page draws them; one reading is not enough, the table waits for a second that agrees',
       verifications: [
-        { spec: 'The prompt says four dice are seen and their faces are being read; the dock holds one reading and the throw is not yet taken', check: async () => {
+        { spec: 'The prompt says four dice are seen and their faces are being read; the dock holds two readings and the throw is not yet taken', check: async () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('4 dice seen, reading the faces…');
-          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '1');
+          await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '2');
           expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [] });
           expect((await events(page)).filter((e) => e.type === 'dice/rolled')).toEqual([]);
         } },
@@ -368,10 +385,10 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
 
     await steps.step('last-throw-still-lying', {
-      description: 'The die of the lost check still lies in the tray and the engine reports it under a new name: the table remembers where the last throw lay and what it showed, and asks for the dice to be picked up instead of reading it again',
+      description: 'The die of the lost check still lies in the tray and the engine reports it under a new name: the table remembers where the last throw lay and what it showed, and waits for a roll instead of reading it again',
       verifications: [
-        { spec: 'The reading is ignored: the status line says to pick the dice up, no throw is taken and the hunt is still asked', check: async () => {
-          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('The last throw still lies in the tray: pick the dice up and roll one die');
+        { spec: 'The reading is ignored: the status line waits for a D6 roll, no throw is taken and the hunt is still asked', check: async () => {
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a D6 roll');
           await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
           const rolled = (await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => (e.payload as { values: number[] }).values);
           expect(rolled.at(-1)).toEqual([1]);
@@ -380,11 +397,13 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
-    await dicecamReads(page, 'throw-8', [5]);
+    // The die is tossed in from outside the picture and the engine misses the motion: it still calls the throw by
+    // the lost die's name, but a five lies where the one lay, and that is a throw.
+    await dicecamReads(page, 'throw-6', [5]);
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('hunted-and-passed', {
-      description: 'A five, thrown afresh, is the hunt: the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',
+      description: 'A five, thrown afresh under the lost die\'s own name (the engine missed the toss), is the hunt: the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',
       verifications: [
         { spec: 'The turn is top-1\'s; bottom-1\'s latest turn holds the lost check and the hunt, the hunt\'s line saying what the die needed', check: async () => {
           const s = await state(page);
