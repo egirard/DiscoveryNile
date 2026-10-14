@@ -117,15 +117,17 @@ describe('expedition/moved into a blank hex', () => {
       const { events, first } = mombasa(seed);
       if (!reduce(events).explorers.find((x) => x.seat === first)!.chart) continue;
       const s = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
-      if (s.diagnostics.length || !rolls(s)[0]?.lost) continue;
+      if (s.diagnostics.length || !s.history.filter((t) => t.seat === first).at(-1)?.log.some((r) => r.kind === 'lost-check' && r.lost)) continue;
       found = true;
       expect(s.explorers.find((x) => x.seat === first)!.location).toEqual({ kind: 'port', port: 'mombasa' });
       expect(s.map).toEqual({});
-      expect(s.turn!.moved).toBe(true);
-      expect(s.turn!.movement?.halted).toBe(true);
-      expect(rolls(s)).toHaveLength(1);
+      // Lost, the turn ended there and then (prompt 20): the next seat is up, and the lost check closes the turn's log.
+      expect(s.turn!.current).not.toBe(first);
+      const played = s.history.filter((t) => t.seat === first).at(-1)!;
+      expect(played.log.filter((r) => r.kind !== 'action')).toHaveLength(1);
+      expect(played.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, outcome: 'lost; no hunting needed at Mombasa' });
       const again = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
-      expect(again.turn!.log).toEqual(s.turn!.log);
+      expect(again.history).toEqual(s.history);
     }
     expect(found).toBe(true);
   });

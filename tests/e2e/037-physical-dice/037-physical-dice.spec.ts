@@ -74,9 +74,10 @@ test.describe('037 - Physical dice', () => {
       'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game.'
     );
 
-    // Seed 24: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
-    // holds a free ticket to Mombasa and $1000. Every other die of the scenario is rolled below.
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=24');
+    // Seed 34: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
+    // holds a free ticket to Mombasa and $1000, and the first card drawn in the field does not apply there, so the
+    // expedition is free to try the unknown again. Every die of the scenario is rolled below.
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=34');
     await page.getByTestId('options-se').click();
     await expect(page.getByTestId('physical-dice')).toHaveAttribute('aria-pressed', 'false');
     await page.getByTestId('physical-dice').click();
@@ -262,21 +263,22 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-edge-bottom-1')).toHaveCount(0);
 
     await steps.step('lost', {
-      description: 'The dicecam reads a one: the expedition is lost for the turn, the check is the rail\'s latest line with the die that was rolled',
+      description: 'The dicecam reads a one: the expedition is lost and its turn ends there and then; at a port there is no hunt, so the check is the rail\'s latest line with the die, what it needed, and the notice that no hunting was needed at Mombasa',
       verifications: [
-        { spec: 'The lost check is logged with the physical die and the expedition stayed put', check: async () => {
+        { spec: 'The lost check is logged with the physical die and the notice, the expedition stayed put, and the turn passed to top-1', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toBeNull();
-          expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, rolls: [{ label: 'lost check', value: 1 }] });
+          expect(s.turn!.current).toBe('top-1');
+          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', rolls: [{ label: 'lost check', value: 1 }], outcome: 'lost; no hunting needed at Mombasa' });
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
+          await expect(page.getByTestId('lost-check-needed-bottom-1')).toHaveText('needs 2+');
+          await expect(page.getByTestId('lost-check-note-bottom-1')).toHaveText('lost; no hunting needed at Mombasa');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
           expect(s.diagnostics).toEqual([]);
         } }
       ]
     });
 
-    await endTurn(page, 'bottom-1');
-    await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
     await endTurn(page, 'top-1');
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
     await page.getByTestId('move-target-c24r12').click();
@@ -285,7 +287,7 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied');
 
     await steps.step('terrain-asked', {
-      description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled',
+      description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled and the compass on the board to read the direction from',
       verifications: [
         { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line', check: async () => {
           const s = await state(page);
@@ -293,6 +295,10 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
           await expect(page.getByTestId('dice-so-far-bottom-1')).toContainText('to see if you are lost');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
+        } },
+        { spec: 'The compass on the board gives the six directions as the die names them, 1 at the north-east round to 6 at the north-west', check: async () => {
+          await expect(page.getByTestId('compass')).toBeVisible();
+          for (const d of [1, 2, 3, 4, 5, 6]) await expect(page.getByTestId(`compass-${d}`)).toHaveText(String(d));
         } }
       ]
     });
@@ -332,9 +338,70 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
+    // The turn ends in the field: the hunt's die is asked for; top-1 waits in Europe; bottom-1 tries the unknown again.
+    await endTurn(page, 'bottom-1');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
+    await dicecamReads(page, 'throw-5', [5]);
+    await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
+    await endTurn(page, 'top-1');
+    await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
+    await page.getByTestId('move-target-c24r11').click();
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+    await dicecamReads(page, 'throw-6', [1]);
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
+
+    await steps.step('straight-to-the-hunt', {
+      description: 'Lost in the field, the expedition can do nothing more this turn: the table goes straight on to the hunt, the lost check listed above the dicecam line as already rolled',
+      verifications: [
+        { spec: 'The same step is held at the hunt roll, with the lost check already rolled; the token stayed where it was', check: async () => {
+          const s = await state(page);
+          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [1] }] });
+          expect(s.awaiting!.event.type).toBe('expedition/moved');
+          await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
+          await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
+        } }
+      ]
+    });
+
+    // A hand reaching in moved nothing: the engine names the same lie a new throw, and the table knows better.
+    await dicecamSays(page, settled('throw-7', [1]));
+    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
+
+    await steps.step('last-throw-still-lying', {
+      description: 'The die of the lost check still lies in the tray and the engine reports it under a new name: the table remembers where the last throw lay and what it showed, and asks for the dice to be picked up instead of reading it again',
+      verifications: [
+        { spec: 'The reading is ignored: the status line says to pick the dice up, no throw is taken and the hunt is still asked', check: async () => {
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('The last throw still lies in the tray: pick the dice up and roll one die');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
+          const rolled = (await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => (e.payload as { values: number[] }).values);
+          expect(rolled.at(-1)).toEqual([1]);
+          expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [{ values: [1] }] });
+        } }
+      ]
+    });
+
+    await dicecamReads(page, 'throw-8', [5]);
+    await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
+
+    await steps.step('hunted-and-passed', {
+      description: 'A five, thrown afresh, is the hunt: the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',
+      verifications: [
+        { spec: 'The turn is top-1\'s; bottom-1\'s latest turn holds the lost check and the hunt, the hunt\'s line saying what the die needed', check: async () => {
+          const s = await state(page);
+          expect(s.turn!.current).toBe('top-1');
+          const played = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
+          expect(played.log.filter((r) => r.kind !== 'action').map((r) => [r.kind, r.rolls.map((x) => x.value)])).toEqual([['disaster', []], ['lost-check', [1]], ['hunting', [5]]]);
+          await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-needed', '2 / 4 / 6 for one, two, three a hunter');
+          await expect(page.getByTestId('meal-needed-bottom-1')).toHaveText('needs 2 / 4 / 6 for one, two, three a hunter');
+          await expect(page.getByTestId('lost-badge-bottom-1')).toBeVisible();
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
     const before = await state(page);
     await page.reload();
-    await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
+    await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('persists-after-reload', {
       description: 'After a reload the log replays the same game from the recorded throws: the same map, the same log, physical dice still on and the dicecam back in its corner, its camera and engine started again',

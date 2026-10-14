@@ -198,7 +198,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(holder, from), ailing: false });
         rng = check.rng;
         const { result } = check;
-        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, outcome: result.lost ? 'lost' : 'found the way', lost: result.lost });
+        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? 'lost' : 'found the way', lost: result.lost });
         if (result.lost) return finish(state, { ...movement, halted: true });
       }
 
@@ -266,10 +266,10 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
               tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
-              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
             } else {
               map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, ...seats.filter((s) => !entered.nativesCheckedBy.includes(s))] } };
-              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, outcome: 'no natives' });
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: 'no natives' });
             }
           }
         }

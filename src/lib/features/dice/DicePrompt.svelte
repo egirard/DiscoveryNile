@@ -15,11 +15,13 @@
     status: DicecamStatus;
     /** Dice the dicecam sees in the tray, or null before it has said. */
     seen: number | null;
+    /** What it sees is the last throw still lying there. */
+    stale?: boolean;
     /** A dicecam is set up on this table. */
     configured: boolean;
     onroll: (values: number[]) => void;
   }
-  let { seat, prompt, count, rolled, status, seen, configured, onroll }: Props = $props();
+  let { seat, prompt, count, rolled, status, seen, stale = false, configured, onroll }: Props = $props();
   /** Faces tapped so far for a throw of several dice. */
   let taps = $state<number[]>([]);
   const reset = () => (taps = []);
@@ -42,7 +44,7 @@
   const faces = [1, 2, 3, 4, 5, 6];
 </script>
 
-<div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-status={status} data-seen={seen ?? ''}>
+<div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-status={status} data-seen={seen ?? ''} data-stale={stale}>
   <p class="ask" data-testid="dice-ask-{seat}">{prompt}</p>
   {#if rolled.length}
     <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="Already rolled for this action">
@@ -51,7 +53,7 @@
       {/each}
     </ul>
   {/if}
-  <p class="status" data-testid="dicecam-status-{seat}">{statusText(status, count, seen, configured)}</p>
+  <p class="status" data-testid="dicecam-status-{seat}">{statusText(status, count, seen, configured, stale)}</p>
   <div class="faces" role="group" aria-label="Or tap the face you rolled{count > 1 ? `, ${count} times in order` : ''}">
     {#each faces as v (v)}
       <button class="face" data-testid="die-face-{v}-{seat}" aria-label="Rolled a {v}" onclick={() => tap(v)}>

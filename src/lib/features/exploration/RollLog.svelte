@@ -1,6 +1,7 @@
 <script lang="ts">
-  // The log at a seat's rail (PROMPTS.md, prompts 13, 16 and 17): its latest line, the lost mark when the
-  // expedition is lost this turn, and the "+" that opens the rest of the log directly above, where the
+  // The log at a seat's rail (PROMPTS.md, prompts 13, 16, 17 and 20): its latest line, the lost mark when the
+  // expedition was lost in its latest turn (a lost check ends the turn there and then, so the mark outlives
+  // the turn until the seat's next), and the "+" that opens the rest of the log directly above, where the
   // list's "−" sits in line with the "−" that takes the "+"'s place.
   import type { LoggedTurn } from '$lib/game/state';
   import LogLine from './LogLine.svelte';
@@ -19,10 +20,12 @@
   let { seat, turns, current = false, expanded = false, ontoggle }: Props = $props();
   const all = $derived(turns.flatMap((t) => t.log));
   const latest = $derived(all.at(-1));
-  const thisTurn = $derived(current ? (turns.at(-1)?.log ?? []) : []);
-  /** Dice rolled this turn; an action that rolled nothing is not counted. */
-  const rolls = $derived(thisTurn.filter((r) => r.kind !== 'action').length);
-  const lost = $derived(thisTurn.some((r) => r.lost));
+  /** The seat's latest turn: the one in progress when it is the seat's, else the last it played. */
+  const latestTurn = $derived(turns.at(-1)?.log ?? []);
+  /** Dice rolled in that turn; an action that rolled nothing is not counted. */
+  const rolls = $derived(latestTurn.filter((r) => r.kind !== 'action').length);
+  const lost = $derived(latestTurn.some((r) => r.lost));
+  void current;
 </script>
 
 {#if latest}

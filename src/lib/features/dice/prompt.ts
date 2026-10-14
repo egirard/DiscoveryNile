@@ -18,3 +18,10 @@ export function okayFrom(need: number, okay = "you're okay", not = "you're lost"
   if (need > 6) return `whatever you roll ${not}`;
   return `${need}+ means ${okay}`;
 }
+
+/** The same threshold as the log notes it: "4+", "any", "none" (prompt 20). */
+export function needText(need: number): string {
+  if (need <= 1) return 'any';
+  if (need > 6) return 'none';
+  return `${need}+`;
+}

@@ -89,6 +89,8 @@ export interface HuntResult {
   rolls: Roll[];
   modifiers: Modifier[];
   total: number;
+  /** What the modified die needed, as the log notes it. */
+  needed: string;
   /** Rations bagged: askaris at the table rate, the explorer at his own (zoologist +1). */
   game: number;
 }
@@ -100,7 +102,7 @@ export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: bool
   const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags a ration a hunter at 2, two at 4, three at 6` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
   const game = rationsPerHunter(total) * askaris + rationsPerHunter(total + (zoologist ? 1 : 0));
-  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, game } };
+  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, needed: '2 / 4 / 6 for one, two, three a hunter', game } };
 }
 
 export interface MealResult {

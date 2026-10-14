@@ -36,7 +36,7 @@ The types are `EngineMessage` in `src/lib/features/dice/dicecam.ts`, a reading o
 
 ### Reading a throw
 
-`consider` in `dicecam.ts` judges each settled reading against the ask: the tray must show exactly the number of dice asked for, every die read with confidence 0.7 or better and none askew, and two consecutive readings of the same throw must agree before the values are sent as `dice/rolled`. A throw already taken is never read twice, so dice left lying from the last roll do not answer the next ask; the next throw needs motion, which gives it a new `rollId`.
+`consider` in `dicecam.ts` judges each settled reading against the ask: the tray must show exactly the number of dice asked for, every die read with confidence 0.7 or better and none askew, and two consecutive readings of the same throw must agree before the values are sent as `dice/rolled`. A throw already taken is never read twice: the table remembers the throw last taken, whoever threw it, by its `rollId` and by where each die lay with what it showed (prompt 20). A reading that shows those dice still lying there, within a die's width, is ignored however the engine names it, since motion that moves nothing (a hand reaching in, the tray nudged between players) gives the same lie a new `rollId`; the status line then asks for the dice to be picked up. A throw counts once the dice have moved.
 
 ## In E2E builds
 

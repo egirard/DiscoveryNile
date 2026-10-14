@@ -47,7 +47,7 @@
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
-  import { consider, watching, type DicecamStatus, type EngineMessage, type Watch } from '$features/dice/dicecam';
+  import { consider, watching, type DicecamStatus, type EngineMessage, type Taken, type Watch } from '$features/dice/dicecam';
   import { isPhysical } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
@@ -275,22 +275,27 @@
   });
   let dicecamStatus = $state<DicecamStatus>('starting');
   let dicecamSeen = $state<number | null>(null);
+  /** The reading is the last throw's dice still lying there (prompt 20): the status line says to pick them up. */
+  let dicecamStale = $state(false);
   let watch: Watch | null = null;
-  let lastThrow: string | null = null;
+  /** The throw last taken, whichever seat threw it: remembered across asks and turns, until the dice move. */
+  let lastThrow: Taken | null = null;
   $effect(() => {
     // Each ask watches afresh; the throw the last ask took is still in the tray and must not be read twice.
     watch = awaiting ? watching(awaiting.count, lastThrow) : null;
     dicecamSeen = null;
+    dicecamStale = false;
   });
   function onDicecam(m: EngineMessage) {
-    if (m.type === 'rolling') dicecamSeen = 0;
-    else if (m.type === 'removed') dicecamSeen = m.remaining;
+    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; }
+    else if (m.type === 'removed') { dicecamSeen = m.remaining; dicecamStale = false; }
     else if (m.type === 'settled') {
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
       const judged = consider(watch, m);
       watch = judged.watch;
       dicecamSeen = judged.seen;
-      if (judged.accept) { lastThrow = m.rollId; watch = null; rolled(awaiting.seat, judged.accept); }
+      dicecamStale = judged.stale;
+      if (judged.accept) { lastThrow = judged.watch.taken; watch = null; rolled(awaiting.seat, judged.accept); }
     }
   }
   async function rolled(seat: string, values: number[]) {
@@ -432,7 +437,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
     </EdgePanel>
   {/if}
   {#if physical && DICECAM_URL}

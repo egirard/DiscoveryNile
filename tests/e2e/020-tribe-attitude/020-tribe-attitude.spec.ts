@@ -95,7 +95,7 @@ test.describe('020 - Tribe attitude', () => {
       description: 'A friendly approach: the reaction dice (1, 1, 1) are weighed against distance 1, policy 5 and regard 3; the tribe is calm and the chief receives the explorer',
       verifications: [
         { spec: 'The reaction modifiers at the rail include the regard and the negotiation opens', check: async () => {
-          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /regard for you \+3; not hostile \(3 within 9\)/);
+          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /regard for you \+3 = 3; not hostile \(3 within 9\)/);
           await expect(page.getByTestId('negotiation-panel-bottom-1')).toBeVisible();
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'negotiate', policy: 5 });

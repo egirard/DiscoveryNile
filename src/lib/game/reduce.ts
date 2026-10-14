@@ -3,7 +3,7 @@ import { initialState, type AwaitingDice, type GameState } from './state';
 import { DiceNeeded, settled, withPhysical, withRolled } from './random';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
-import { reduceTurn } from '$features/turn/reducer';
+import { endTurnAfterLost, reduceTurn } from '$features/turn/reducer';
 import { reduceExploration } from '$features/exploration/reducer';
 import { noteAction } from '$features/turn/actions';
 import { promptText } from '$features/dice/prompt';
@@ -77,11 +77,19 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
   }
 }
 
+/** The move just made ended lost: its lost check is the turn's last line and says so. */
+function lostNow(before: GameState, after: GameState): boolean {
+  const last = after.turn?.log.at(-1);
+  return !!last && last.kind === 'lost-check' && last.lost === true && after.turn!.log.length > (before.turn?.log.length ?? 0);
+}
+
 function apply(state: GameState, event: GameEvent): GameState {
   for (const step of steps) {
-    const result = step(state, event);
+    let result = step(state, event);
     if (typeof result === 'string') return reject(state, event, result);
     if (result !== state) {
+      // Lost, the expedition can do nothing more this turn: the turn goes straight on to the hunt and passes (prompt 20).
+      if (event.type === 'expedition/moved' && lostNow(state, result)) result = endTurnAfterLost(result);
       const seat = (event.payload as { seat?: string }).seat;
       const noted = noteAction(event, state, result);
       return { ...noted, undo: seat && undoable(state, noted, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };

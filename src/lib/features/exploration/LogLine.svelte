@@ -21,10 +21,10 @@
   const name = (kind: string) => KIND[kind] ?? kind.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
   /** The rail's note ids kept from the one-line log: `meal-note` for the hunt, `{kind}-note` otherwise. */
   const note = $derived(r.kind === 'hunting' ? 'meal' : r.kind);
-  const label = $derived(`${name(r.kind)}: ${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}; ${r.outcome}`);
+  const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${r.total}` : ''}; ${r.outcome}`);
 </script>
 
-<span class="line" class:rail data-testid="roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} aria-label={label}>
+<span class="line" class:rail data-testid="roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} aria-label={label}>
   {#if r.kind === 'action'}
     <span class="action" data-testid="action-note-{seat}">{r.outcome}</span>
   {:else}
@@ -35,12 +35,16 @@
         <span class="context">{r.applies ? cardOf(r.card).disaster.type.replace(/\s*\(.*$/, '') : 'no effect'}</span>
       </span>
     {/if}
+    {#if r.needed}
+      <span class="needed" data-testid="{note}-needed-{seat}">needs {r.needed}</span>
+    {/if}
     {#if r.rolls.length}
       <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" />
       {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
     {/if}
     {#if r.modifiers?.length}
       <span class="mods">{rail ? r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : `${m.value}`)).filter(Boolean).join(' ') : r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')}</span>
+      {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{note}-total-{seat}">= {r.total}</span>{/if}
     {/if}
     <span class="outcome" class:bad={r.lost} data-testid="{note}-note-{seat}">{r.outcome}</span>
   {/if}
@@ -61,6 +65,13 @@
   }
   .mods {
     opacity: 0.8;
+  }
+  .needed {
+    opacity: 0.8;
+    font-style: italic;
+  }
+  .total {
+    font-weight: 700;
   }
   .rail .mods {
     font-weight: 700;

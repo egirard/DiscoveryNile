@@ -39,8 +39,9 @@ test.describe('007 - A turn in Europe', () => {
           await expect(page.getByTestId(`hand-${second}`)).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '37');
         } },
-        { spec: 'The hourglass is offered at the current seat only, and no discard is pending', check: async () => {
+        { spec: 'The hourglass is offered at the current seat only (a turn in Europe is a wait), and no discard is pending', check: async () => {
           await expect(page.getByTestId(`end-turn-${first}`)).toBeVisible();
+          await expect(page.getByTestId(`end-turn-${first}`)).toHaveAttribute('data-icon', 'hourglass');
           await expect(page.locator('[data-testid^="end-turn-"]')).toHaveCount(1);
           await expect(page.locator('[data-testid^="discard-prompt-"]')).toHaveCount(0);
         } },

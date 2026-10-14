@@ -1,7 +1,7 @@
 // Exploration rules as pure functions over the serialisable PRNG: the lost check (rules §7.2)
 // and basic terrain generation (rules §7.3). Every roll is returned so the table can show it.
 import { d6, type RngState } from '$lib/game/random';
-import { okayFrom } from '$features/dice/prompt';
+import { needText, okayFrom } from '$features/dice/prompt';
 import { DIRECTIONS, neighbour, type Direction, type HexId } from './hex';
 import { hexAt, isLand, type Terrain } from './manifest';
 
@@ -40,6 +40,8 @@ export interface LostCheckResult {
   lost: boolean;
   /** No roll was needed: following a river downstream, or a guide from this very hex. */
   automatic: boolean;
+  /** What the die had to show: "2+", "any", "none" (the log's note, prompt 20). */
+  needed: string;
   rolls: Roll[];
   modifiers: Modifier[];
   total: number;
@@ -53,8 +55,8 @@ export function terrainLostModifier(from: Terrain | null): Modifier {
 }
 
 export function lostCheck(rng: RngState, input: LostCheckInput): { rng: RngState; result: LostCheckResult } {
-  if (input.river === 'downstream') return { rng, result: { lost: false, automatic: true, rolls: [], modifiers: [{ label: 'following the river downstream', value: 0 }], total: 1 } };
-  if (input.guide === 'home') return { rng, result: { lost: false, automatic: true, rolls: [], modifiers: [{ label: 'guide from this hex', value: 0 }], total: 1 } };
+  if (input.river === 'downstream') return { rng, result: { lost: false, automatic: true, needed: 'no roll', rolls: [], modifiers: [{ label: 'following the river downstream', value: 0 }], total: 1 } };
+  if (input.guide === 'home') return { rng, result: { lost: false, automatic: true, needed: 'no roll', rolls: [], modifiers: [{ label: 'guide from this hex', value: 0 }], total: 1 } };
   const modifiers: Modifier[] = [input.river === 'upstream' ? { label: 'following the river upstream', value: -1 } : terrainLostModifier(input.from)];
   if (input.guide === 'adjacent') modifiers.push({ label: 'guide from a neighbouring hex', value: 1 });
   if (input.ailing) modifiers.push({ label: 'sick, wounded or starving', value: -1 });
@@ -62,7 +64,7 @@ export function lostCheck(rng: RngState, input: LostCheckInput): { rng: RngState
   // Lost on a total of 0 or less: the die must reach 1 − the modifiers.
   const r = d6(rng, 'main', { what: 'to see if you are lost', hint: okayFrom(1 - bonus) });
   const total = r.value + bonus;
-  return { rng: r.state, result: { lost: total <= 0, automatic: false, rolls: [{ label: 'lost check', value: r.value }], modifiers, total } };
+  return { rng: r.state, result: { lost: total <= 0, automatic: false, needed: needText(1 - bonus), rolls: [{ label: 'lost check', value: r.value }], modifiers, total } };
 }
 
 // ---- Basic terrain -------------------------------------------------------------------------

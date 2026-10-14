@@ -58,10 +58,16 @@ export function tradeGoods(ctx: TradeContext): Item[] {
 /** One die per item for sale, this tribe, this turn. */
 export function tradePrices(rng: RngState, ctx: TradeContext): { rng: RngState; rolls: Roll[]; prices: Partial<Record<Item, number>> } {
   const goods = tradeGoods(ctx);
-  const r = dice(rng, goods.length, 'combat', { what: `for the prices of ${goods.join(', ')}`, hint: 'one die each, in gifts' });
   const prices: Partial<Record<Item, number>> = {};
-  goods.forEach((item, i) => (prices[item] = r.values[i]));
-  return { rng: r.state, rolls: goods.map((item, i) => ({ label: `price of ${item}`, value: r.values[i] })), prices };
+  const rolls: Roll[] = [];
+  // One die at a time, each named (prompt 20): a physical table asks "for the price of bearers" and lists each as it is read.
+  for (const item of goods) {
+    const r = d6(rng, 'combat', { what: `for the price of ${item}`, hint: `in gifts${item === 'food' ? ', rations per gift' : ' each'}` });
+    rng = r.state;
+    prices[item] = r.value;
+    rolls.push({ label: `price of ${item}`, value: r.value });
+  }
+  return { rng, rolls, prices };
 }
 
 /** What can be sold back to the tribe at its price: rations (per gift), animals and canoes. */

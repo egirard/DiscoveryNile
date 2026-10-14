@@ -4,7 +4,7 @@
   // than it is wide and hexes must stay touch-sized. Symbols and labels are kept upright for the
   // bottom seat; every seat reads the same omnidirectional iconography.
   import { BOARD, LAND_HEXES, PORTS, RIVERS, hexAt, riverMouths, type BoardHex, type PortId, type River } from './manifest';
-  import { hexPoints, toPixel, type HexId } from './hex';
+  import { DIRECTIONS, hexPoints, toPixel, type HexId } from './hex';
 
   import { colourFor } from '$features/explorers/colours';
   import type { MappedHex, Cache } from '$lib/game/state';
@@ -72,6 +72,15 @@
     const p = toPixel(hex, radius);
     return { x: p.x - extents.minX * radius, y: p.y - extents.minY * radius };
   }
+
+  /** The compass (PROMPTS.md, prompt 20): a hex with the six directions numbered as the dice give them (hex.ts),
+   *  in the sea off Capetown, where every seat can read it when the terrain's direction is rolled. */
+  const compass = $derived.by(() => {
+    const c = centre(BOARD.ports.capetown.hex);
+    return { x: c.x - Math.sqrt(3) * radius * 6, y: c.y + radius * 0.75 };
+  });
+  /** Where direction `d` leaves a pointy-top hex: east is 2, so the angle is (d − 2) × 60° clockwise from east. */
+  const bearing = (d: number) => ((d - 2) * Math.PI) / 3;
 
   /** A river as a polyline through hex centres, extended past a mouth (or the board edge) into the sea. */
   function riverPoints(r: River): string {
@@ -303,6 +312,13 @@
       <!-- The river's name beside its mouth, upright for a reader at the south edge. -->
       <text data-testid="label-river-{river.id}" class="river-name" aria-label="Mouth of the {river.name}" transform="translate({p.x} {p.y}) {upright}" x={nameSide(river).x} text-anchor={nameSide(river).anchor} font-size={radius * 0.55}>{river.name}</text>
     {/each}
+    <g class="compass" data-testid="compass" role="img" aria-label="Compass: the directions 1 to 6 around a hex, as a die gives them" transform="translate({compass.x} {compass.y})">
+      <polygon class="rose" points={hexPoints(0, 0, radius * 1.1)} />
+      {#each DIRECTIONS as d (d)}
+        <line class="spoke" x1={Math.cos(bearing(d)) * radius * 0.5} y1={Math.sin(bearing(d)) * radius * 0.5} x2={Math.cos(bearing(d)) * radius * 1.35} y2={Math.sin(bearing(d)) * radius * 1.35} />
+        <text class="direction" data-testid="compass-{d}" transform="translate({Math.cos(bearing(d)) * radius * 1.95} {Math.sin(bearing(d)) * radius * 1.95}) {upright}" font-size={radius * 0.85}>{d}</text>
+      {/each}
+    </g>
     {#each PORTS as p (p.id)}
       {@const c = centre(BOARD.hexes[p.hex])}
       {@const choice = portChoices?.[p.id]}
@@ -562,6 +578,25 @@
     stroke-width: 2.5;
     stroke-linecap: round;
     stroke-linejoin: round;
+  }
+  .compass .rose {
+    fill: rgba(239, 230, 204, 0.08);
+    stroke: #efe6cc;
+    stroke-width: calc(var(--r) * 0.1);
+    opacity: 0.9;
+  }
+  .compass .spoke {
+    stroke: #efe6cc;
+    stroke-width: calc(var(--r) * 0.08);
+    stroke-linecap: round;
+    opacity: 0.7;
+  }
+  .compass .direction {
+    fill: #efe6cc;
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
   }
   .river-name {
     fill: #2d72c9;

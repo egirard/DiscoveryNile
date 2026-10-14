@@ -53,7 +53,11 @@ test.describe('028 - Epic transits', () => {
     await page.getByTestId('start-game').click();
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.evaluate(async (events) => {
-      for (const e of events) await window.__TABLETOP__!.append(e.type as never, e.payload as Record<string, unknown>);
+      for (const e of events) {
+        // A failed lost check ends the turn there and then (prompt 20): the trek's own turn/ended after one is already done.
+        if (e.type === 'turn/ended' && window.__TABLETOP__!.getState().turn?.current !== e.payload.seat) continue;
+        await window.__TABLETOP__!.append(e.type as never, e.payload as Record<string, unknown>);
+      }
     }, trek.events);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c21r2');
     const before = await state(page);

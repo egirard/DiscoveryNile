@@ -48,7 +48,30 @@ export interface Roi {
 export interface Reading {
   /** The engine's id for the throw; a throw is read once, however many readings it sends. */
   rollId: string;
-  dice: { value: number; confidence: number; askew?: boolean }[];
+  dice: { value: number; confidence: number; askew?: boolean; normalizedPosition?: Point }[];
+}
+
+/** The throw last taken: its id, and where its dice lay with what they showed. */
+export interface Taken {
+  rollId: string;
+  lie: { value: number; x: number; y: number }[];
+}
+
+/** Dice within this much of the frame (about a die's width) of where they lay are the same dice, not thrown. */
+export const MOVED_LESS_THAN = 0.06;
+
+/** The reading shows the taken throw's dice where they were left: the same count, values and places. */
+export function sameLie(reading: Reading, taken: Taken | null): boolean {
+  if (!taken || reading.dice.length !== taken.lie.length) return false;
+  return reading.dice.every((d, i) => {
+    const t = taken.lie[i];
+    if (!d.normalizedPosition || d.value !== t.value) return false;
+    return Math.abs(d.normalizedPosition.x - t.x) < MOVED_LESS_THAN && Math.abs(d.normalizedPosition.y - t.y) < MOVED_LESS_THAN;
+  });
+}
+
+export function takenFrom(reading: Reading): Taken {
+  return { rollId: reading.rollId, lie: reading.dice.map((d) => ({ value: d.value, x: d.normalizedPosition?.x ?? -1, y: d.normalizedPosition?.y ?? -1 })) };
 }
 
 /** What the engine posts (the part of its protocol the table reads). */
@@ -73,13 +96,18 @@ export const AGREEING_READINGS = 2;
 /** What the table is waiting for and what it has seen so far. */
 export interface Watch {
   count: number;
-  /** The throw last taken: its later readings are ignored. */
-  taken: string | null;
+  /**
+   * The throw last taken, whoever's it was: its later readings are ignored, and so is any reading that shows
+   * its dice still lying where they were, however the engine names it. Motion between players' turns (a hand
+   * reaching in, the tray nudged) gives the same lie a new id; the dice must have moved to count as thrown
+   * (PROMPTS.md, prompt 20).
+   */
+  taken: Taken | null;
   /** The last good reading of the current throw, waiting for another that agrees. */
   pending: { rollId: string; values: number[]; agreed: number } | null;
 }
 
-export function watching(count: number, taken: string | null = null): Watch {
+export function watching(count: number, taken: Taken | null = null): Watch {
   return { count, taken, pending: null };
 }
 
@@ -89,25 +117,28 @@ export interface Considered {
   accept: number[] | null;
   /** How many dice the tray shows, for the status line. */
   seen: number;
+  /** The reading is the last throw still lying there, not a new one. */
+  stale: boolean;
 }
 
 /** Judge a settled reading against the throw the table waits for. */
 export function consider(watch: Watch, reading: Reading): Considered {
   const seen = reading.dice.length;
-  if (reading.rollId === watch.taken) return { watch, accept: null, seen };
+  if (reading.rollId === watch.taken?.rollId || sameLie(reading, watch.taken)) return { watch: { ...watch, pending: null }, accept: null, seen, stale: true };
   const good = seen === watch.count && reading.dice.every((d) => d.confidence >= SURE && !d.askew);
-  if (!good) return { watch: { ...watch, pending: null }, accept: null, seen };
+  if (!good) return { watch: { ...watch, pending: null }, accept: null, seen, stale: false };
   const values = reading.dice.map((d) => d.value);
   const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.every((v, i) => v === values[i]);
   const agreed = same ? watch.pending!.agreed + 1 : 1;
-  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, taken: reading.rollId, pending: null }, accept: values, seen };
-  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen };
+  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, taken: takenFrom(reading), pending: null }, accept: values, seen, stale: false };
+  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen, stale: false };
 }
 
 /** The status line under the prompt. */
-export function statusText(status: DicecamStatus, count: number, seen: number | null, configured: boolean): string {
+export function statusText(status: DicecamStatus, count: number, seen: number | null, configured: boolean, stale = false): string {
   const dice = count === 1 ? 'one die' : `${count} dice`;
   if (!configured) return 'No dicecam on this table: tap the face you rolled';
+  if (status === 'active' && stale) return `The last throw still lies in the tray: pick the dice up and roll ${dice}`;
   switch (status) {
     case 'starting': return 'Starting the camera…';
     case 'loading': return 'Loading the dicecam…';

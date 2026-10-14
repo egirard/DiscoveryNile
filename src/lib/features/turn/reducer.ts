@@ -173,6 +173,23 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
 
 export { replaceExplorer };
 
+/**
+ * A lost check that failed ends the turn there and then (PROMPTS.md, prompt 20): nothing else can be done
+ * with the expedition, so the turn goes straight on to the hunt and the meal, and passes. Called by the
+ * dispatcher after `expedition/moved`, so a physical table asks for the hunt's die right after the lost one.
+ */
+export function endTurnAfterLost(state: GameState): GameState {
+  const ending = currentExplorer(state);
+  if (!ending) return advance(state);
+  if (inTheField(ending, state.map)) return advance(eatAndHunt(state, ending));
+  // At a port or in the Cape Colony the expedition is provisioned: no hunt, and the lost check's line says so.
+  const where = ending.location.kind === 'port' ? `at ${BOARD.ports[ending.location.port].name}` : ending.location.kind === 'hex' ? `at ${PORTS.find((p) => p.hex === (ending.location as { hex: HexId }).hex)?.name ?? 'the Cape Colony'}`.replace('at the Cape Colony', 'in the Cape Colony') : null;
+  const log = state.turn!.log;
+  const last = log.at(-1);
+  if (!where || !last) return advance(state);
+  return advance({ ...state, turn: { ...state.turn!, log: [...log.slice(0, -1), { ...last, outcome: `${last.outcome}; no hunting needed ${where}` }] } });
+}
+
 /** Hunting and the meal at the end of a turn in the field (rules §11): recorded on the explorer for its rail. */
 function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   if (!inTheField(explorer, state.map)) return state;
@@ -195,7 +212,7 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   if (round.summary) parts.push(round.summary);
   sick = round.sick;
   const rolls = [...h.result.rolls, ...round.rolls];
-  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, outcome: parts.join('; ') };
+  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, needed: h.result.needed, outcome: parts.join('; ') };
   // The meal closes the turn's log as well as sitting on the explorer for his rail.
   state = { ...state, turn: { ...state.turn!, log: [...state.turn!.log, lastMeal] } };
   if (round.explorerDied) return { ...perish(state, { ...explorer, sick, lastMeal }, 'died', `died of sickness at ${hex}`), rng: round.rng };

@@ -1,8 +1,9 @@
 <script lang="ts">
   // The current seat's turn controls at its rail: a discard prompt while over the hand limit, otherwise
-  // the hourglass that ends the turn and, in Europe, the ship that sails. Each asks for confirmation in
+  // the control that ends the turn and, in Europe, the ship that sails. Each asks for confirmation in
   // its own place (PROMPTS.md, prompt 17; docs/tabletop-ux.md: consequential actions confirm): the tapped
-  // control takes a check mark and the other becomes the "✕" that takes it back.
+  // control takes a check mark and the other becomes the "✕" that takes it back. In Europe the turn is
+  // a wait, so the control is an hourglass; in Africa it passes the turn on, an arrow (prompt 20).
   import type { Phase } from '$lib/game/state';
 
   interface Props {
@@ -29,6 +30,9 @@
 
 {#snippet hourglass()}
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12" /><path d="M6 21h12" /><path d="M7.5 3c0 5 4.5 6.5 4.5 9s-4.5 4-4.5 9" /><path d="M16.5 3c0 5-4.5 6.5-4.5 9s4.5 4 4.5 9" /><path d="M9.5 18.5h5" /></svg>
+{/snippet}
+{#snippet next()}
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h12" /><path d="M12 6l6 6-6 6" /><path d="M20 5v14" /></svg>
 {/snippet}
 {#snippet ship()}
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c4 2 6 5 6 9H12" /><path d="M12 6c-3 1-5 3-5 6h5" /></svg>
@@ -66,8 +70,8 @@
   {:else if confirming}
     <!-- The "✕" to the left, where the ship stands in Europe; the hourglass keeps its place under the check mark. -->
     <button class="cancel" data-testid="cancel-end-turn-{seat}" aria-label="Keep playing" onclick={() => (confirming = false)}>{@render cross()}</button>
-    <button class="confirm sure" data-testid="confirm-end-turn-{seat}" aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
-      {@render hourglass()}<span class="tick" aria-hidden="true">✓</span>
+    <button class="confirm sure" data-testid="confirm-end-turn-{seat}" data-icon={onsail ? 'hourglass' : 'next'} aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
+      {#if onsail}{@render hourglass()}{:else}{@render next()}{/if}<span class="tick" aria-hidden="true">✓</span>
     </button>
   {:else if sailing}
     <!-- The ship keeps its place under the check mark; the "✕" takes the hourglass's, to the right. -->
@@ -79,7 +83,7 @@
     {#if onsail}
       <button class="sail" data-testid="sail-{seat}" aria-label="Sail to Africa" onclick={onsail}>{@render ship()}</button>
     {/if}
-    <button class="end" data-testid="end-turn-{seat}" aria-label={onsail ? 'Wait: end the turn in Europe' : 'End the turn'} onclick={() => (confirming = true)}>{@render hourglass()}</button>
+    <button class="end" data-testid="end-turn-{seat}" data-icon={onsail ? 'hourglass' : 'next'} aria-label={onsail ? 'Wait: end the turn in Europe' : 'End the turn'} onclick={() => (confirming = true)}>{#if onsail}{@render hourglass()}{:else}{@render next()}{/if}</button>
   {/if}
 </span>
 

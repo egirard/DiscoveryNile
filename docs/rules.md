@@ -98,7 +98,7 @@ The table keeps a log of the whole game, seat by seat and round by round, from t
 
 ### 7.2 Becoming lost *(Rules: Exploring: Becoming Lost)*
 
-Checked once per attempt to enter an **unknown** hex; lost means the expedition stays where it is for the turn.
+Checked once per attempt to enter an **unknown** hex; lost means the expedition stays where it is for the turn. The table ends the turn there and then (prompt 20): nothing more can be done with a lost expedition, so the hunt and the meal follow at once, and at a port or in the Cape Colony, where there is no hunt, the lost check's line says so.
 
 1. Terrain of the hex being **left**: following a river downstream → never lost (stop). Upstream → d6 − 1. Leaving lake, desert or veldt not along a river → d6 − 1. Leaving swamp or mountain → d6 − 2. Leaving jungle → d6 − 3 (jungle-swamp or jungle-mountain → d6 − 5).
 2. Guides: a guide hired in the hex being left → never lost (stop). A guide hired in an adjacent hex → +1.

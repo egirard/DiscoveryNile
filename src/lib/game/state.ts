@@ -162,6 +162,8 @@ export interface RollRecord {
   rolls: Roll[];
   modifiers?: Modifier[];
   total?: number;
+  /** What the roll had to show, in the rules' words ("2+", "2, 3, 4", "even"), for a check read at a glance (prompt 20). */
+  needed?: string;
   /** Human-readable result: 'lost', 'moved', 'mapped veldt', 'bounced: lake' … */
   outcome: string;
   lost?: boolean;
