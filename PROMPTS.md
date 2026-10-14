@@ -160,3 +160,9 @@ we've over-corrected on ignoring old dice.... now we're ignoring the first die r
   for a D6 roll" instead.
 
 `Outcome: the dicecam judges a throw by what lies in the tray and never by the engine's roll id, which a hand reaching in renews and a single die tossed in from outside the picture can keep (that was the die ignored): when an ask opens, the tray as it lies and the throw last taken are the lies to ignore, each die by its face and place within a die's width, and any other reading is a throw; at the start of the run the engine's first reading is the tray as found; the status line says "Waiting for a D6 roll" (G-142, G-140 revised). Each reading judged is logged to the browser console. Scenario 037 gained tray-as-found, its hunt is thrown under the lost die's name, and its baselines are regenerated.`
+
+## 22. 2026-10-14
+
+*(voice, summarised)* Prompts given by voice are logged here as a summary rather than verbatim; typed prompts stay verbatim.
+
+`Outcome: the convention is recorded here and in memory: a prompt that comes as transcribed speech is logged as a one- or two-line summary marked "(voice, summarised)"; typed prompts and the OTR: rule are unchanged.`
