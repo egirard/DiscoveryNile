@@ -3,7 +3,7 @@ import { initialState, type AwaitingDice, type GameState } from './state';
 import { DiceNeeded, generated, settled, withPhysical, withRolled } from './random';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
-import { endTurnAfterLost, reduceTurn } from '$features/turn/reducer';
+import { endTurnAfterLost, facesTheCardFirst, reduceTurn } from '$features/turn/reducer';
 import { reduceExploration } from '$features/exploration/reducer';
 import { noteAction } from '$features/turn/actions';
 import { promptText } from '$features/dice/prompt';
@@ -14,7 +14,7 @@ export type Step = (state: GameState, event: GameEvent) => GameState | string;
 // why the event is illegal (which becomes a diagnostic and leaves state untouched).
 const steps: Step[] = [reduceSeats, reduceExplorers, reduceTurn, reduceExploration];
 
-const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled']);
+const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'disaster/faced', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled']);
 
 /**
  * A choice not yet resolved by dice can be taken back within the turn (docs/tabletop-ux.md): the event rolled no die,
@@ -71,6 +71,12 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
     if (eventId !== state.undo.eventId) return reject(state, event, 'that is not the last action');
     if (seat !== state.undo.seat) return reject(state, event, `only ${state.undo.seat} may undo it`);
     return { ...state.undo.before, undo: null, diagnostics: state.diagnostics };
+  }
+  if (state.turn?.phase === 'disaster' && state.turn.disaster && facesTheCardFirst(event.type) && (event.payload as { seat?: unknown }).seat === state.turn.current && state.explorers.some((e) => e.seat === state.turn!.current && e.location.kind === 'hex')) {
+    // The seat acts with its disaster card still to be read: the card is faced first (prompt 34).
+    const faced = resume(state, { ...event, id: `${event.id}:disaster`, type: 'disaster/faced', payload: { seat: state.turn.current } }, []);
+    if (faced.awaiting) return reject(faced, event, 'the disaster card asks for dice first');
+    state = { ...faced, undo: null };
   }
   return resume(state, event, []);
 }

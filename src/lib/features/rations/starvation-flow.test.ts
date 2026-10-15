@@ -35,12 +35,12 @@ describe('starvation, desertion and sickness at the end of the turn (rules §11)
     expect(e3.lastMeal!.outcome).toBe('no game, 14 men ate (5 from the stores), 9 men go hungry; 6 bearers desert; 3 bearers go hungry; 3 starving bearers fall sick');
     expect(e3.chart).toMatchObject({ bearers: 4, askaris: 3, food: 0 });
     expect(e3.sick).toMatchObject({ bearers: 3, explorer: false });
-    const s4 = reduce([...events, ...pass('top-1', s3)]);
+    const s4 = reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' })]); // the card is read first (prompt 34)
     expect(s4.turn).toMatchObject({ current: 'bottom-1', round: 4 });
     expect(s4.explorers[0].chart!.askaris).toBe(2); // card 1
     expect(moveTargets(s4, s4.explorers[0])).toEqual([]); // three sick, one well bearer: nobody to carry them
-    expect(reduce([...events, ...pass('top-1', s3), event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]).diagnostics.at(-1)?.reason).toBe('the sick cannot all be carried: the expedition halts');
-    const s5 = reduce([...events, ...pass('top-1', s3), event('turn/ended', { seat: 'bottom-1' })]);
+    expect(reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' }), event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]).diagnostics.at(-1)?.reason).toBe('the sick cannot all be carried: the expedition halts');
+    const s5 = reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' }), event('turn/ended', { seat: 'bottom-1' })]);
     const e5 = s5.explorers[0];
     expect(e5.lastMeal!.outcome).toBe('no game, 7 men ate (0 from the stores), 7 men go hungry; 1 bearer, 2 askaris desert; 3 bearers go hungry; the explorer goes hungry; 2 bearers die of sickness, the starving explorer falls sick');
     expect(e5.chart).toMatchObject({ bearers: 1, askaris: 0, food: 0 });

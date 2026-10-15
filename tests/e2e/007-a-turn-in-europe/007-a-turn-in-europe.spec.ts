@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { endTurnFromRail } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -10,8 +11,7 @@ async function commission(page: Page, seat: string) {
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
 
 async function endTurn(page: Page, seat: string) {
-  await page.getByTestId(`end-turn-${seat}`).click();
-  await page.getByTestId(`confirm-end-turn-${seat}`).click();
+  await endTurnFromRail(page, seat);
   await expect(page.getByTestId(`turn-marker-${seat}`)).toHaveAttribute('data-current', 'false');
 }
 

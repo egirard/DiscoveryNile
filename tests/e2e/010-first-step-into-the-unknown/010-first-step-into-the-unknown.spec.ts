@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { endTurnFromRail } from '../helpers/turn';
 import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
@@ -9,8 +10,7 @@ async function commission(page: Page, seat: string) {
 }
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
 async function endTurn(page: Page, seat: string) {
-  await page.getByTestId(`end-turn-${seat}`).click();
-  await page.getByTestId(`confirm-end-turn-${seat}`).click();
+  await endTurnFromRail(page, seat);
 }
 async function tap(page: Page, id: string, times: number) {
   for (let i = 0; i < times; i++) await page.getByTestId(id).click();

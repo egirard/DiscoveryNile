@@ -72,7 +72,9 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     const ended = reduce(ev);
     expect(ended.explorers[0].lastMeal!.rolls[0].value).toBe(6);
     expect(ended.explorers[0].lastMeal!.outcome).toBe('no game, 12 men ate (12 from the stores)');
-    const next = reduce([...ev, ...pass('top-1', ended)]);
+    const dealt = reduce([...ev, ...pass('top-1', ended)]);
+    expect(dealt.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { then: 'natives' } }); // the card is read first (prompt 34)
+    const next = reduce([...ev, ...pass('top-1', ended), event('disaster/faced', { seat: 'bottom-1' })]);
     expect(next.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'natives' });
   });
 });

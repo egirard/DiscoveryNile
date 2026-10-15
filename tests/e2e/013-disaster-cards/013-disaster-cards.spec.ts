@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { endTurnFromRail } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -15,8 +16,7 @@ async function passTurn(page: Page) {
     const hand = s.explorers.find((e) => e.seat === seat)!.hand;
     await page.getByTestId(`card-${hand[0]}-${seat}`).click();
   }
-  await page.getByTestId(`end-turn-${seat}`).click();
-  await page.getByTestId(`confirm-end-turn-${seat}`).click();
+  await endTurnFromRail(page, seat);
 }
 async function tap(page: Page, id: string, times: number) {
   for (let i = 0; i < times; i++) await page.getByTestId(id).click();
@@ -42,7 +42,7 @@ test.describe('013 - Disaster cards', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Disaster cards',
-      'At the start of every turn in Africa outside a port of entry or Cape Colony the explorer draws a card and reads its disaster face. The card applies only when its terrain or context matches where the expedition is camped: then the losses are taken from the chart, shown as a note at the rail, and any rolls (askaris firing at animals, a doctor\'s treatment) are shown as dice. A card for another terrain has no effect. The card is discarded either way.'
+      'At the start of every turn in Africa outside a port of entry or Cape Colony the explorer draws a card and reads its disaster face, shown in full at the player\'s edge before anything happens; a tap applies it. The card applies only when its terrain or context matches where the expedition is camped: then the losses are taken from the chart, shown as a note at the rail, and any rolls (askaris firing at animals, a doctor\'s treatment) are shown as dice. A card for another terrain has no effect. The card is discarded either way.'
     );
 
     // Seed 863 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first), then the rhino's two charges with
@@ -66,10 +66,40 @@ test.describe('013 - Disaster cards', () => {
     await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-rolls', '0');
     await page.getByTestId('move-target-c25r11').click();
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r11');
-    await nextRound(page);
+    await passTurn(page);
+    // top-1's turn ends without the helper, so bottom-1's card stays on the table to be read (prompt 34).
+    await page.getByTestId('end-turn-top-1').click();
+    await page.getByTestId('confirm-end-turn-top-1').click();
+    await expect(page.getByTestId('disaster-panel-bottom-1')).toBeVisible();
+
+    await steps.step('card-drawn', {
+      description: 'Camped on the veldt, the expedition draws card 1 and the table shows it in full at the bottom edge before anything happens: an askari killed by a buffalo while hunting on the veldt, which applies here; the chart still has five askaris until the card is applied with a tap',
+      verifications: [
+        { spec: 'The panel shows card 1 in full, applying, with the control to apply it; the turn stands at the card and the chart is untouched', check: async () => {
+          const panel = page.getByTestId('disaster-panel-bottom-1');
+          await expect(panel).toHaveAttribute('data-card', 'card-1');
+          await expect(panel).toHaveAttribute('data-applies', 'true');
+          await expect(page.getByTestId('disaster-number-bottom-1')).toHaveText('1');
+          await expect(page.getByTestId('disaster-type-bottom-1')).toHaveText('Loss (Askari)');
+          await expect(page.getByTestId('disaster-context-bottom-1')).toHaveText('VELDT');
+          await expect(page.getByTestId('disaster-text-bottom-1')).toHaveText('One of your ASKARIS is killed by a buffalo, while hunting on the VELDT.');
+          await expect(page.getByTestId('face-disaster-bottom-1')).toHaveText('Apply it');
+          await expect(page.getByTestId('disaster-prompt-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('end-turn-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '5');
+          const s = await state(page);
+          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { card: 'card-1', then: 'act' } });
+          expect(s.turn!.log).toEqual([]);
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.getByTestId('face-disaster-bottom-1').click();
+    await expect(page.getByTestId('disaster-panel-bottom-1')).toHaveCount(0);
 
     await steps.step('disaster-strikes', {
-      description: 'Camped on the veldt, the expedition draws card 1: an askari is killed by a buffalo. The card and the loss show at the rail and the chart drops to four askaris',
+      description: 'The card is applied: an askari is killed by a buffalo. The card and the loss show at the rail and the chart drops to four askaris',
       verifications: [
         { spec: 'The rail shows card 1 as applying with the note "1 askari killed"', check: async () => {
           const chip = page.getByTestId('disaster-card-bottom-1');

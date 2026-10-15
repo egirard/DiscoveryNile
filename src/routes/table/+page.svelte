@@ -31,6 +31,9 @@
   import ExpeditionChart from '$features/expedition/ExpeditionChart.svelte';
   import ChartSummary from '$features/expedition/ChartSummary.svelte';
   import EdgePanel from '$lib/tabletop/EdgePanel.svelte';
+  import DisasterCard from '$features/disasters/DisasterCard.svelte';
+  import { situationOf } from '$features/disasters/draw';
+  import { applies as disasterApplies } from '$features/disasters/resolve';
   import PolicyChooser from '$features/natives/PolicyChooser.svelte';
   import SpoilsChooser from '$features/natives/SpoilsChooser.svelte';
   import NegotiationPanel from '$features/natives/NegotiationPanel.svelte';
@@ -194,6 +197,15 @@
     return explorer ? moveTargets(gameState, explorer) : [];
   });
   /** The seat choosing a policy towards natives right now. */
+  // The turn's disaster card, read in full before it applies (prompt 34): at the seat's edge over a scrim, like a roll.
+  const facingDisaster = $derived.by(() => {
+    if (gameState.turn?.phase !== 'disaster' || !gameState.turn.disaster) return null;
+    const seat = seats.find((s) => s.id === gameState.turn!.current);
+    const explorer = seat && explorerAt(gameState, seat.id);
+    if (!seat || !explorer) return null;
+    const situation = situationOf(gameState, explorer);
+    return { seat, card: gameState.turn.disaster.card, applies: situation ? disasterApplies(cardOf(gameState.turn.disaster.card), situation) : false };
+  });
   const facingNatives = $derived.by(() => {
     if (gameState.turn?.phase !== 'natives') return null;
     const seat = seats.find((s) => s.id === gameState.turn!.current);
@@ -513,6 +525,12 @@
     </EdgePanel>
   {/if}
 
+  {#if facingDisaster}
+    <div class="scrim" data-testid="disaster-scrim" aria-hidden="true"></div>
+    <EdgePanel seat={facingDisaster.seat} {viewport} inset={railDepth + target * 0.4} testid="disaster-edge-{facingDisaster.seat.id}" raised>
+      <DisasterCard seat={facingDisaster.seat.id} card={facingDisaster.card} applies={facingDisaster.applies} onface={() => game?.append('disaster/faced', { seat: facingDisaster!.seat.id })} />
+    </EdgePanel>
+  {/if}
   {#if facingNatives}
     <EdgePanel seat={facingNatives.seat} {viewport} inset={railDepth + target * 0.4} testid="policy-edge-{facingNatives.seat.id}">
       <PolicyChooser seat={facingNatives.seat.id} tribe={facingNatives.tribe.id} warriors={facingNatives.tribe.warriors} attitude={facingNatives.tribe.attitude} regard={facingNatives.tribe.regard[facingNatives.seat.id] ?? 0} onchoose={(policy) => choosePolicy(facingNatives!.seat.id, policy)} />

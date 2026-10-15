@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { endTurnFromRail } from '../helpers/turn';
 
 const SEATS = ['bottom-1', 'bottom-2', 'top-1', 'top-2', 'left-1', 'right-1'];
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
@@ -36,8 +37,7 @@ async function passTurn(page: Page) {
     const hand = s.explorers.find((e) => e.seat === seat)!.hand;
     await page.getByTestId(`card-${hand[0]}-${seat}`).click();
   }
-  await page.getByTestId(`end-turn-${seat}`).click();
-  await page.getByTestId(`confirm-end-turn-${seat}`).click();
+  await endTurnFromRail(page, seat);
 }
 async function tap(page: Page, id: string, times: number) {
   for (let i = 0; i < times; i++) await page.getByTestId(id).click();

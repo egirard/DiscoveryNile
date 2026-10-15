@@ -47,7 +47,11 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h11a5 5 0 0 1 0 10h-3" /></svg>
     </button>
   {/if}
-  {#if phase === 'discard'}
+  {#if phase === 'disaster'}
+    <span class="prompt" data-testid="disaster-prompt-{seat}" aria-label="The disaster card is drawn: read it on the panel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M12 7v6" /><path d="M12 16v1" /></svg>
+    </span>
+  {:else if phase === 'discard'}
     <span class="prompt" data-testid="discard-prompt-{seat}" aria-label="Over the hand limit: tap a card to discard it">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="5" y="3" width="11" height="15" rx="2" />

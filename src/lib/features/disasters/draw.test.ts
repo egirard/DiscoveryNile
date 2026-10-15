@@ -30,23 +30,44 @@ function toTheVeldt() {
 }
 
 describe('the disaster step of an African turn (rules §10)', () => {
-  it('draws nothing at the port, then one card per turn in the field, discarding it', () => {
+  it('deals one card per turn in the field, none at the port, shown before it is faced, then applied and discarded', () => {
     const { events, atPort: portEvents, pass } = toTheVeldt();
+    const face = () => event('disaster/faced', { seat: 'bottom-1' }); // a fresh event each time: ids are unique
     const atPort = reduce(portEvents);
-    expect(atPort.turn).toMatchObject({ current: 'bottom-1', round: 3, log: [] });
+    expect(atPort.turn).toMatchObject({ current: 'bottom-1', round: 3, log: [], phase: 'act', disaster: null });
     expect(drawsDisaster(atPort.explorers[0])).toBe(false);
-    const r4 = reduce(events);
+    // The card is dealt and held for the player to read (prompt 34): nothing has happened to the chart yet.
+    const dealt = reduce(events);
+    expect(dealt.diagnostics).toEqual([]);
+    expect(dealt.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { card: 'card-1', then: 'act' }, log: [] });
+    expect(dealt.explorers[0].chart).toMatchObject({ askaris: 5, bearers: 15 });
+    expect(dealt.deck!.draw).not.toContain('card-1');
+    expect(dealt.deck!.discard).not.toContain('card-1');
+    expect(reduce([...events, event('turn/ended', { seat: 'bottom-1' }), face()]).diagnostics.map((d) => d.reason)).toEqual(["it is not bottom-1's turn"]); // ending the turn faced it, and the turn passed
+    expect(reduce([...events, face(), face()]).diagnostics.map((d) => d.reason)).toEqual(['no disaster card to face']);
+    expect(reduce([...events, event('disaster/faced', { seat: 'top-1' })]).diagnostics.map((d) => d.reason)).toEqual(["it is not top-1's turn"]);
+    const r4 = reduce([...events, face()]);
     expect(r4.diagnostics).toEqual([]);
-    expect(r4.turn).toMatchObject({ current: 'bottom-1', round: 4 });
+    expect(r4.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'act', disaster: null });
     expect(r4.turn!.log).toEqual([{ kind: 'disaster', seat: 'bottom-1', hex: 'c25r11', card: 'card-1', applies: true, rolls: [], outcome: '1 askari killed' }]);
     expect(r4.explorers[0].chart).toMatchObject({ askaris: 4, bearers: 15 });
     expect(r4.deck!.discard).toContain('card-1');
     expect(r4.explorers[0].hand).not.toContain('card-1');
-    const r5 = reduce([...events, ...pass('bottom-1', r4), ...pass('top-1', reduce([...events, ...pass('bottom-1', r4)]))]);
+    // An action of the seat with the card still to be read faces it first, so an event stream without the facing plays the same.
+    const acted = reduce([...events, event('expedition/reorganised', { seat: 'bottom-1', action: 'dismiss', item: 'bearers', count: 1 })]);
+    expect(acted.diagnostics).toEqual([]);
+    expect(acted.turn!.log.map((l) => l.outcome)).toEqual(['1 askari killed', '1 bearer dismissed']);
+    // Taking the action back leaves the card faced: the undo goes to the state after the facing.
+    expect(acted.undo).toMatchObject({ type: 'expedition/reorganised', seat: 'bottom-1' });
+    expect(acted.undo!.before.turn!.log.map((l) => l.outcome)).toEqual(['1 askari killed']);
+    expect(acted.undo!.before.turn!.phase).toBe('act');
+    const ev5 = [...events, face(), ...pass('bottom-1', r4)];
+    const ev5b = [...ev5, ...pass('top-1', reduce(ev5)), face()];
+    const r5 = reduce(ev5b);
     expect(r5.turn!.log[0]).toMatchObject({ kind: 'disaster', card: 'card-29', applies: false, outcome: 'not here: jungle' });
     expect(r5.explorers[0].chart).toMatchObject({ askaris: 4, bearers: 15 });
-    const ev6 = [...events, ...pass('bottom-1', r4), ...pass('top-1', reduce([...events, ...pass('bottom-1', r4)]))];
-    const r6 = reduce([...ev6, ...pass('bottom-1', r5), ...pass('top-1', reduce([...ev6, ...pass('bottom-1', r5)]))]);
+    const ev6 = [...ev5b, ...pass('bottom-1', r5)];
+    const r6 = reduce([...ev6, ...pass('top-1', reduce(ev6)), face()]);
     const rhino = r6.turn!.log[0];
     expect(rhino).toMatchObject({ card: 'card-23', applies: true, outcome: '1 bearer killed by the rhino, the rhino is shot on charge 2' });
     expect(rhino.rolls.map((r) => r.value)).toEqual([1, 2, 3, 4, 5, 1, 1, 6, 1, 1]);

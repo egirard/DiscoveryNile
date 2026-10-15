@@ -57,7 +57,8 @@ describe('victory: prisoners, the village and the loot (rules §8.4)', () => {
     expect(won.turn!.phase).toBe('act');
     expect(won.turn!.log.at(-1)).toMatchObject({ outcome: '4 prisoners taken, the village cannot be found' });
     const ev = [...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('turn/ended', { seat: 'bottom-1' })];
-    const next = reduce([...ev, ...pass('top-1', reduce(ev))]);
+    expect(reduce([...ev, ...pass('top-1', reduce(ev))]).turn).toMatchObject({ round: 4, phase: 'disaster', disaster: { then: 'spoils' } }); // the card is read first (prompt 34)
+    const next = reduce([...ev, ...pass('top-1', reduce(ev)), event('disaster/faced', { seat: 'bottom-1' })]);
     expect(next.turn).toMatchObject({ round: 4, phase: 'spoils' });
     expect(next.turn!.log.find((l) => l.kind === 'victory')).toMatchObject({ outcome: 'the village is found' });
   });

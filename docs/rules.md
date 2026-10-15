@@ -68,7 +68,7 @@ The table keeps a log of the whole game, seat by seat and round by round, from t
 
 ## 6. A turn in Africa *(Rules: Order of a Turn)*
 
-1. **Disaster** card, unless in a port of entry or in Cape Colony.
+1. **Disaster** card, unless in a port of entry or in Cape Colony. The table shows the card in full at the player's edge first; a tap applies it (prompt 34).
 2. **Either** exploration (movement, lost check, mapping, native discovery) **or** a specialty action (geology, zoology, medicine, evangelism). Never both.
 3. **Natives**: policy, reaction, then combat or negotiation and trade.
 4. **Hunting and rations.**

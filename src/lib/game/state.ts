@@ -178,7 +178,8 @@ export interface RollRecord {
  * calm chief awaits the explorer's gifts (§8.5); `trade`: permission granted, prices rolled. `act`: free to
  * publish, sail or end the turn.
  */
-export type Phase = 'discard' | 'natives' | 'spoils' | 'negotiate' | 'trade' | 'act';
+/** `disaster`: the turn's card is drawn and shown in full, its effects applied once the player has read it (prompt 34). */
+export type Phase = 'disaster' | 'discard' | 'natives' | 'spoils' | 'negotiate' | 'trade' | 'act';
 
 export interface TurnState {
   /** Seats with explorers, clockwise from the first player. */
@@ -188,6 +189,8 @@ export interface TurnState {
   /** The agreed length of the game in rounds, or null to end by consensus (RQ-10). */
   roundLimit: number | null;
   phase: Phase;
+  /** The disaster card drawn this turn and not yet faced (phase `disaster`), and the phase the turn goes on to once it is. */
+  disaster: { card: CardId; then: Phase } | null;
   /** The expedition's movement is over for this turn. */
   moved: boolean;
   /** Mode and points for this turn, fixed by the first move. */

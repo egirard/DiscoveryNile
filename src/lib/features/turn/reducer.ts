@@ -1,6 +1,6 @@
 import { describeCard } from './actions';
 import type { GameEvent } from '$lib/game/events';
-import type { ExplorerState, GameState, LoggedTurn, RollOff, RollRecord } from '$lib/game/state';
+import type { ExplorerState, GameState, LoggedTurn, Phase, RollOff, RollRecord } from '$lib/game/state';
 import type { Roll } from '$features/map/generate';
 import type { HexId } from '$features/map/hex';
 import { d6, dice, shuffleWith } from '$lib/game/random';
@@ -8,7 +8,7 @@ import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/card
 import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
 import type { SeatId } from '$lib/tabletop/seats';
-import { drawDisaster, inTheField, situationOf } from '$features/disasters/draw';
+import { dealDisaster, faceDisaster, inTheField, situationOf } from '$features/disasters/draw';
 import { oasisSearch, oasisSearchable, researchPending, standingHex, terrainOf } from '$features/exploration/reducer';
 import { preach, study, treat, type TreatResult } from '$features/natives/specialties';
 import { hostilities, react, type ReactionResult } from '$features/natives/reaction';
@@ -118,7 +118,7 @@ export function endGame(state: GameState, reason: GameEnd['reason']): GameState 
  * the explorer lands at the chosen port and this turn is the one the rules say is skipped.
  */
 function beginTurn(state: GameState, seat: SeatId): GameState {
-  const turn = { ...state.turn!, current: seat, phase: 'act' as const, moved: false, movement: null, policy: null, trade: null, log: [] };
+  const turn = { ...state.turn!, current: seat, phase: 'act' as const, disaster: null, moved: false, movement: null, policy: null, trade: null, log: [] };
   state = { ...state, turn };
   let explorer = currentExplorer(state)!;
   if (explorer.location.kind === 'voyage') {
@@ -154,11 +154,10 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
     state = villageRetry(state, explorer);
     explorer = currentExplorer(state)!;
     const rechecked = oasisRecheck(state, explorer);
-    const drawn = drawDisaster(rechecked, currentExplorer(rechecked)!);
-    if (!currentExplorer(drawn)) return drawn; // the card killed him: the seat's turn stays open to read the rail, then passes
     // Remaining in a hex with natives: a policy is chosen again (rules §8.1), unless the village's spoils are being dealt with.
-    if (drawn.turn!.phase === 'spoils') return drawn;
-    return drawn.map[hex]?.tribe != null ? { ...drawn, turn: { ...drawn.turn!, phase: 'natives' } } : drawn;
+    const then: Phase = rechecked.turn!.phase === 'spoils' ? 'spoils' : rechecked.map[hex]?.tribe != null ? 'natives' : 'act';
+    // The disaster card is dealt and shown first (prompt 34); the turn goes on to `then` once it is faced.
+    return dealDisaster(rechecked, currentExplorer(rechecked)!, then) ?? { ...rechecked, turn: { ...rechecked.turn!, phase: then } };
   }
   if (explorer.location.kind !== 'europe') return state;
   const expired = explorer.hand.filter((id) => card(id).donation.kind === 'ticket' && (explorer.drawnRound[id] ?? 0) < turn.round);
@@ -377,7 +376,14 @@ export function waterAvailable(state: GameState, explorer: ExplorerState): boole
 
 export const WATER_STEP = 10;
 
-const TURN_EVENTS = new Set<string>(['game/started', 'game/begun', 'turn/ended', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted', 'game/ended']);
+/**
+ * An action of the turn that faces the disaster card first when the card is still to be read (prompt 34): the table
+ * always shows the card and sends `disaster/faced` itself, so this is for event streams written without it (tests,
+ * games recorded before the card was shown), which then play as they did when the card applied itself.
+ */
+export const facesTheCardFirst = (type: string) => !['game/created', 'game/started', 'game/begun', 'game/continued', 'game/ended', 'seat/taken', 'seat/left', 'explorer/commissioned', 'disaster/faced', 'turn/undone', 'dice/physical', 'dice/rolled'].includes(type);
+
+const TURN_EVENTS = new Set<string>(['game/started', 'game/begun', 'turn/ended', 'disaster/faced', 'voyage/booked', 'cards/discarded', 'natives/policy', 'natives/offered', 'natives/traded', 'natives/done', 'specialty/performed', 'natives/spoils', 'expedition/returned', 'explorer/retired', 'hex/published', 'expedition/joined', 'expedition/split', 'expedition/reorganised', 'cache/recovered', 'water/taken', 'expedition/outfitted', 'game/end-voted', 'game/ended']);
 
 export function reduceTurn(state: GameState, event: GameEvent): GameState | string {
   if (state.ended && TURN_EVENTS.has(event.type)) return 'the game is over';
@@ -462,7 +468,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         rollOff,
         starting: winner,
         history,
-        turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', moved: false, movement: null, policy: null, trade: null, log: [] },
+        turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', disaster: null, moved: false, movement: null, policy: null, trade: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
           hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e
@@ -481,11 +487,20 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       const ending = currentExplorer(state);
       if (!ending) return advance(state); // the explorer died or retired this turn: the turn passes whatever was pending
+      if (state.turn.phase === 'disaster') return 'read the disaster card first';
       if (state.turn.phase === 'natives') return 'choose a policy towards the natives first';
       if (state.turn.phase === 'spoils') return 'deal with the prisoners and the village first';
       if (state.turn.phase === 'negotiate' || state.turn.phase === 'trade') return 'finish with the chief first';
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
       return advance(eatAndHunt(state, ending));
+    }
+    case 'disaster/faced': {
+      // The card is read: its effects apply and the turn goes on (prompt 34).
+      const { seat } = event.payload as { seat?: string };
+      if (!state.turn) return 'game not started';
+      if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
+      if (state.turn.phase !== 'disaster' || !state.turn.disaster) return 'no disaster card to face';
+      return faceDisaster(state);
     }
     case 'voyage/booked': {
       const { seat, port, ticketCardId, with: withSeats } = event.payload as { seat?: string; port?: string; ticketCardId?: unknown; with?: unknown };
