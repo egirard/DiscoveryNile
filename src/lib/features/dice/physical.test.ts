@@ -63,8 +63,9 @@ describe('the reducer with physical dice', () => {
     const refused = reduce([...events, event('turn/ended', { seat: 'bottom-1' })]);
     expect(refused.diagnostics).toEqual([{ eventId: expect.stringMatching(/-00000008$/), reason: 'waiting for bottom-1 to roll the dice' }]);
     expect(reduce([...events, event('dice/rolled', { seat: 'top-1', values: [1, 1, 1, 1] })]).diagnostics[0].reason).toBe("it is bottom-1's roll");
-    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [1, 1, 1] })]).diagnostics[0].reason).toBe('4 dice of 1 to 6 expected');
+    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [1, 1, 1, 1, 1] })]).diagnostics[0].reason).toBe('4 dice of 1 to 6 expected');
     expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [1, 1, 1, 7] })]).diagnostics[0].reason).toBe('4 dice of 1 to 6 expected');
+    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [] })]).diagnostics[0].reason).toBe('4 dice of 1 to 6 expected');
 
     const second = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] })]);
     expect(second.diagnostics).toEqual([]);
@@ -79,6 +80,39 @@ describe('the reducer with physical dice', () => {
     // The dice used are gone from the state; the shuffle that followed did not read them.
     expect(started.rng).toMatchObject({ physical: true, scripts: { main: [] }, next: {} });
     expect(started.explorers.map((e) => e.hand.length)).toEqual([6, 5]); // five each, and the first player has drawn
+  });
+  it('takes a throw in parts, the rest from the generator at a word, and reads the whole in order (prompt 33)', () => {
+    // A throw of more dice than the tray holds: three of bottom-1's four come first, then the fourth.
+    const events = [...lobby(), event('dice/physical', { on: true }), event('game/started', {})];
+    const part = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 5, 4] })]);
+    expect(part.diagnostics).toEqual([]);
+    expect(part.awaiting).toMatchObject({ seat: 'bottom-1', count: 4, have: [6, 5, 4], rolled: [] });
+    expect(part.rng).toMatchObject({ scripts: { main: [6, 5, 4] } });
+    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 5, 4] }), event('dice/rolled', { seat: 'bottom-1', values: [1, 1] })]).diagnostics[0].reason).toBe('1 more die of 1 to 6 expected');
+    const whole = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 5, 4] }), event('dice/rolled', { seat: 'bottom-1', values: [3] })]);
+    expect(whole.diagnostics).toEqual([]);
+    expect(whole.awaiting).toMatchObject({ seat: 'top-1', have: [], rolled: [{ values: [6, 5, 4, 3], seat: 'bottom-1' }] });
+    // `auto` has the table roll the rest from the stream's generator: the same dice on every client, as a seeded game rolls them.
+    const auto = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6] }), event('dice/rolled', { seat: 'bottom-1', auto: true })]);
+    expect(auto.diagnostics).toEqual([]);
+    expect(auto.awaiting!.rolled[0].values).toHaveLength(4);
+    expect(auto.awaiting!.rolled[0].values[0]).toBe(6);
+    expect(auto.awaiting!.rolled[0].values.slice(1).every((v) => v >= 1 && v <= 6)).toBe(true);
+    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6] }), event('dice/rolled', { seat: 'bottom-1', auto: true })])).toEqual(auto);
+    const generator = reduce([...lobby(), event('game/started', {})]);
+    expect(auto.awaiting!.rolled[0].values.slice(1)).toEqual(generator.rollOff!['bottom-1'][0].slice(0, 3)); // the generator's own first three dice
+  });
+  it('puts the dice rolled at the table ahead of a script written for later, so a scripted game can turn physical dice on part way', () => {
+    // Scripted through bottom-1's roll and two dice beyond: with physical dice on, top-1's throw is asked for, read
+    // after bottom-1's scripted four and before the two scripted for later, which stay in place.
+    const scripted = [created('ABCDE', { bottom: 1, top: 1, left: 1, right: 1 }, 24, [2, 2, 2, 2, 5, 5]), ...seats.flatMap((seat) => [event('seat/taken', { seat, uid: `table:${seat}` }), event('explorer/commissioned', { seat, specialties: [] })])];
+    const held = reduce([...scripted, event('dice/physical', { on: true }), event('game/started', {})]);
+    expect(held.awaiting).toMatchObject({ seat: 'top-1', count: 4, at: 4, rolled: [] });
+    const done = reduce([...scripted, event('dice/physical', { on: true }), event('game/started', {}), event('dice/rolled', { seat: 'top-1', values: [6, 6, 6, 6] })]);
+    expect(done.diagnostics).toEqual([]);
+    expect(done.awaiting).toBeNull();
+    expect(done.rollOff).toEqual({ 'bottom-1': [[2, 2, 2, 2]], 'top-1': [[6, 6, 6, 6]] });
+    expect(done.rng).toMatchObject({ scripts: { main: [5, 5] }, next: {} });
   });
   it('asks the tied seats to roll again, and a re-roll is read from the same throw of the same seat', () => {
     const events = [...lobby(), event('dice/physical', { on: true }), event('game/started', {}), event('dice/rolled', { seat: 'bottom-1', values: [2, 2, 2, 2] }), event('dice/rolled', { seat: 'top-1', values: [2, 2, 2, 2] })];

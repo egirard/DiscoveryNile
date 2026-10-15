@@ -53,7 +53,8 @@ export function describeLine(l: LogLine, clock: Clock = utcClock): string {
       return `${t}  (opened with ${d?.count} events, the last ${d?.last ?? 'none'})`;
     case 'dice/asked': {
       const rolled = Array.isArray(d?.rolled) ? (d!.rolled as { values: number[] }[]).map((r) => r.values.join(' ')).join('; ') : '';
-      return `${t}  asked ${d?.seat}: ${d?.prompt}${rolled ? ` (already ${rolled})` : ''}`;
+      const have = Array.isArray(d?.have) && (d!.have as number[]).length ? ` (${(d!.have as number[]).length} of ${d?.count} in: ${(d!.have as number[]).join(' ')})` : '';
+      return `${t}  asked ${d?.seat}: ${d?.prompt}${have}${rolled ? ` (already ${rolled})` : ''}`;
     }
     case 'dicecam/reading': {
       const dice = Array.isArray(d?.dice) ? (d!.dice as { value: number; confidence: number; at: { x: number; y: number } | null }[]).map((x) => `${x.value}@${x.at ? `${x.at.x.toFixed(2)},${x.at.y.toFixed(2)}` : '?'}(${x.confidence})`).join(' ') : '';

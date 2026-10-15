@@ -298,6 +298,10 @@ export interface AwaitingDice {
   /** What the table asks, e.g. "Roll a D6 to see if you are lost; 4+ means you're okay". */
   prompt: string;
   rolled: { prompt: string; values: number[]; seat: SeatId }[];
+  /** The dice of this throw already in, when it comes in parts: a throw of more dice than the tray holds (prompt 33). */
+  have: number[];
+  /** Where in the stream's script the event reads this throw (`DiceNeeded.at`). */
+  at: number;
 }
 
 export interface GameEnd {

@@ -5,13 +5,15 @@
     label: string;
     testid?: string;
     size?: string;
+    /** Many dice: let the row wrap. */
+    wrap?: boolean;
   }
   import { PIPS } from './pips';
-  let { values, label, testid, size = 'calc(var(--target) * 0.7)' }: Props = $props();
+  let { values, label, testid, size = 'calc(var(--target) * 0.7)', wrap = false }: Props = $props();
   const total = $derived(values.reduce((a, b) => a + b, 0));
 </script>
 
-<span class="dice" data-testid={testid} data-total={total} aria-label="{label}: rolled {values.join(', ')}, total {total}" style="--die:{size}">
+<span class="dice" class:wrap data-testid={testid} data-total={total} aria-label="{label}: rolled {values.join(', ')}, total {total}" style="--die:{size}">
   {#each values as v, i (i)}
     <svg class="die" viewBox="0 0 24 24" data-value={v} aria-hidden="true">
       <rect x="1" y="1" width="22" height="22" rx="4" />
@@ -27,6 +29,10 @@
     display: inline-flex;
     align-items: center;
     gap: calc(var(--die) * 0.12);
+  }
+  .wrap {
+    flex-wrap: wrap;
+    row-gap: calc(var(--die) * 0.2);
   }
   .die {
     width: var(--die);

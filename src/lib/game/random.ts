@@ -55,7 +55,9 @@ export class DiceNeeded extends Error {
   constructor(
     public readonly stream: Stream,
     public readonly count: number,
-    public readonly ask: DiceAsk
+    public readonly ask: DiceAsk,
+    /** Where in the stream's script the throw is read: the dice rolled go in there (`withRolled`). */
+    public readonly at = 0
   ) {
     super(`${count} physical ${count === 1 ? 'die' : 'dice'} needed on the ${stream} stream ${ask.what}`);
     this.name = 'DiceNeeded';
@@ -138,7 +140,7 @@ export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNA
     const script = state.scripts[stream];
     const i = state.next[stream] ?? 0;
     if (script && i < script.length) return { state: { ...state, next: { ...state.next, [stream]: i + 1 } }, value: script[i] };
-    if (state.physical) throw new DiceNeeded(stream, 1, ask);
+    if (state.physical) throw new DiceNeeded(stream, 1, ask, i);
   }
   const r = nextRandom(state, stream);
   return { state: r.state, value: 1 + Math.floor(r.value * 6) };
@@ -146,7 +148,7 @@ export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNA
 
 /** Several dice, in order; with physical dice they are asked for together, as one throw. */
 export function dice(state: RngState, count: number, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; values: number[] } {
-  if (typeof state !== 'number' && state.physical && scriptedLeft(state, stream) < count) throw new DiceNeeded(stream, count, ask);
+  if (typeof state !== 'number' && state.physical && scriptedLeft(state, stream) < count) throw new DiceNeeded(stream, count, ask, state.next[stream] ?? 0);
   const values: number[] = [];
   for (let i = 0; i < count; i++) {
     const r = d6(state, stream, ask);
@@ -176,10 +178,28 @@ export function withPhysical(state: RngState, on: boolean): RngState {
   return rest;
 }
 
-/** Add dice rolled at the table to a stream's script, after anything already there, so the next draws read them in order. */
-export function withRolled(state: RngState, stream: Stream, values: number[]): RngState {
+/**
+ * Add dice rolled at the table to a stream's script at `at`, where the held event reads the throw (`DiceNeeded.at`,
+ * plus the dice of the throw already in): after whatever the event reads before it, and ahead of anything a
+ * scenario scripted for later, so a game scripted up to a point can turn physical dice on there and still find
+ * its later script in place. Without `at` they go at the end.
+ */
+export function withRolled(state: RngState, stream: Stream, values: number[], at?: number): RngState {
   const o = asObject(state);
-  return { ...o, scripts: { ...o.scripts, [stream]: [...(o.scripts[stream] ?? []), ...values] } };
+  const script = o.scripts[stream] ?? [];
+  const i = Math.min(at ?? script.length, script.length);
+  return { ...o, scripts: { ...o.scripts, [stream]: [...script.slice(0, i), ...values, ...script.slice(i)] } };
+}
+
+/** Dice from a stream's generator whatever is scripted and whether the dice are physical: the table rolling the rest of a throw (PROMPTS.md, prompt 33). */
+export function generated(state: RngState, count: number, stream: Stream = 'main'): { state: RngState; values: number[] } {
+  const values: number[] = [];
+  for (let i = 0; i < count; i++) {
+    const r = nextRandom(state, stream);
+    state = r.state;
+    values.push(1 + Math.floor(r.value * 6));
+  }
+  return { state, values };
 }
 
 /** Drop the physical dice a finished event consumed, so the state does not carry every roll of the game. */

@@ -1,6 +1,6 @@
 import { REDUCER_VERSION, SCHEMA_VERSION, type GameEvent } from './events';
 import { initialState, type AwaitingDice, type GameState } from './state';
-import { DiceNeeded, settled, withPhysical, withRolled } from './random';
+import { DiceNeeded, generated, settled, withPhysical, withRolled } from './random';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
 import { endTurnAfterLost, reduceTurn } from '$features/turn/reducer';
@@ -40,14 +40,30 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
     return { ...state, rng: withPhysical(state.rng, on), undo: null };
   }
   if (event.type === 'dice/rolled') {
-    const { seat, values } = event.payload as { seat?: unknown; values?: unknown };
+    const { seat, values, auto } = event.payload as { seat?: unknown; values?: unknown; auto?: unknown };
     const waiting = state.awaiting;
     if (!waiting) return reject(state, event, 'no roll was asked for');
     if (seat !== waiting.seat) return reject(state, event, `it is ${waiting.seat}'s roll`);
-    if (!Array.isArray(values) || values.length !== waiting.count || !values.every((v) => Number.isInteger(v) && v >= 1 && v <= 6))
-      return reject(state, event, `${waiting.count} ${waiting.count === 1 ? 'die' : 'dice'} of 1 to 6 expected`);
-    const rolled = [...waiting.rolled, { prompt: waiting.prompt, values: values as number[], seat: waiting.seat }];
-    return resume({ ...state, rng: withRolled(state.rng!, waiting.stream, values as number[]), awaiting: null }, waiting.event, rolled);
+    // A throw may come in parts (PROMPTS.md, prompt 33): a village's loot is a die a warrior, more than a tray holds,
+    // so each throw brings some of them until the count is in, or `auto` has the table roll the rest from the
+    // stream's generator (deterministic, so every client draws the same).
+    const remaining = waiting.count - waiting.have.length;
+    let rng = state.rng!;
+    let thrown: number[];
+    if (auto === true) {
+      const r = generated(rng, remaining, waiting.stream);
+      rng = r.state;
+      thrown = r.values;
+    } else {
+      if (!Array.isArray(values) || values.length < 1 || values.length > remaining || !values.every((v) => Number.isInteger(v) && v >= 1 && v <= 6))
+        return reject(state, event, remaining === waiting.count ? `${waiting.count} ${waiting.count === 1 ? 'die' : 'dice'} of 1 to 6 expected` : `${remaining} more ${remaining === 1 ? 'die' : 'dice'} of 1 to 6 expected`);
+      thrown = values as number[];
+    }
+    const have = [...waiting.have, ...thrown];
+    rng = withRolled(rng, waiting.stream, thrown, waiting.at + waiting.have.length);
+    if (have.length < waiting.count) return { ...state, rng, awaiting: { ...waiting, have } };
+    const rolled = [...waiting.rolled, { prompt: waiting.prompt, values: have, seat: waiting.seat }];
+    return resume({ ...state, rng, awaiting: null }, waiting.event, rolled);
   }
   if (event.type === 'turn/undone') {
     const { seat, eventId } = event.payload as { seat?: unknown; eventId?: unknown };
@@ -73,7 +89,7 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     if (!(e instanceof DiceNeeded)) throw e;
     const payloadSeat = (event.payload as { seat?: unknown }).seat;
     const seat = (e.ask.seat ?? (typeof payloadSeat === 'string' ? payloadSeat : undefined) ?? state.turn?.current ?? state.seats[0]?.id) as AwaitingDice['seat'];
-    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled } };
+    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at } };
   }
 }
 

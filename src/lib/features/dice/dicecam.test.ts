@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraFailure, consider, dockNote, isEngineMessage, lieOf, moved, sameLie, statusText, watching, type Reading } from './dicecam';
+import { cameraFailure, consider, dockNote, gathering, isEngineMessage, lieOf, moved, sameLie, statusText, watching, type Reading } from './dicecam';
 
 const reading = (rollId: string, values: number[], confidence = 0.9, askew = false): Reading => ({ rollId, dice: values.map((value) => ({ value, confidence, askew })) });
 /** A reading with the dice placed in a row, the i-th at x = 0.2 + 0.2 i, shifted by `dx`. */
@@ -44,6 +44,32 @@ describe('reading the dicecam', () => {
     expect(lieOf(reading('r4', [2])).dice).toEqual([{ value: 2, x: -1, y: -1 }]);
     expect(statusText('active', 1, 1, true, true)).toBe('Waiting for a D6 roll');
     expect(statusText('active', 4, 4, true, true)).toBe('Waiting for a roll of 4 D6');
+  });
+  it('gathers a throw of more dice than the tray holds over several throws, each taken as it comes (prompt 33)', () => {
+    // Twelve dice for the loot: four thrown, taken; the same four lying there, ignored; three more, taken; then only five more wanted.
+    let w = gathering(12, 0, lieOf(lying('r0', [])));
+    expect(w).toMatchObject({ count: 12, gathered: true });
+    let c = consider(consider(w, lying('r1', [1, 2, 3, 4])).watch, lying('r1', [1, 2, 3, 4]));
+    expect(c.accept).toEqual([1, 2, 3, 4]);
+    w = gathering(12, 4, lieOf(lying('r1', [1, 2, 3, 4])));
+    expect(w.count).toBe(8);
+    c = consider(w, lying('r2', [1, 2, 3, 4]));
+    expect(c.stale).toBe(true);
+    c = consider(consider(w, lying('r2', [5, 5, 5])).watch, lying('r2', [5, 5, 5]));
+    expect(c.accept).toEqual([5, 5, 5]);
+    w = gathering(12, 11, lieOf(lying('r2', [5, 5, 5])));
+    c = consider(w, lying('r3', [6, 6]));
+    expect(c.accept).toBeNull();
+    expect(c.seen).toBe(2);
+    expect(statusText('active', 1, 2, true, false, true)).toBe('2 dice seen, only 1 more die wanted');
+    expect(statusText('active', 8, null, true, false, true)).toBe('Watching the dicecam for a throw; 8 more dice wanted');
+    expect(statusText('active', 8, 3, true, false, true)).toBe('3 dice seen, reading the faces…');
+    expect(statusText('active', 8, 4, true, true, true)).toBe('Waiting for a throw; 8 more dice wanted');
+    expect(statusText('active', 1, null, false, false, true)).toBe('No dicecam on this table: tap each face as it is rolled; 1 more die wanted');
+    // A throw the tray holds whole is never taken in parts: four wanted, three seen is not a throw.
+    const whole = watching(4, lieOf(lying('r0', [])));
+    expect(whole.gathered).toBe(false);
+    expect(consider(consider(whole, lying('r1', [1, 2, 3])).watch, lying('r1', [1, 2, 3])).accept).toBeNull();
   });
   it('reads a throw the engine still calls by the last one\'s name: a die tossed in without the motion being seen', () => {
     // The lost die, a one, was taken as r1; the hunt's die lands as a five, the engine having missed the toss (prompt 21).

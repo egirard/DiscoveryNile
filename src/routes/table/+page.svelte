@@ -49,7 +49,7 @@
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
-  import { consider, lieOf, moved, watching, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
+  import { consider, gathering, lieOf, moved, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { log as diagLog } from '$lib/diagnostics/diag';
   import { isPhysical } from '$lib/game/random';
 
@@ -321,10 +321,11 @@
   $effect(() => {
     // Each ask watches afresh: what lies in the tray as it opens (the last throw taken, or dice left from before)
     // is not the throw, and the engine's first reading at the start of the run is the tray as found.
-    watch = awaiting ? watching(awaiting.count, lastThrow, lastReading) : null;
+    // A throw gathered in parts (prompt 33) watches again for the rest after each part, the part just taken a lie.
+    watch = awaiting ? gathering(awaiting.count, awaiting.have.length, lastThrow, lastReading) : null;
     dicecamSeen = null;
     dicecamStale = false;
-    if (awaiting) diagLog('dice/asked', { seat: awaiting.seat, count: awaiting.count, prompt: awaiting.prompt, rolled: awaiting.rolled, lying: lastReading?.dice ?? null });
+    if (awaiting) diagLog('dice/asked', { seat: awaiting.seat, count: awaiting.count, have: awaiting.have, prompt: awaiting.prompt, rolled: awaiting.rolled, lying: lastReading?.dice ?? null });
   });
   function onDicecam(m: EngineMessage) {
     if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
@@ -347,6 +348,10 @@
   }
   async function rolled(seat: string, values: number[]) {
     await game?.append('dice/rolled', { seat, values });
+  }
+  /** The table rolls the rest of a gathered throw from the generator (prompt 33). */
+  async function rolledAuto(seat: string) {
+    await game?.append('dice/rolled', { seat, auto: true });
   }
   async function toggleDice(on: boolean) {
     await game?.append('dice/physical', { on });
@@ -484,7 +489,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} />
     </EdgePanel>
   {/if}
   {#if starting}

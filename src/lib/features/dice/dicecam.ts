@@ -99,9 +99,18 @@ export const SURE = 0.7;
 /** A throw is taken once this many consecutive readings agree, so one misread face never enters the game. */
 export const AGREEING_READINGS = 2;
 
+/**
+ * A throw of more dice than this is gathered over several throws (PROMPTS.md, prompt 33): the game's four dice
+ * thrown again and again until the count is in, each throw taken as it settles, or the table rolling the rest.
+ */
+export const DICE_AT_HAND = 4;
+
 /** What the table is waiting for and what it has seen so far. */
 export interface Watch {
+  /** Dice still wanted: the whole throw, or what is left of one gathered in parts. */
   count: number;
+  /** The throw is gathered over several throws (more than `DICE_AT_HAND` dice asked): a throw of fewer dice than wanted is taken too. */
+  gathered: boolean;
   /**
    * Lies that are not the throw: the tray as it lay when the ask opened (the last throw taken, whoever threw it,
    * or dice lying there from before) and the throw last taken. A reading that shows one of them, within a die's
@@ -118,8 +127,13 @@ export interface Watch {
 
 /** Watch for a throw of `count` dice, ignoring the lies given (the last throw taken, the tray as it lies now). */
 export function watching(count: number, ...lies: (Lie | null)[]): Watch {
+  return gathering(count, 0, ...lies);
+}
+
+/** Watch for the rest of a throw of `count` dice of which `have` are in (prompt 33), ignoring the lies given. */
+export function gathering(count: number, have: number, ...lies: (Lie | null)[]): Watch {
   const ignore = lies.filter((l): l is Lie => l !== null);
-  return { count, ignore, firstIsLie: ignore.length === 0, pending: null };
+  return { count: count - have, gathered: count > DICE_AT_HAND, ignore, firstIsLie: ignore.length === 0, pending: null };
 }
 
 /** The engine saw the dice roll: the next reading is a throw even when none was known before. */
@@ -142,7 +156,8 @@ export function consider(watch: Watch, reading: Reading): Considered {
   const seen = reading.dice.length;
   if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, seen, stale: true };
   if (watch.ignore.some((lie) => sameLie(reading, lie))) return { watch: { ...watch, pending: null }, accept: null, seen, stale: true };
-  const good = seen === watch.count && reading.dice.every((d) => d.confidence >= SURE && !d.askew);
+  const fits = seen === watch.count || (watch.gathered && seen >= 1 && seen < watch.count);
+  const good = fits && reading.dice.every((d) => d.confidence >= SURE && !d.askew);
   if (!good) return { watch: { ...watch, pending: null }, accept: null, seen, stale: false };
   const values = reading.dice.map((d) => d.value);
   const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.every((v, i) => v === values[i]);
@@ -151,11 +166,17 @@ export function consider(watch: Watch, reading: Reading): Considered {
   return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen, stale: false };
 }
 
-/** The status line under the prompt. */
-export function statusText(status: DicecamStatus, count: number, seen: number | null, configured: boolean, stale = false): string {
+/** The status line under the prompt; `count` is the dice wanted now, `gathered` says they come over several throws (prompt 33). */
+export function statusText(status: DicecamStatus, count: number, seen: number | null, configured: boolean, stale = false, gathered = false): string {
   const dice = count === 1 ? 'one die' : `${count} dice`;
-  if (!configured) return 'No dicecam on this table: tap the face you rolled';
-  if (status === 'active' && stale) return count === 1 ? 'Waiting for a D6 roll' : `Waiting for a roll of ${count} D6`;
+  const more = `${count} more ${count === 1 ? 'die' : 'dice'} wanted`;
+  if (!configured) return gathered ? `No dicecam on this table: tap each face as it is rolled; ${more}` : 'No dicecam on this table: tap the face you rolled';
+  if (status === 'active' && stale) return gathered ? `Waiting for a throw; ${more}` : count === 1 ? 'Waiting for a D6 roll' : `Waiting for a roll of ${count} D6`;
+  if (status === 'active' && gathered) {
+    if (seen === null || seen === 0) return `Watching the dicecam for a throw; ${more}`;
+    if (seen <= count) return `${seen === 1 ? 'One die' : `${seen} dice`} seen, reading the ${seen === 1 ? 'face' : 'faces'}…`;
+    return `${seen} dice seen, only ${more}`;
+  }
   switch (status) {
     case 'starting': return 'Starting the camera…';
     case 'loading': return 'Loading the dicecam…';
