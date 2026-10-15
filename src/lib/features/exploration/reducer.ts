@@ -9,7 +9,7 @@ import { printedCourse, resolveWater, riverDirection, isWater, type HexKnowledge
 import { RIVERS } from '$features/map/manifest';
 import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
 import { budgetFor, canEnter, coastal, modeFor, type Mode, type MovementBudget } from './movement';
-import { d6, type RngState } from '$lib/game/random';
+import { DiceNeeded, d6, type RngState } from '$lib/game/random';
 import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
 import { sickCarried } from '$features/rations/rations';
@@ -189,6 +189,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
 
       let rng = state.rng!;
       const log: RollRecord[] = [];
+      try {
       const finish = (st: GameState, mv: MovementBudget) => ({ ...st, rng, turn: { ...st.turn!, movement: mv, moved: mv.halted || mv.spent >= mv.points, log: [...st.turn!.log, ...log] } });
       const learn = (st: GameState) => crew.reduce((acc, m) => { const e = alive(acc, m.seat)!; return e.known.includes(target) ? acc : replaceExplorer(acc, { ...e, known: [...e.known, target] }); }, st);
 
@@ -293,6 +294,11 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       }
       const done = finish({ ...next, transits }, { ...movement, spent: movement.spent + cost });
       return phase === 'natives' ? { ...done, turn: { ...done.turn!, phase } } : done;
+      } catch (e) {
+        // A physical die is asked for part way: the step's lines so far go with the ask (prompt 34).
+        if (e instanceof DiceNeeded) e.sofar = [...(e.sofar ?? []), ...log];
+        throw e;
+      }
     }
     default:
       return state;

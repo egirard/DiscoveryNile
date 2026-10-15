@@ -489,7 +489,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} />
     </EdgePanel>
   {/if}
   {#if starting}

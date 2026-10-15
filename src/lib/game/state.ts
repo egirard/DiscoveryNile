@@ -302,6 +302,8 @@ export interface AwaitingDice {
   have: number[];
   /** Where in the stream's script the event reads this throw (`DiceNeeded.at`). */
   at: number;
+  /** The log lines the held event has made before this ask, with their verdicts (prompt 34), when the rule tells them. */
+  sofar: RollRecord[];
 }
 
 export interface GameEnd {

@@ -89,7 +89,7 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     if (!(e instanceof DiceNeeded)) throw e;
     const payloadSeat = (event.payload as { seat?: unknown }).seat;
     const seat = (e.ask.seat ?? (typeof payloadSeat === 'string' ? payloadSeat : undefined) ?? state.turn?.current ?? state.seats[0]?.id) as AwaitingDice['seat'];
-    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at } };
+    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at, sofar: e.sofar ?? [] } };
   }
 }
 
@@ -105,7 +105,15 @@ function apply(state: GameState, event: GameEvent): GameState {
     if (typeof result === 'string') return reject(state, event, result);
     if (result !== state) {
       // Lost, the expedition can do nothing more this turn: the turn goes straight on to the hunt and passes (prompt 20).
-      if (event.type === 'expedition/moved' && lostNow(state, result)) result = endTurnAfterLost(result);
+      if (event.type === 'expedition/moved' && lostNow(state, result)) {
+        try {
+          result = endTurnAfterLost(result);
+        } catch (e) {
+          // The hunt's die is asked for: the lost check already made is shown with the ask (prompt 34).
+          if (e instanceof DiceNeeded) e.sofar = [...(e.sofar ?? []), ...result.turn!.log.slice(state.turn?.log.length ?? 0)];
+          throw e;
+        }
+      }
       const seat = (event.payload as { seat?: string }).seat;
       const noted = noteAction(event, state, result);
       return { ...noted, undo: seat && undoable(state, noted, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };

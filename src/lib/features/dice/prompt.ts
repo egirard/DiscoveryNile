@@ -25,3 +25,17 @@ export function needText(need: number): string {
   if (need > 6) return 'none';
   return `${need}+`;
 }
+
+/**
+ * The throws already made for the held event that no log line yet accounts for (prompt 34): the lines so far
+ * carry their own dice, so a throw is listed on its own only until its line is written.
+ */
+export function uncovered<T extends { values: number[] }>(rolled: T[], sofar: { rolls: unknown[] }[]): T[] {
+  let dice = sofar.reduce((n, r) => n + r.rolls.length, 0);
+  let i = 0;
+  while (i < rolled.length && rolled[i].values.length <= dice) {
+    dice -= rolled[i].values.length;
+    i++;
+  }
+  return rolled.slice(i);
+}

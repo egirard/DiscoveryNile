@@ -10,6 +10,8 @@ Every place a rule rolls says what for, in the words the table uses (`DiceAsk` i
 
 The table shows the ask at the rolling seat's edge (`DicePrompt.svelte`): the prompt, the throws already made for the action, what the dicecam sees, and six faces to tap when there is no camera, or when it misreads. A scrim holds the rest of the table still.
 
+A die asked for part way through a step comes with the step's log lines so far (`DiceNeeded.sofar`, prompt 34): the prompt shows them as the log will, the verdict on the same line as the die, and lists a throw on its own only until its line is written.
+
 ## The dicecam
 
 The dicecam is the table's own camera, shown on a canvas in the south-west corner of the board, read by the dice analysis of the WebCamTool project (https://github.com/egirard/WebCamTool, the camera pipeline behind its Yahtzee page). The table does not bundle that analysis: WebCamTool packages it as module workers, hosted with its site (`https://egirard.github.io/WebCamTool/dicecam/engine.js`, its `docs/dicecam-engine.md`), and the table loads the engine at runtime.

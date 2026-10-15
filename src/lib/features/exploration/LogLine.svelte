@@ -11,8 +11,10 @@
     seat: string;
     /** At the rail: paper on ink, modifiers as bare numbers. The ids (`roll-{kind}-{seat}`, the notes, the card) are the same in the list. */
     rail?: boolean;
+    /** Put before every id, where the line is shown somewhere other than the log (the dice prompt's lines so far, prompt 34). */
+    idPrefix?: string;
   }
-  let { record: r, seat, rail = false }: Props = $props();
+  let { record: r, seat, rail = false, idPrefix = '' }: Props = $props();
   const KIND: Record<string, string> = {
     'first-player': 'First player', 'lost-check': 'Lost check', terrain: 'Terrain', natives: 'Natives', disaster: 'Disaster card', hunting: 'Hunting', water: 'Water',
     reaction: 'Native reaction', combat: 'Fight', defeat: 'Defeat', captivity: 'Captivity', victory: 'Victory', loot: 'Loot', negotiation: 'Negotiation',
@@ -24,23 +26,23 @@
   const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${r.total}` : ''}; ${r.outcome}`);
 </script>
 
-<span class="line" class:rail data-testid="roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} aria-label={label}>
+<span class="line" class:rail data-testid="{idPrefix}roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} aria-label={label}>
   {#if r.kind === 'action'}
-    <span class="action" data-testid="action-note-{seat}">{r.outcome}</span>
+    <span class="action" data-testid="{idPrefix}action-note-{seat}">{r.outcome}</span>
   {:else}
     <span class="kind">{name(r.kind)}</span>
     {#if r.kind === 'disaster' && r.card}
-      <span class="chip" class:applies={r.applies} data-testid="disaster-card-{seat}" data-card={r.card} data-applies={r.applies}>
+      <span class="chip" class:applies={r.applies} data-testid="{idPrefix}disaster-card-{seat}" data-card={r.card} data-applies={r.applies}>
         <span class="number">{cardOf(r.card).number}</span>
         <span class="context">{r.applies ? cardOf(r.card).disaster.type.replace(/\s*\(.*$/, '') : 'no effect'}</span>
       </span>
     {/if}
     {#if r.needed}
-      <span class="needed" data-testid="{note}-needed-{seat}">needs {r.needed}</span>
+      <span class="needed" data-testid="{idPrefix}{note}-needed-{seat}">needs {r.needed}</span>
     {/if}
     {#if r.contenders}
       {#each r.contenders as c (c.seat)}
-        <span class="contender" data-testid="first-player-{c.seat}-{seat}" data-total={c.total}>
+        <span class="contender" data-testid="{idPrefix}first-player-{c.seat}-{seat}" data-total={c.total}>
           <span class="who">{c.seat}</span>
           <DiceRoll values={c.values} label="{c.seat} for first player" size="calc(var(--target) * 0.4)" />
           <span class="sum">{c.total}</span>
@@ -52,9 +54,9 @@
     {/if}
     {#if r.modifiers?.length}
       <span class="mods">{rail ? r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : `${m.value}`)).filter(Boolean).join(' ') : r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')}</span>
-      {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{note}-total-{seat}">= {r.total}</span>{/if}
+      {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{idPrefix}{note}-total-{seat}">= {r.total}</span>{/if}
     {/if}
-    <span class="outcome" class:bad={r.lost} data-testid="{note}-note-{seat}">{r.outcome}</span>
+    <span class="outcome" class:bad={r.lost} data-testid="{idPrefix}{note}-note-{seat}">{r.outcome}</span>
   {/if}
 </span>
 

@@ -1,5 +1,7 @@
 // Seeded, versioned PRNG (mulberry32). All game randomness comes through here, keyed by a
 // seed committed in an event, so every client derives the same outcome.
+import type { RollRecord } from './state';
+
 export const PRNG_VERSION = 1;
 
 export type Random = () => number;
@@ -52,6 +54,12 @@ export interface DiceAsk {
  * it is thrown, the reducers being pure, so the event is simply applied again once the dice are in.
  */
 export class DiceNeeded extends Error {
+  /**
+   * The log lines the held event has made before this ask, when the rule attaches them (PROMPTS.md, prompt 34):
+   * the lost check with its verdict while the terrain die is asked for, so the table shows the throws already
+   * made with what they meant, not only their faces.
+   */
+  sofar?: RollRecord[];
   constructor(
     public readonly stream: Stream,
     public readonly count: number,

@@ -298,13 +298,15 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied');
 
     await steps.step('terrain-asked', {
-      description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled and the compass on the board to read the direction from',
+      description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled, its verdict on the same line, and the compass on the board to read the direction from',
       verifications: [
-        { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line', check: async () => {
+        { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line as a log line: the die and "found the way"', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [4] }] });
+          expect(s.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way' })]);
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
-          await expect(page.getByTestId('dice-so-far-bottom-1')).toContainText('to see if you are lost');
+          await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-outcome', 'found the way');
+          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('found the way');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
         } },
         { spec: 'The compass on the board gives the six directions as the die names them, 1 at the north-east round to 6 at the north-west', check: async () => {
@@ -362,13 +364,15 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
 
     await steps.step('straight-to-the-hunt', {
-      description: 'Lost in the field, the expedition can do nothing more this turn: the table goes straight on to the hunt, the lost check listed above the dicecam line as already rolled',
+      description: 'Lost in the field, the expedition can do nothing more this turn: the table goes straight on to the hunt, the lost check listed above the dicecam line as already rolled and lost',
       verifications: [
-        { spec: 'The same step is held at the hunt roll, with the lost check already rolled; the token stayed where it was', check: async () => {
+        { spec: 'The same step is held at the hunt roll, with the lost check already rolled and its line saying lost; the token stayed where it was', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [1] }] });
           expect(s.awaiting!.event.type).toBe('expedition/moved');
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
+          await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
+          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('lost');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
         } }
       ]

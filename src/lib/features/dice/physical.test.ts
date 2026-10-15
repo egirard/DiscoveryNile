@@ -6,7 +6,7 @@ import { reduce } from '$lib/game/reduce';
 import { created, event, resetSequence } from '$lib/game/test-fixtures';
 import { DiceNeeded, d6, dice, isPhysical, rngScripted, settled, withPhysical, withRolled } from '$lib/game/random';
 import type { GameEvent } from '$lib/game/events';
-import { okayFrom, promptText } from './prompt';
+import { okayFrom, promptText, uncovered } from './prompt';
 
 beforeEach(resetSequence);
 
@@ -159,10 +159,18 @@ describe('the reducer with physical dice', () => {
     const asked = reduce(landed);
     expect(asked.diagnostics).toEqual([]);
     expect(asked.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 1, prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", rolled: [] });
+    // The lines so far go with the next ask (prompt 34): found the way, the terrain die is asked with the lost check's
+    // line, its verdict on it. (Lost at the port there is no hunt to ask for; scenario 037 reads the hunt's ask in the field.)
+    const found = reduce([...landed, event('dice/rolled', { seat: 'bottom-1', values: [4] })]);
+    expect(found.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ values: [4] }] });
+    expect(found.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way', rolls: [{ label: 'lost check', value: 4 }] })]);
+    expect(uncovered(found.awaiting!.rolled, found.awaiting!.sofar)).toEqual([]);
     const lost = reduce([...landed, event('dice/rolled', { seat: 'bottom-1', values: [1] })]);
     expect(lost.awaiting).toBeNull();
     // Lost, the turn ends there and then (prompt 20): at a port there is no hunt, and the line says so.
     expect(lost.turn!.current).toBe('top-1');
+    expect(uncovered([{ values: [4] }, { values: [2] }, { values: [3, 3] }], [{ rolls: [1] }])).toEqual([{ values: [2] }, { values: [3, 3] }]);
+    expect(uncovered([{ values: [4] }], [])).toEqual([{ values: [4] }]);
     const bottom = lost.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
     expect(bottom.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', rolls: [{ label: 'lost check', value: 1 }], outcome: 'lost; no hunting needed at Mombasa' });
     expect(lost.diagnostics).toEqual([]);
