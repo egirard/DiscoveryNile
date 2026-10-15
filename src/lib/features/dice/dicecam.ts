@@ -76,6 +76,34 @@ export function sameLie(reading: Reading, lie: Lie | null): boolean {
   });
 }
 
+/**
+ * The dice of the reading that were thrown (PROMPTS.md, prompt 36): each die is judged on its own against the
+ * lies given, the tray as it lay. A die with the same face up within a die's width of where a die lay is that die,
+ * resting; every other die (a new one tossed in beside the others, one picked up and rolled again, one that
+ * changed its face or its place) is the throw. A die whose place is unknown rests when the engine still calls the
+ * tray by one of the lies' names and the die at its place in that lie showed the same face. Each die of a lie can
+ * be claimed by one die of the reading only.
+ */
+export function thrown(reading: Reading, lies: Lie[]): { thrown: Reading['dice']; resting: number } {
+  const places = lies.flatMap((lie) => lie.dice.filter((d) => d.x >= 0));
+  const claimed = new Set<number>();
+  const values: Reading['dice'] = [];
+  let resting = 0;
+  reading.dice.forEach((d, i) => {
+    let rests: boolean;
+    if (!d.normalizedPosition) rests = lies.some((lie) => lie.rollId === reading.rollId && lie.dice.length === reading.dice.length && lie.dice[i].value === d.value);
+    else {
+      const p = d.normalizedPosition;
+      const at = places.findIndex((t, j) => !claimed.has(j) && t.value === d.value && Math.abs(p.x - t.x) < MOVED_LESS_THAN && Math.abs(p.y - t.y) < MOVED_LESS_THAN);
+      rests = at >= 0;
+      if (rests) claimed.add(at);
+    }
+    if (rests) resting++;
+    else values.push(d);
+  });
+  return { thrown: values, resting };
+}
+
 export function lieOf(reading: Reading): Lie {
   return { rollId: reading.rollId, dice: reading.dice.map((d) => ({ value: d.value, x: d.normalizedPosition?.x ?? -1, y: d.normalizedPosition?.y ?? -1 })) };
 }
@@ -145,37 +173,54 @@ export interface Considered {
   watch: Watch;
   /** The values to take, when the reading settles the throw. */
   accept: number[] | null;
-  /** How many dice the tray shows, for the status line. */
+  /** How many dice were thrown (not resting where they lay), for the status line. */
   seen: number;
+  /** How many dice rest where they lay, for the console's line. */
+  resting: number;
   /** The reading is the tray as it already lay, not a throw. */
   stale: boolean;
 }
 
-/** Judge a settled reading against the throw the table waits for. */
+/**
+ * Judge a settled reading against the throw the table waits for. Each die is judged on its own (prompt 36): the
+ * dice resting where they lay are not the throw, the rest are. A throw the tray holds whole is taken when the dice
+ * thrown are the count asked for (three lying and a fourth tossed in is a throw of one), or when the tray shows
+ * exactly the count and anything in it moved (four thrown again, one of them landing where it lay). A throw
+ * gathered in parts takes the dice thrown, one or more, up to what is still wanted.
+ */
 export function consider(watch: Watch, reading: Reading): Considered {
-  const seen = reading.dice.length;
-  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, seen, stale: true };
-  if (watch.ignore.some((lie) => sameLie(reading, lie))) return { watch: { ...watch, pending: null }, accept: null, seen, stale: true };
-  const fits = seen === watch.count || (watch.gathered && seen >= 1 && seen < watch.count);
-  const good = fits && reading.dice.every((d) => d.confidence >= SURE && !d.askew);
-  if (!good) return { watch: { ...watch, pending: null }, accept: null, seen, stale: false };
-  const values = reading.dice.map((d) => d.value);
-  const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.every((v, i) => v === values[i]);
+  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, seen: 0, resting: reading.dice.length, stale: true };
+  const t = thrown(reading, watch.ignore);
+  const seen = t.thrown.length;
+  const resting = t.resting;
+  if (seen === 0) return { watch: { ...watch, pending: null }, accept: null, seen, resting, stale: true };
+  const whole = !watch.gathered && seen < watch.count && reading.dice.length === watch.count;
+  const dice = whole ? reading.dice : t.thrown;
+  const fits = whole || seen === watch.count || (watch.gathered && seen < watch.count);
+  const good = fits && dice.every((d) => d.confidence >= SURE && !d.askew);
+  if (!good) return { watch: { ...watch, pending: null }, accept: null, seen, resting, stale: false };
+  const values = dice.map((d) => d.value);
+  const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.length === values.length && watch.pending.values.every((v, i) => v === values[i]);
   const agreed = same ? watch.pending!.agreed + 1 : 1;
-  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, seen, stale: false };
-  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen, stale: false };
+  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, seen, resting, stale: false };
+  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen, resting, stale: false };
 }
 
-/** The status line under the prompt; `count` is the dice wanted now, `gathered` says they come over several throws (prompt 33). */
+/**
+ * The status line under the prompt; `count` is the dice wanted now, `seen` the dice thrown (not resting where they
+ * lay, prompt 36), `gathered` says they come over several throws (prompt 33).
+ */
 export function statusText(status: DicecamStatus, count: number, seen: number | null, configured: boolean, stale = false, gathered = false): string {
   const dice = count === 1 ? 'one die' : `${count} dice`;
   const more = `${count} more ${count === 1 ? 'die' : 'dice'} wanted`;
+  const thrownDice = seen === 1 ? 'One die thrown' : `${seen} dice thrown`;
+  const reading = `reading the ${seen === 1 ? 'face' : 'faces'}…`;
   if (!configured) return gathered ? `No dicecam on this table: tap each face as it is rolled; ${more}` : 'No dicecam on this table: tap the face you rolled';
   if (status === 'active' && stale) return gathered ? `Waiting for a throw; ${more}` : count === 1 ? 'Waiting for a D6 roll' : `Waiting for a roll of ${count} D6`;
   if (status === 'active' && gathered) {
     if (seen === null || seen === 0) return `Watching the dicecam for a throw; ${more}`;
-    if (seen <= count) return `${seen === 1 ? 'One die' : `${seen} dice`} seen, reading the ${seen === 1 ? 'face' : 'faces'}…`;
-    return `${seen} dice seen, only ${more}`;
+    if (seen <= count) return `${thrownDice}, ${reading}`;
+    return `${thrownDice}, only ${more}`;
   }
   switch (status) {
     case 'starting': return 'Starting the camera…';
@@ -189,8 +234,8 @@ export function statusText(status: DicecamStatus, count: number, seen: number | 
     case 'no-engine': return 'The dicecam could not be loaded: tap the face you rolled';
     case 'active':
       if (seen === null || seen === 0) return `Watching the dicecam for ${dice}`;
-      if (seen === count) return `${dice[0].toUpperCase()}${dice.slice(1)} seen, reading the faces…`;
-      return `${seen === 1 ? 'One die' : `${seen} dice`} seen, ${dice} wanted`;
+      if (seen === count) return `${thrownDice}, ${reading}`;
+      return `${thrownDice}, ${dice} wanted`;
   }
 }
 

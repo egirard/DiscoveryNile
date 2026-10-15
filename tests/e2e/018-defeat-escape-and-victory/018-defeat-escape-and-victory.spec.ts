@@ -45,8 +45,9 @@ test.describe('018 - Defeat, escape and victory', () => {
     // Seed 18 as in scenarios 016–017: bottom-1 holds a ticket to Mombasa; c24r12 holds 12 warriors. Combat dice:
     // reaction 6,6,6; strength 1; surprise 6,6; morale 2 (victory, 6 warriors left); prisoners 1 (5 − 1 = 4 taken);
     // village 3,4 (7 is within 4 + 3: found); the loot's twelve dice are rolled at the table (physical dice are turned
-    // on for them, prompt 33): 1,2,3,4 from the dicecam, a tapped 5, and the rest by the table from the combat stream's
-    // generator, 6,6,6,6,5,6,6 (10 rations, 2 gifts; the sixes yield nothing on the veldt). Next
+    // on for them, prompt 33): 1,2,3,4 from the dicecam, a 6 tossed in beside them (prompt 36), a tapped 5, and the rest
+    // by the table from the combat stream's generator, 6,6,6,6,5,6 (10 rations, 2 gifts; the sixes yield nothing on the
+    // veldt). Next
     // turn, ignoring the two warriors left: reaction 6,6,6; strength 2 (attack); surprise 1,1 (surprised); natives strike
     // 1 (two askaris fall); break check 3 (6 over 4: the askaris run); defeat die 2 (held prisoner). The turn after:
     // escape die 6 (3: alone).
@@ -139,15 +140,36 @@ test.describe('018 - Defeat, escape and victory', () => {
       ]
     });
 
-    await page.getByTestId('die-face-5-bottom-1').click();
+    // A fifth die is tossed in beside the four, which stay where they lie: the table judges each die on its own
+    // (prompt 36), so the four resting are left out and the sixth face of the new die is the throw, a throw of one.
+    await dicecamReads(page, 'throw-2', [1, 2, 3, 4, 6], 1);
     await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveAttribute('data-have', '5');
+    await dicecamSays(page, settled('throw-3', [1, 2, 3, 4, 6]));
+    await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
+
+    await steps.step('fifth-die-tossed-in', {
+      description: 'A fifth die tossed in beside the four lying there is read as a throw of one: the four resting where they lay are left out, the new six goes in as the fifth die, five of twelve are in, and the five dice now lying in the tray are not read again',
+      verifications: [
+        { spec: 'Five of twelve are in, the fifth as a dice/rolled event of one value; the status line waits for the next throw', check: async () => {
+          await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveText('5 of 12 in');
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a throw; 7 more dice wanted');
+          const s = await state(page);
+          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 12, have: [1, 2, 3, 4, 6], rolled: [] });
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }, { seat: 'bottom-1', values: [6] }]);
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.getByTestId('die-face-5-bottom-1').click();
+    await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveAttribute('data-have', '6');
     await page.getByTestId('dice-auto-bottom-1').click();
     await expect(page.getByTestId('dice-edge-bottom-1')).toHaveCount(0);
 
     await steps.step('looted', {
-      description: 'A tapped five goes in at once as the fifth die, and "Roll the rest" has the table roll the other seven: the village is looted, the twelve dice in the log, the first five as thrown and tapped',
+      description: 'A tapped five goes in at once as the sixth die, and "Roll the rest" has the table roll the other six: the village is looted, the twelve dice in the log, the first six as thrown, tossed in and tapped',
       verifications: [
-        { spec: 'The loot note and its twelve dice show, the first five as rolled at the table; the chart counts the rations, the gifts and the ten bearers', check: async () => {
+        { spec: 'The loot note and its twelve dice show, the first six as rolled at the table; the chart counts the rations, the gifts and the ten bearers', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('loot-note-bottom-1').last()).toHaveText('looted 10 rations, 2 gifts');
           });
@@ -159,14 +181,14 @@ test.describe('018 - Defeat, escape and victory', () => {
           const s = await state(page);
           const rolls = s.turn!.log.find((l) => l.kind === 'loot')!.rolls.map((r) => r.value);
           expect(rolls).toHaveLength(12);
-          expect(rolls.slice(0, 5)).toEqual([1, 2, 3, 4, 5]);
-          expect(rolls).toEqual([1, 2, 3, 4, 5, 6, 6, 6, 6, 5, 6, 6]);
+          expect(rolls.slice(0, 6)).toEqual([1, 2, 3, 4, 6, 5]);
+          expect(rolls).toEqual([1, 2, 3, 4, 6, 5, 6, 6, 6, 6, 5, 6]);
           expect(s.tribes[1].pending).toBeNull();
           expect(s.awaiting).toBeNull();
           expect(s.diagnostics).toEqual([]);
         } },
-        { spec: 'The throw is three dice/rolled events: the four from the dicecam, the tapped five, and the table\'s roll of the rest', check: async () => {
-          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }, { seat: 'bottom-1', values: [5] }, { seat: 'bottom-1', auto: true }]);
+        { spec: 'The throw is four dice/rolled events: the four from the dicecam, the six tossed in, the tapped five, and the table\'s roll of the rest', check: async () => {
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }, { seat: 'bottom-1', values: [6] }, { seat: 'bottom-1', values: [5] }, { seat: 'bottom-1', auto: true }]);
         } }
       ]
     });

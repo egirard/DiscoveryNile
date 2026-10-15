@@ -39,7 +39,7 @@ test.describe('037 - Physical dice', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Physical dice',
-      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game.'
+      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, each die judged on its own so a die tossed in beside those already lying there is the throw, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game.'
     );
 
     // Seed 34: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
@@ -114,9 +114,9 @@ test.describe('037 - Physical dice', () => {
     await steps.step('tray-as-found', {
       description: 'The engine\'s first reading is of four twos lying in the tray from before the game: the table takes them for the tray as found, not for the throw, draws them on the picture and waits for a roll',
       verifications: [
-        { spec: 'The reading is not taken: the prompt waits for a roll of four dice, the dock holds the reading, and nothing is rolled', check: async () => {
+        { spec: 'The reading is not taken: the prompt waits for a roll of four dice, none of the four counted as thrown, the dock holds the reading, and nothing is rolled', check: async () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a roll of 4 D6');
-          await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-seen', '4');
+          await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-seen', '0');
           await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '1');
           expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [] });
           expect((await events(page)).filter((e) => e.type === 'dice/rolled')).toEqual([]);
@@ -131,7 +131,7 @@ test.describe('037 - Physical dice', () => {
       description: 'The dice are thrown and the engine reads the settled tray: four sixes, each die outlined on the picture with its value above it and its confidence along its foot, the way the Yahtzee page draws them; one reading is not enough, the table waits for a second that agrees',
       verifications: [
         { spec: 'The prompt says four dice are seen and their faces are being read; the dock holds two readings and the throw is not yet taken', check: async () => {
-          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('4 dice seen, reading the faces…');
+          await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('4 dice thrown, reading the faces…');
           await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-readings', '2');
           expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [] });
           expect((await events(page)).filter((e) => e.type === 'dice/rolled')).toEqual([]);
@@ -395,17 +395,19 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
-    // The die is tossed in from outside the picture and the engine misses the motion: it still calls the throw by
-    // the lost die's name, but a five lies where the one lay, and that is a throw.
-    await dicecamReads(page, 'throw-6', [5]);
+    // A second die is tossed in from outside the picture beside the lost die, which stays where it lay, and the
+    // engine misses the motion: it still calls the tray by the lost die's name. The table judges each die on its
+    // own (prompt 36): the one resting where it lay is not the throw, the five beside it is.
+    await dicecamReads(page, 'throw-6', [1, 5], 1);
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('hunted-and-passed', {
-      description: 'A five, thrown afresh under the lost die\'s own name (the engine missed the toss), is the hunt: the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',
+      description: 'A second die tossed in beside the lost die, under the lost die\'s own name (the engine missed the toss), is the hunt: the one resting where it lay is left out and the five beside it is taken; the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',
       verifications: [
-        { spec: 'The turn is top-1\'s; bottom-1\'s latest turn holds the lost check and the hunt, the hunt\'s line saying what the die needed', check: async () => {
+        { spec: 'The turn is top-1\'s; bottom-1\'s latest turn holds the lost check and the hunt on a five, the hunt\'s line saying what the die needed', check: async () => {
           const s = await state(page);
           expect(s.turn!.current).toBe('top-1');
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => (e.payload as { values: number[] }).values).at(-1)).toEqual([5]);
           const played = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
           expect(played.log.filter((r) => r.kind !== 'action').map((r) => [r.kind, r.rolls.map((x) => x.value)])).toEqual([['disaster', []], ['lost-check', [1]], ['hunting', [5]]]);
           await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-needed', '2 / 4 / 6 for one, two, three a hunter');

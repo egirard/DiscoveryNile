@@ -332,7 +332,7 @@
   let lastReading: Lie | null = null;
   $effect(() => {
     // Each ask watches afresh: what lies in the tray as it opens (the last throw taken, or dice left from before)
-    // is not the throw, and the engine's first reading at the start of the run is the tray as found.
+    // is not the throw, die by die (prompt 36), and the engine's first reading at the start of the run is the tray as found.
     // A throw gathered in parts (prompt 33) watches again for the rest after each part, the part just taken a lie.
     watch = awaiting ? gathering(awaiting.count, awaiting.have.length, lastThrow, lastReading) : null;
     dicecamSeen = null;
@@ -351,8 +351,9 @@
       dicecamSeen = judged.seen;
       dicecamStale = judged.stale;
       // A line per reading judged, for the console and the diagnostics capture: what lay where, and what the
-      // table made of it.
-      const verdict = judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count} wanted`;
+      // table made of it; each die is judged on its own (prompt 36), so the line says how many rest where they lay.
+      const lying = judged.resting ? `, ${judged.resting} lying` : '';
+      const verdict = (judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count - awaiting.have.length} wanted`) + (judged.stale ? '' : lying);
       console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), verdict);
       diagLog('dicecam/reading', { rollId: m.rollId, kind: m.kind, dice: m.dice.map((d) => ({ value: d.value, confidence: Number(d.confidence.toFixed(2)), askew: d.askew ?? false, at: d.normalizedPosition ?? null })), verdict });
       if (judged.accept) { lastThrow = lastReading; watch = null; rolled(awaiting.seat, judged.accept); }
