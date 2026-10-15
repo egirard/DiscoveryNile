@@ -10,14 +10,16 @@
     qrImage?: string | null;
     qrUrl?: string | null;
     onjoin: (seat: Seat) => void;
-    /** What the taken rail shows beside the player: the explorer setup, the explorer, later the chart. */
+    /** What the taken rail shows beside the player in its status row: the explorer setup, the explorer, later the chart. */
     content?: Snippet;
+    /** The rail's second section (prompt 35): the seat's log in its outlined box, inward of the status row, growing inward when opened. */
+    log?: Snippet;
     /** It is this seat's turn. */
     current?: boolean;
     /** The seat's span of its edge in px: the rail's content wraps rather than reach into the next seat's. */
     span?: number | null;
   }
-  let { seat, state: seatState, qrImage = null, qrUrl = null, onjoin, content, current = false, span = null }: Props = $props();
+  let { seat, state: seatState, qrImage = null, qrUrl = null, onjoin, content, log, current = false, span = null }: Props = $props();
 
   const taken = $derived(Boolean(seatState.uid));
   const rotation = $derived(rotationFor(seat.edge));
@@ -45,23 +47,29 @@
   data-current={current}
   data-e2e-fit
 >
-  <!-- The face is anchored at the table's edge and grows inward when it wraps, so a crowded rail never hangs off the table. -->
+  <!-- The face is anchored at the table's edge and grows inward when it wraps or the log opens, so a crowded rail never hangs off the table.
+       Two sections (prompt 35): the status row at the edge (the player, the explorer, the hand, the expedition, the controls) and the log inward of it. -->
   <div class="face">
-    {#if taken}
-      <span class="who" data-testid="seat-name-{seat.id}" aria-label={`Seat ${seat.id} taken by ${seatState.name ?? 'a player'}`}>
-        <Icon name="player" />
-        {#if seatState.name}<span class="name">{seatState.name}</span>{/if}
-      </span>
-      {@render content?.()}
-    {:else}
-      <button class="join" data-testid="seat-join-{seat.id}" aria-label={`Take seat ${seat.id}`} onclick={() => onjoin(seat)}>
-        <Icon name="sit" />
-      </button>
-      {#if qrImage && qrUrl}
-        <a class="qr" href={qrUrl} data-testid="seat-qr-{seat.id}" aria-label={`Join seat ${seat.id} from a phone`}>
-          <img src={qrImage} alt="" />
-        </a>
+    <div class="status" data-testid="rail-status-{seat.id}">
+      {#if taken}
+        <span class="who" data-testid="seat-name-{seat.id}" aria-label={`Seat ${seat.id} taken by ${seatState.name ?? 'a player'}`}>
+          <Icon name="player" />
+          {#if seatState.name}<span class="name">{seatState.name}</span>{/if}
+        </span>
+        {@render content?.()}
+      {:else}
+        <button class="join" data-testid="seat-join-{seat.id}" aria-label={`Take seat ${seat.id}`} onclick={() => onjoin(seat)}>
+          <Icon name="sit" />
+        </button>
+        {#if qrImage && qrUrl}
+          <a class="qr" href={qrUrl} data-testid="seat-qr-{seat.id}" aria-label={`Join seat ${seat.id} from a phone`}>
+            <img src={qrImage} alt="" />
+          </a>
+        {/if}
       {/if}
+    </div>
+    {#if taken}
+      {@render log?.()}
     {/if}
   </div>
 </div>
@@ -80,23 +88,21 @@
     height: var(--span);
   }
   .face {
-    /* The unrotated face is the rail's span wide and at least its depth tall, its content centred, so
-       a crowded rail (six seats, a hand and a row of controls) wraps onto a second row instead of
-       reaching into the next seat or off the table. It is rotated toward its seat about the rail's
-       corner, with its bottom (the player's side) kept on the table's edge, so a face taller than the
-       rail grows inward over the gap the board leaves. */
+    /* The unrotated face is the rail's span wide and at least its depth tall, its sections stacked from
+       the player's side: the status row at the edge, the log box inward of it. It is rotated toward its
+       seat about the rail's corner, with its bottom (the player's side) kept on the table's edge, so a
+       face taller than the rail (a crowded status row wrapped, the log opened) grows inward over the
+       gap the board leaves. */
     position: absolute;
     left: 0;
     top: 0;
     width: var(--span);
     min-height: var(--rail-depth);
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column-reverse;
     align-items: center;
-    align-content: center;
     justify-content: center;
-    gap: var(--gap);
-    row-gap: 0;
+    gap: calc(var(--gap) * 0.3);
     transform-origin: 0 0;
     /* The translate (applied first) puts the face's bottom on the edge; the rotation turns it to its seat. */
     rotate: var(--rotation);
@@ -113,6 +119,17 @@
   }
   .rail[data-edge='right'] .face {
     transform: translate(-100%, calc(var(--rail-depth) - 100%));
+  }
+  .status {
+    /* The status row: its content centred, wrapping onto a second row (six seats, a hand and a row of
+       controls) instead of reaching into the next seat or off the table. */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: var(--gap);
+    row-gap: 0;
+    max-width: 100%;
   }
   .join {
     width: var(--target);

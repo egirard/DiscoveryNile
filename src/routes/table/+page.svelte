@@ -378,7 +378,7 @@
     options = null;
     await game?.append('game/ended', { seat });
   }
-  // The rest of a seat's log, opened above the rail from the "+" at the end of its latest line.
+  // The rest of a seat's log, opened in the rail's log box from the "+" at the end of its latest line (prompt 35).
   let logOpenSeat = $state<string | null>(null);
   /** The seat's turns so far with its own lines (a joint expedition's lines fall on the mover's turn), the turn in progress last when it is the seat's. */
   function turnsOf(seat: string): LoggedTurn[] {
@@ -674,10 +674,9 @@
               {/if}
               {#if chartOf(gameState, explorer) && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
                 <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="The camp: reorganise the expedition, take water, use the caches here" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10H4z" /><path d="M4 9l2-4h12l2 4" /><path d="M10 13h4" /></svg>
+                  <Icon name="cache" size="60%" />
                 </button>
               {/if}
-              <RollLog seat={seat.id} turns={turnsOf(seat.id)} current expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
               <TurnControls
                 seat={seat.id}
                 phase={gameState.turn.phase}
@@ -689,8 +688,6 @@
                 onstay={() => toggleSailing(seat.id)}
                 onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null}
               />
-            {:else}
-              <RollLog seat={seat.id} turns={turnsOf(seat.id)} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             {/if}
           {/if}
         {:else}
@@ -705,13 +702,15 @@
             <!-- The game is over: the standings are in the middle of the table; nothing more is commissioned until it continues. -->
           {:else if gameState.turn && gameState.turn.current === seat.id && explorerSeats(gameState).some((s) => s !== seat.id)}
             <!-- The seat's turn goes on after the explorer's death or retirement, so the rail can be read; it ends like any other. -->
-            <RollLog seat={seat.id} turns={turnsOf(seat.id)} current expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             <TurnControls seat={seat.id} phase="act" onend={() => endTurn(seat)} onundo={gameState.undo?.seat === seat.id ? () => game?.append('turn/undone', { seat: seat.id, eventId: gameState.undo!.eventId }) : null} />
           {:else}
-            <RollLog seat={seat.id} turns={turnsOf(seat.id)} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
             <ExplorerSetup seat={seat.id} oncommission={(specialties) => commission(seat, specialties)} />
           {/if}
         {/if}
+      {/snippet}
+      {#snippet log()}
+        <!-- The rail's second section (prompt 35): the seat's log in its outlined box, inward of the status row; nothing before the game starts. -->
+        <RollLog seat={seat.id} turns={turnsOf(seat.id)} current={gameState.turn?.current === seat.id} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
       {/snippet}
     </SeatRail>
   {/each}

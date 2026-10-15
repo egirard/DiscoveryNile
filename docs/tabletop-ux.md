@@ -50,7 +50,7 @@ The application cannot know the physical size of the screen it is on. The **scre
 
 - The whole interface **fits the viewport**. No document scrolling, ever. Internal scroll regions are avoided; when unavoidable they are marked so tests can check them (see [e2e-test-guidelines.md](e2e-test-guidelines.md)).
 - Layout is computed from the viewport and seat count, not from fixed pixel positions, and recomputed when the window resizes. The same layout code produces the 27" and 55" experiences.
-- Reserve a **rail** along each occupied edge for that seat's private-to-the-table elements (score, staged pieces, prompts, QR).
+- Reserve a **rail** along each occupied edge for that seat's private-to-the-table elements (score, staged pieces, prompts, QR). The rail is two sections stacked from the player's edge: the **status row** at the edge, where the interaction is (name, token, hand, summary, controls), and inward of it the **log** in an outlined box, one line collapsed and a few lines when opened, growing inward so the status row never moves (prompt 35).
 - Keep the **centre** for the shared board.
 - Animations clarify cause and effect (a card flying to its destination) but are short, respect `prefers-reduced-motion`, and never decide rules outcomes. Reloading mid-animation shows the settled state.
 

@@ -73,7 +73,7 @@
   </div>
   {#each caches as c (c.id)}
     <div class="row cache" data-testid="cache-row-{c.id}-{seat}" data-open={c.round === round} data-owner={c.seat}>
-      <span class="icon" aria-label="Cache {c.id}">⌂</span>
+      <span class="icon" aria-label="Cache {c.id}"><Icon name="cache" /></span>
       <span class="contents" data-testid="cache-contents-{c.id}-{seat}">{c.seat === seat ? '' : `${c.seat}'s: `}{listed(c) || 'empty'}</span>
       {#if c.round < round}
         <button data-testid="recover-cache-{c.id}-{seat}" aria-label="Dig up cache {c.id}: a 1 or 2 and it has gone" onclick={() => onrecover(c.id)}>dig up</button>

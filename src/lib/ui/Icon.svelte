@@ -1,7 +1,7 @@
 <script lang="ts">
   // Inline SVG icons. Every icon is direction-agnostic and carries no text. Original drawings.
   interface Props {
-    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology' | 'ship' | 'anchor' | 'guides' | 'bearers' | 'askaris' | 'camels' | 'horses' | 'canoes' | 'muskets' | 'food' | 'gifts' | 'water' | 'people' | 'foot' | 'cataract';
+    name: 'sit' | 'player' | 'table' | 'explorer' | 'evangelism' | 'medicine' | 'zoology' | 'geology' | 'ship' | 'anchor' | 'guides' | 'bearers' | 'askaris' | 'camels' | 'horses' | 'canoes' | 'muskets' | 'food' | 'gifts' | 'water' | 'people' | 'foot' | 'cataract' | 'cache';
     size?: string;
   }
   let { name, size = '1.6em' }: Props = $props();
@@ -63,6 +63,11 @@
   {:else if name === 'cataract'}
     <!-- the map's cataract mark: a ring with two bars -->
     <circle cx="12" cy="12" r="8" /><path d="M8 10h8M8 14h8" />
+  {:else if name === 'cache'}
+    <!-- a cache: a cairn, round stones piled up three, two and one (prompt 35) -->
+    <ellipse cx="6" cy="18.5" rx="3.6" ry="2.6" /><ellipse cx="12.2" cy="18.6" rx="3.4" ry="2.5" /><ellipse cx="18.2" cy="18.4" rx="3.5" ry="2.7" />
+    <ellipse cx="9" cy="13.4" rx="3.5" ry="2.6" /><ellipse cx="15.2" cy="13.5" rx="3.6" ry="2.5" />
+    <ellipse cx="12" cy="8.3" rx="3.4" ry="2.6" />
   {:else if name === 'geology'}
     <!-- crystal -->
     <path d="M12 3l6 6-6 12-6-12z" /><path d="M6 9h12" /><path d="M12 3v18" />

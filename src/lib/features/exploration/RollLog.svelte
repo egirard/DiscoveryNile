@@ -1,8 +1,9 @@
 <script lang="ts">
-  // The log at a seat's rail (PROMPTS.md, prompts 13, 16, 17 and 20): its latest line, the lost mark when the
-  // expedition was lost in its latest turn (a lost check ends the turn there and then, so the mark outlives
-  // the turn until the seat's next), and the "+" that opens the rest of the log directly above, where the
-  // list's "−" sits in line with the "−" that takes the "+"'s place.
+  // The log section of a seat's rail (PROMPTS.md, prompts 13, 16, 17, 20 and 35): an outlined box inward of the
+  // status row holding the log's latest line, the lost mark when the expedition was lost in its latest turn (a
+  // lost check ends the turn there and then, so the mark outlives the turn until the seat's next), and the "+"
+  // that opens the rest of the log inside the box, which grows inward to hold a few lines above the latest;
+  // the "−" in the "+"'s place collapses it again.
   import type { LoggedTurn } from '$lib/game/state';
   import LogLine from './LogLine.svelte';
   import TurnLog from './TurnLog.svelte';
@@ -13,11 +14,11 @@
     turns: LoggedTurn[];
     /** It is this seat's turn: the last of `turns` is the turn in progress. */
     current?: boolean;
-    /** The rest of the log is open above the rail; "+" opens it and "−" in its place closes it. */
+    /** The rest of the log is open in the box above the latest line; "+" opens it and "−" in its place closes it. */
     expanded?: boolean;
     ontoggle?: () => void;
   }
-  let { seat, turns, current = false, expanded = false, ontoggle }: Props = $props();
+  let { seat, turns, expanded = false, ontoggle }: Props = $props();
   const all = $derived(turns.flatMap((t) => t.log));
   const latest = $derived(all.at(-1));
   /** The seat's latest turn: the one in progress when it is the seat's, else the last it played. */
@@ -25,36 +26,55 @@
   /** Dice rolled in that turn; an action that rolled nothing is not counted. */
   const rolls = $derived(latestTurn.filter((r) => r.kind !== 'action').length);
   const lost = $derived(latestTurn.some((r) => r.lost));
-  void current;
 </script>
 
 {#if latest}
-  <span class="log-area">
+  <div class="box" class:expanded data-testid="log-box-{seat}" data-expanded={expanded}>
     {#if ontoggle && expanded}
-      <!-- Directly above the line, its right edge on the "−" below it, so the list reads as the lines before the rail's; first in the document so the lines read in order. -->
-      <div class="panel" data-testid="turn-log-edge-{seat}" data-seat={seat} data-e2e-fit>
-        <TurnLog {seat} {turns} onclose={ontoggle} />
-      </div>
+      <!-- The earlier lines, above the latest so the lines read in order; the latest stays the box's last line. -->
+      <TurnLog {seat} {turns} />
     {/if}
-    <span class="log" data-testid="roll-log-{seat}" data-lost={lost} data-rolls={rolls} data-records={all.length} data-turns={turns.length}>
-      <LogLine record={latest} {seat} rail />
-      {#if lost}
-        <span class="badge" data-testid="lost-badge-{seat}" aria-label="The expedition is lost this turn">?</span>
+    <span class="latest">
+      <span class="log" data-testid="roll-log-{seat}" data-lost={lost} data-rolls={rolls} data-records={all.length} data-turns={turns.length}>
+        <LogLine record={latest} {seat} rail />
+        {#if lost}
+          <span class="badge" data-testid="lost-badge-{seat}" aria-label="The expedition is lost this turn">?</span>
+        {/if}
+      </span>
+      {#if ontoggle}
+        <button class="expand" data-testid="log-expand-{seat}" aria-pressed={expanded} aria-label={expanded ? 'Collapse the log' : 'Open the log'} onclick={ontoggle}>{expanded ? '−' : '+'}</button>
       {/if}
     </span>
-    {#if ontoggle}
-      <button class="expand" data-testid="log-expand-{seat}" aria-pressed={expanded} aria-label={expanded ? 'Close the log' : 'Show the log'} onclick={ontoggle}>{expanded ? '−' : '+'}</button>
-    {/if}
-  </span>
+  </div>
 {/if}
 
 <style>
-  .log-area {
-    position: relative;
-    display: inline-flex;
+  .box {
+    /* The outline: a pill round the one line, a rounded box round the few lines when open. */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    max-width: 100%;
+    min-width: 0;
+    border: 2px solid var(--paper);
+    border-radius: calc(var(--target) * 0.6);
+    padding: 2px calc(var(--gap) * 0.4) 2px var(--gap);
+    color: var(--paper);
+  }
+  .box.expanded {
+    padding-top: calc(var(--gap) * 0.5);
+  }
+  .latest {
+    display: flex;
     align-items: center;
-    margin-left: var(--gap);
-    --panel-pad: calc(var(--gap) * 1.2);
+    gap: calc(var(--gap) * 0.6);
+    min-height: var(--target);
+    min-width: 0;
+  }
+  .box.expanded .latest {
+    margin-top: calc(var(--gap) * 0.4);
+    padding-top: calc(var(--gap) * 0.3);
+    border-top: 1px solid rgba(255, 255, 255, 0.35);
   }
   .log {
     display: inline-flex;
@@ -62,11 +82,10 @@
     gap: calc(var(--gap) * 0.6);
     max-width: calc(var(--target) * 18);
     min-width: 0;
-    max-height: calc(var(--rail-depth) - var(--gap));
-    color: var(--paper);
+    flex: 1 1 auto;
   }
   .expand {
-    margin-left: calc(var(--gap) * 0.5);
+    margin-left: calc(var(--gap) * 0.3);
     width: var(--target);
     height: var(--target);
     border-radius: 50%;
@@ -83,17 +102,6 @@
   .expand[aria-pressed='true'] {
     background: var(--paper);
     color: var(--ink);
-  }
-  .panel {
-    position: absolute;
-    bottom: calc(100% + var(--gap) * 0.6);
-    right: calc(-1 * var(--panel-pad) - 3px);
-    background: var(--paper);
-    color: var(--ink);
-    border: 3px solid var(--ink);
-    border-radius: 12px;
-    padding: var(--panel-pad);
-    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
   }
   .badge {
     width: var(--target);
