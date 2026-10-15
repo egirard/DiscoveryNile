@@ -409,7 +409,7 @@ test.describe('037 - Physical dice', () => {
           const played = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
           expect(played.log.filter((r) => r.kind !== 'action').map((r) => [r.kind, r.rolls.map((x) => x.value)])).toEqual([['disaster', []], ['lost-check', [1]], ['hunting', [5]]]);
           await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-needed', '2 / 4 / 6 for one, two, three a hunter');
-          await expect(page.getByTestId('meal-needed-bottom-1')).toHaveText('needs 2 / 4 / 6 for one, two, three a hunter');
+          await expect(page.getByTestId('meal-needed-bottom-1')).toHaveText('needs 2 / 4 / 6'); // the words stay in the open log (prompt 34)
           await expect(page.getByTestId('lost-badge-bottom-1')).toBeVisible();
           expect(s.diagnostics).toEqual([]);
         } }

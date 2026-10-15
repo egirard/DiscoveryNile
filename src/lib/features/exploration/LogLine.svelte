@@ -23,6 +23,8 @@
   const name = (kind: string) => KIND[kind] ?? kind.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
   /** The rail's note ids kept from the one-line log: `meal-note` for the hunt, `{kind}-note` otherwise. */
   const note = $derived(r.kind === 'hunting' ? 'meal' : r.kind);
+  /** At the rail the line never wraps (prompt 34): what a check needed is cut to its numbers ("2 / 4 / 6"), the words staying in the open log. */
+  const needed = $derived(r.needed && rail ? r.needed.replace(/ for .*$/, '') : r.needed);
   const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${r.total}` : ''}; ${r.outcome}`);
 </script>
 
@@ -38,7 +40,7 @@
       </span>
     {/if}
     {#if r.needed}
-      <span class="needed" data-testid="{idPrefix}{note}-needed-{seat}">needs {r.needed}</span>
+      <span class="needed" data-testid="{idPrefix}{note}-needed-{seat}">needs {needed}</span>
     {/if}
     {#if r.contenders}
       {#each r.contenders as c (c.seat)}
@@ -72,6 +74,21 @@
   }
   .kind {
     font-weight: 700;
+  }
+  /* At the rail the line stays one line (prompt 34): the roll and its result together, a long result cut with an ellipsis. */
+  .rail {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  .rail > * {
+    flex-shrink: 0;
+  }
+  .rail .outcome {
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .contender {
     display: inline-flex;

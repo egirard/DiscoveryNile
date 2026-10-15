@@ -60,7 +60,8 @@
     display: inline-flex;
     align-items: center;
     gap: calc(var(--gap) * 0.6);
-    max-width: calc(var(--target) * 12.5);
+    max-width: calc(var(--target) * 18);
+    min-width: 0;
     max-height: calc(var(--rail-depth) - var(--gap));
     color: var(--paper);
   }

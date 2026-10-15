@@ -54,7 +54,7 @@
 
 <style>
   .turn-log {
-    width: calc(var(--target) * 9);
+    width: calc(var(--target) * 12);
     font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
   }
   .head {
