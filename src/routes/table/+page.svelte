@@ -236,9 +236,9 @@
     const hex = explorer && standingHex(explorer);
     const chart = explorer && chartOf(gameState, explorer);
     if (!seat || !explorer || !chart || !hex || explorer.location.kind === 'captive') return null;
-    // One's own caches, and anyone's in a published hex (RQ-3).
-    const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && (c.seat === seat.id || !!gameState.map[hex]?.publishedBy) && c.round < gameState.turn!.round);
-    return { seat, explorer: { ...explorer, chart }, caches };
+    // One's own caches, and anyone's in a published hex (RQ-3); this turn's shown with its goods to take back (prompt 34).
+    const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && (c.seat === seat.id || !!gameState.map[hex]?.publishedBy));
+    return { seat, explorer: { ...explorer, chart }, caches, waterHere: waterAvailable(gameState, explorer) };
   });
   // Publishing: the current seat, in Europe, opens the claim on the board; a tap on a marker hex publishes it.
   let publishingSeat = $state<string | null>(null);
@@ -551,9 +551,11 @@
 
   {#if reorganising}
     <EdgePanel seat={reorganising.seat} {viewport} inset={railDepth + target * 0.4} testid="reorganise-edge-{reorganising.seat.id}">
-      <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches}
+      <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches} round={gameState.turn!.round} waterHere={reorganising.waterHere} waterStep={WATER_STEP}
         onaction={(action, item, count) => game?.append('expedition/reorganised', { seat: reorganising!.seat.id, action, item, count })}
+        ontake={(cacheId, item, count) => game?.append('expedition/reorganised', { seat: reorganising!.seat.id, action: 'take', item, count, cacheId })}
         onrecover={(cacheId) => game?.append('cache/recovered', { seat: reorganising!.seat.id, cacheId })}
+        onwater={(rations) => takeWater(reorganising!.seat.id, rations)}
         onclose={() => (reorganisingSeat = null)} />
     </EdgePanel>
   {/if}
@@ -653,17 +655,9 @@
                 </button>
               {/if}
               {#if chartOf(gameState, explorer) && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
-                <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="Reorganise the expedition: cache, dismiss, turn loose or eat" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
+                <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="The camp: reorganise the expedition, take water, use the caches here" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16v10H4z" /><path d="M4 9l2-4h12l2 4" /><path d="M10 13h4" /></svg>
                 </button>
-              {/if}
-              {#if chartOf(gameState, explorer) && waterAvailable(gameState, explorer)}
-                <span class="water-controls" data-testid="water-controls-{seat.id}">
-                  <button class="water" data-testid="take-water-{seat.id}" aria-label="Take {WATER_STEP} water rations" onclick={() => takeWater(seat.id, WATER_STEP)}><Icon name="water" size="1.2em" /><span class="sign">+</span></button>
-                  {#if chartOf(gameState, explorer)!.water > 0}
-                    <button class="water" data-testid="pour-water-{seat.id}" aria-label="Pour out {Math.min(WATER_STEP, chartOf(gameState, explorer)!.water)} water rations" onclick={() => takeWater(seat.id, -Math.min(WATER_STEP, chartOf(gameState, explorer)!.water))}><Icon name="water" size="1.2em" /><span class="sign">−</span></button>
-                  {/if}
-                </span>
               {/if}
               <RollLog seat={seat.id} turns={turnsOf(seat.id)} current expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
               <TurnControls
@@ -929,27 +923,6 @@
     color: var(--ink);
     display: grid;
     place-items: center;
-    cursor: pointer;
-  }
-  .water-controls {
-    display: inline-flex;
-    gap: calc(var(--gap) * 0.4);
-    margin-left: var(--gap);
-  }
-  .water {
-    width: var(--target);
-    height: var(--target);
-    border-radius: 50%;
-    border: 2px solid var(--paper);
-    background: #2d72c9;
-    color: var(--paper);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
-    font-weight: 700;
-    font-size: calc(var(--target) * 0.4);
     cursor: pointer;
   }
   .movement {

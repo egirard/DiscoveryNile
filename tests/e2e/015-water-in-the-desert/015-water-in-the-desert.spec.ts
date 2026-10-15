@@ -36,7 +36,7 @@ test.describe('015 - Water in the desert', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Water in the desert',
-      'Water is free wherever there is water, so at the rail the explorer can take or pour out water rations ten at a time; each weighs four food rations. In a desert hex with neither river nor known oasis the evening costs one water ration per man and four per horse or camel. When the water runs short the guides, then bearers, then askaris go without and die; thirsty animals are shot for their meat.'
+      'Water is free wherever there is water, so on the camp panel the explorer can take or pour out water rations ten at a time; each weighs four food rations. In a desert hex with neither river nor known oasis the evening costs one water ration per man and four per horse or camel. When the water runs short the guides, then bearers, then askaris go without and die; thirsty animals are shot for their meat.'
     );
 
     // Seed 2 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first) and hunting 1,1 (no game in the
@@ -55,16 +55,24 @@ test.describe('015 - Water in the desert', () => {
     await passTurn(page);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c20r1');
     await outfit(page, 'bottom-1', { bearers: 10, askaris: 2, camels: 3, food: 40 });
+    // Water is taken on the camp panel, opened from the rail (prompt 34).
+    await page.getByTestId('reorganise-bottom-1').click();
+    await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '0');
     await expect(page.getByTestId('pour-water-bottom-1')).toHaveCount(0);
     await tap(page, 'take-water-bottom-1', 3);
 
     await steps.step('water-taken', {
-      description: 'At Khartoum, on the Nile, the caravan of thirteen men and three camels fills thirty water rations with three taps; the chart shows the water and the pour-out control appears',
+      description: 'At Khartoum, on the Nile, the caravan of thirteen men and three camels fills thirty water rations with three taps on the camp panel, which shows the water with the pour-out control beside it, and how the caravan can move with the load',
       verifications: [
-        { spec: 'The chart shows 30 water and the take and pour controls are at the rail', check: async () => {
+        { spec: 'The chart and the panel show 30 water; the take and pour controls are on the panel, with the movement notes', check: async () => {
           await expect(page.getByTestId('have-water-bottom-1')).toHaveAttribute('data-count', '30');
+          await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '30');
           await expect(page.getByTestId('take-water-bottom-1')).toBeVisible();
           await expect(page.getByTestId('pour-water-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-people', '13');
+          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-load', '160'); // 40 rations and 30 water at four each
+          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-carry', '150'); // nine bearers at 10, the tenth leading the three camels at 20 each
+          await expect(page.getByTestId('mode-foot-bottom-1')).toHaveAttribute('data-ok', 'false');
           const s = await state(page);
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ water: 30, food: 40, bearers: 10, askaris: 2, camels: 3 });
           expect(s.diagnostics).toEqual([]);
@@ -72,9 +80,13 @@ test.describe('015 - Water in the desert', () => {
       ]
     });
 
+    await page.getByTestId('reorganise-close-bottom-1').click();
     await page.getByTestId('move-target-c21r1').click();
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c21r1');
-    await expect(page.getByTestId('water-controls-bottom-1')).toHaveCount(0); // a dry desert hex: no water to take
+    await page.getByTestId('reorganise-bottom-1').click(); // a dry desert hex: no water to take
+    await expect(page.getByTestId('water-controls-bottom-1')).toHaveCount(0);
+    await expect(page.getByTestId('no-water-bottom-1')).toHaveText('no water here');
+    await page.getByTestId('reorganise-close-bottom-1').click();
     await passTurn(page);
 
     await steps.step('dry-camp', {

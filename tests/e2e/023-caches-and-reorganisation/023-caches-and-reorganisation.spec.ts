@@ -36,7 +36,7 @@ test.describe('023 - Caches and reorganisation', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Caches and reorganisation',
-      'On any turn the expedition can be reorganised from a panel at the player\'s edge: rations, gifts, muskets, canoes and water are cached on the hex under a cache marker in the seat colour; guides, bearers and askaris are dismissed and vanish; camels and horses are turned loose or eaten for ten rations each. Returning to a cache of one\'s own on a later turn, a die is rolled: on a 1 or 2 it has disappeared, otherwise its goods rejoin the chart. Other explorers\' caches are only findable once the hex is published.'
+      'On any turn the expedition can be reorganised from the camp panel at the player\'s edge: rations, gifts, muskets and canoes are cached on the hex under a cache marker in the seat colour; guides, bearers and askaris are dismissed and vanish; camels and horses are turned loose or eaten for ten rations each. The panel shows how the expedition as it stands can move, lists the caches on the hex with what each holds, and gives goods back out of a cache made this turn item by item. Returning to a cache of one\'s own on a later turn, a die is rolled: on a 1 or 2 it has disappeared, otherwise its goods rejoin the chart. Other explorers\' caches are only findable once the hex is published.'
     );
 
     // Seed 863 as in scenarios 013, 014 and 021: bottom-1 pays passage to Mombasa and keeps $700; the disaster card the
@@ -64,8 +64,17 @@ test.describe('023 - Caches and reorganisation', () => {
     await tap(page, 'dismiss-bearers-bottom-1', 5);
 
     await steps.step('cached', {
-      description: 'On the veldt north of Mombasa twenty rations and five muskets are cached under the bottom seat\'s marker, and five bearers are dismissed: the chart shows 80 rations, no muskets and 10 bearers',
+      description: 'On the veldt north of Mombasa twenty rations and five muskets are cached under the bottom seat\'s marker, and five bearers are dismissed: the chart shows 80 rations, no muskets and 10 bearers; the panel lists the cache with its goods, each with a control to take it back, and shows how the lightened expedition can move',
       verifications: [
+        { spec: 'The panel lists this turn\'s cache with 20 food and 5 muskets to take back, and the movement notes for 15 people', check: async () => {
+          await expect(page.getByTestId('cache-row-1-bottom-1')).toHaveAttribute('data-open', 'true');
+          await expect(page.getByTestId('cache-contents-1-bottom-1')).toHaveText('20 food, 5 muskets');
+          await expect(page.getByTestId('take-food-1-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('take-muskets-1-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('recover-cache-1-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-people', '16');
+          await expect(page.getByTestId('mode-foot-bottom-1')).toHaveAttribute('data-ok', 'true');
+        } },
         { spec: 'A cache marker in the seat colour sits on c25r11; the chart has 80 food, 10 bearers and no muskets', check: async () => {
           await expect(page.getByTestId('cache-c25r11-bottom-1')).toBeAttached();
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '80');
@@ -80,20 +89,41 @@ test.describe('023 - Caches and reorganisation', () => {
       ]
     });
 
+    await page.getByTestId('reorganise-step-bottom-1').click(); // ×10
+    await page.getByTestId('take-food-1-bottom-1').click();
+    await page.getByTestId('reorganise-step-bottom-1').click(); // ×1
+
+    await steps.step('taken-back', {
+      description: 'Ten of the cached rations are taken back out of the cache from the panel: the chart has 90 rations and the cache holds ten with the muskets',
+      verifications: [
+        { spec: 'The cache holds 10 food and 5 muskets, the chart 90 food; the note reads the taking', check: async () => {
+          await expect(page.getByTestId('cache-contents-1-bottom-1')).toHaveText('10 food, 5 muskets');
+          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '90');
+          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('10 food taken back from the cache');
+          const s = await state(page);
+          expect(s.caches[1].contents).toEqual({ food: 10, muskets: 5 });
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
     await page.getByTestId('reorganise-close-bottom-1').click();
     await expect(page.getByTestId('reorganise-panel-bottom-1')).toHaveCount(0);
     await passTurn(page);
     await passTurn(page);
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
     await page.getByTestId('reorganise-bottom-1').click();
+    await expect(page.getByTestId('cache-row-1-bottom-1')).toHaveAttribute('data-open', 'false');
+    await expect(page.getByTestId('cache-contents-1-bottom-1')).toHaveText('10 food, 5 muskets');
+    await expect(page.getByTestId('take-food-1-bottom-1')).toHaveCount(0);
     await expect(page.getByTestId('recover-cache-1-bottom-1')).toBeVisible();
     await page.getByTestId('recover-cache-1-bottom-1').click();
 
     await steps.step('recovered', {
-      description: 'Next turn the panel lists the cache; digging it up rolls a 5, so the twenty rations and five muskets rejoin the chart and the marker is lifted',
+      description: 'Next turn the panel lists the cache with its ten rations and five muskets, to be dug up rather than taken from; digging it up rolls a 5, so the goods rejoin the chart and the marker is lifted',
       verifications: [
         { spec: 'The cache die and note show at the rail; the marker is gone; the chart regains the goods', check: async () => {
-          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('the cache is recovered: 20 food, 5 muskets');
+          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('the cache is recovered: 10 food, 5 muskets');
           await expect(page.getByTestId('cache-c25r11-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('have-muskets-bottom-1')).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '84');

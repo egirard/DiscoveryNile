@@ -831,7 +831,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
     }
     case 'expedition/reorganised': {
       // Any turn (rules §5): cache goods under a marker, dismiss men, turn animals loose or eat them.
-      const { seat, action, item, count } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown };
+      const { seat, action, item, count, cacheId } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown; cacheId?: unknown };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase !== 'act') return 'not now';
@@ -844,11 +844,29 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (typeof item !== 'string' || !ITEMS.includes(item as Item)) return 'expedition/reorganised needs an item';
       const it = item as Item;
       const chart = { ...holder.chart };
-      if (chart[it] < count) return `only ${chart[it]} ${it}`;
       const men: Item[] = ['guides', 'bearers', 'askaris'];
       const animals: Item[] = ['camels', 'horses'];
       let outcome: string;
       let caches = state.caches;
+      if (action === 'take') {
+        // Goods back out of a cache made this round on this hex (prompt 34); an earlier cache is dug up first.
+        const cache = typeof cacheId === 'number' ? state.caches[cacheId] : undefined;
+        if (!cache || cache.hex !== hex) return 'no such cache here';
+        if (cache.seat !== explorer.seat && !state.map[hex]?.publishedBy) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
+        if (cache.round < state.turn.round) return 'dig up the cache first';
+        const there = cache.contents[it] ?? 0;
+        if (there < count) return `only ${there} ${it} in the cache`;
+        chart[it] += count;
+        const contents = { ...cache.contents, [it]: there - count };
+        if (there === count) delete contents[it];
+        const { [cache.id]: _emptied, ...rest } = caches;
+        void _emptied;
+        caches = Object.values(contents).some((v) => (v ?? 0) > 0) ? { ...caches, [cache.id]: { ...cache, contents } } : rest;
+        outcome = `${count} ${it} taken back from the cache`;
+        const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [], outcome };
+        return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: [...state.turn.log, record] } };
+      }
+      if (chart[it] < count) return `only ${chart[it]} ${it}`;
       if (action === 'cache') {
         if (men.includes(it) || animals.includes(it)) return `${it} cannot be cached`;
         chart[it] -= count;
@@ -869,7 +887,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         chart[it] -= count;
         chart.food += 10 * count;
         outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} eaten: ${10 * count} rations`;
-      } else return 'expedition/reorganised needs cache, dismiss, release or eat';
+      } else return 'expedition/reorganised needs cache, take, dismiss, release or eat';
       const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [], outcome };
       return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: [...state.turn.log, record] } };
     }

@@ -234,3 +234,10 @@ canoes can always traverse ocean shore hexes.  Let's also add status information
 *(voice, summarised)* The game being played right now asks for 36 D6 to determine a village's loot. Capture the individual dice from the dicecam as they are rolled and record them one by one, or give an auto-roll button that finishes the rolls automatically.
 
 `Outcome: a throw of more dice than the tray holds is gathered over several throws (G-147): each throw the dicecam reads goes in as it settles (fewer dice than wanted, never more), each tapped face goes in at once, the prompt counts them ("4 of 36 in") and says what is still wanted, and "Roll the rest" has the table roll the remainder from the generator (\`dice/rolled {auto: true}\`, the same on every client). A throw the tray holds whole, four dice or fewer, is still taken only whole. Scenario 018's loot is now rolled this way (steps loot-asked, loot-part-thrown, looted). The dev table picks it up at its next reload; the hosted table once the deploy lands.`
+
+## 34. 2026-10-15
+
+results of a die roll need to be recorded in the log on the same line as the roll (lost, okay); disaster cards need to be shown in full to the player before the results are applied; cache screen should show what's already stored in the cache so that cached goods can also be collected; cache screen should show current movement rates similar to the way that the outfitting screen shows; take water rations should be moved into the cache interface;
+
+`Outcome: in progress.`
+

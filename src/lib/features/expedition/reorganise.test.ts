@@ -38,6 +38,26 @@ describe('reorganising the expedition (rules §5)', () => {
     expect(reason({ action: 'cache', item: 'food', count: 200 })).toBe('only 100 food');
     expect(reduce([...events, event('cache/recovered', { seat: 'bottom-1', cacheId: 1 })]).diagnostics.at(-1)?.reason).toBe('no such cache');
   });
+  it('gives goods back out of a cache made this turn, item by item, and lifts the marker when it is empty (prompt 34)', () => {
+    const events = [...onTheVeldt(), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 20 }), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'muskets', count: 5 })];
+    const take = (payload: Record<string, unknown>) => event('expedition/reorganised', { seat: 'bottom-1', action: 'take', cacheId: 1, ...payload });
+    const some = reduce([...events, take({ item: 'food', count: 10 })]);
+    expect(some.diagnostics).toEqual([]);
+    expect(some.explorers[0].chart).toMatchObject({ food: 90, muskets: 0 });
+    expect(some.caches[1].contents).toEqual({ food: 10, muskets: 5 });
+    expect(some.turn!.log.at(-1)).toMatchObject({ kind: 'cache', outcome: '10 food taken back from the cache' });
+    const all = reduce([...events, take({ item: 'food', count: 20 }), take({ item: 'muskets', count: 5 })]);
+    expect(all.caches).toEqual({});
+    expect(all.explorers[0].chart).toMatchObject({ food: 100, muskets: 5 });
+    const reason = (payload: Record<string, unknown>) => reduce([...events, take(payload)]).diagnostics.at(-1)?.reason;
+    expect(reason({ item: 'food', count: 30 })).toBe('only 20 food in the cache');
+    expect(reason({ item: 'gifts', count: 1 })).toBe('only 0 gifts in the cache');
+    expect(reason({ item: 'food', count: 1, cacheId: 2 })).toBe('no such cache here');
+    // Next turn the cache is an earlier one: dug up with a die, not taken from.
+    const ev = [...events, event('turn/ended', { seat: 'bottom-1' })];
+    const later = [...ev, ...pass('top-1', reduce(ev))];
+    expect(reduce([...later, take({ item: 'food', count: 1 })]).diagnostics.at(-1)?.reason).toBe('dig up the cache first');
+  });
   it('a cache is dug up on a later turn: a 1 or 2 and it has gone, otherwise its goods return', () => {
     const events = [...onTheVeldt(), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 20 })];
     expect(reduce([...events, event('cache/recovered', { seat: 'bottom-1', cacheId: 1 })]).diagnostics.at(-1)?.reason).toBe('a cache is dug up on a later turn');
