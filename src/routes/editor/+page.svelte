@@ -6,10 +6,12 @@
   // offers the table its reload. Without a capture server (the hosted build) the editor only shows the board.
   // Rivers too (prompt 48): a river is chosen from the list (or added), the course tool adds a hex at either end with a
   // tap or takes an end hex off, the cataract tool marks a hex of a course, and the river's name, drainage number, hexes
-  // off the map, the river it joins and whether it continues off the map are fields beside the list.
+  // off the map, the river it joins and whether it continues off the map are fields beside the list. The single hex
+  // editor (prompt 49) shows the hex tapped with six spokes, blue where a river leaves it; a tap on a spoke adds or
+  // clears that river edge as an edit of the courses, and the map follows at once.
   import { onMount } from 'svelte';
   import rawBoard from '$features/map/board.json';
-  import { BRUSHES, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverTap, toggleCataract, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
+  import { BRUSHES, DIRECTION_NAMES, DIRECTIONS, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverSpokes, riverTap, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
   import { hexId, hexPoints, parseHexId, toPixel, type HexId } from '$features/map/hex';
   import { serverUrlFrom } from '$lib/diagnostics/diag';
 
@@ -39,6 +41,17 @@
   const river = $derived(riverId ? working.rivers.find((r) => r.id === riverId) ?? null : null);
   const candidates = $derived(tool === 'river' && riverId ? riverCandidates(working, riverId) : []);
   const brush = $derived(tool && tool !== 'river' && tool !== 'cataract' ? tool : null);
+  const spokes = $derived(selected ? riverSpokes(working, selected) : []);
+  const riversThrough = $derived(selected ? working.rivers.filter((r) => r.path.includes(selected!)) : []);
+  const cataractHere = $derived(selected ? working.rivers.some((r) => r.cataracts.includes(selected!)) : false);
+  /** Where direction d leaves a pointy-top hex: east is 2, so the angle is (d − 2) × 60° clockwise from east. */
+  const bearing = (d: number) => ((d - 2) * Math.PI) / 3;
+  const HEX_R = 62;
+  /** The wedge of the single hex editor's hex that is direction d's control: from the centre to the edge in that direction. */
+  function wedge(d: number): string {
+    const a = bearing(d) - Math.PI / 6, b = bearing(d) + Math.PI / 6;
+    return `0,0 ${(Math.cos(a) * HEX_R * 1.3).toFixed(1)},${(Math.sin(a) * HEX_R * 1.3).toFixed(1)} ${(Math.cos(b) * HEX_R * 1.3).toFixed(1)},${(Math.sin(b) * HEX_R * 1.3).toFixed(1)}`;
+  }
   const isBrush = (t: typeof tool): t is Brush => t !== null && t !== 'river' && t !== 'cataract';
 
   // The grid north up: every hex of cols × rows, sea or land, sized to the pane.
@@ -93,6 +106,9 @@
   }
   function undo(id: HexId) {
     apply(paint(working, id, brushAt(saved, id)));
+  }
+  function spoke(d: (typeof DIRECTIONS)[number]) {
+    if (selected) apply(toggleRiverSpoke(working, selected, d));
   }
   /** The river as it was saved: put back, taken out if it was added, or put back in its place if it was removed. */
   function undoRiver(id: string) {
@@ -250,7 +266,7 @@
       </div>
     </div>
     <p class="server" data-testid="editor-server" data-server={server ?? 'none'}>
-      {#if server}Saves to the capture server at {server}{:else}No capture server: open with ?diag-server=http://127.0.0.1:3002 (or from bun run dev) to save{/if}
+      {#if server}Saves to {server}{:else}No capture server: open with ?diag-server=http://127.0.0.1:3002 (or from bun run dev) to save{/if}
     </p>
     <h2>Brush</h2>
     <div class="brushes" role="group" aria-label="Brush: tap a hex to paint it">
@@ -282,17 +298,45 @@
           </select>
         </label>
         <label><span>Drainage</span><input data-testid="river-drainage" type="number" min="1" value={river.drainage ?? ''} oninput={(e) => setField({ drainage: numberOrNone(e.currentTarget.value) })} /></label>
-        <label><span>Hexes off the map</span><input data-testid="river-offmap" type="number" min="0" value={river.offMapHexes ?? ''} oninput={(e) => setField({ offMapHexes: numberOrNone(e.currentTarget.value) })} /></label>
-        <button data-testid="river-continues" aria-pressed={Boolean(river.continuesOffMap)} onclick={() => setField({ continuesOffMap: !river!.continuesOffMap })}>{river.continuesOffMap ? 'Continues off the map' : 'Ends on the map'}</button>
-        <button class="remove" data-testid="river-remove" aria-label="Remove the {river.name}" onclick={dropRiver}>Remove</button>
+        <label><span>Off map</span><input data-testid="river-offmap" type="number" min="0" value={river.offMapHexes ?? ''} oninput={(e) => setField({ offMapHexes: numberOrNone(e.currentTarget.value) })} /></label>
+        <button class="small" data-testid="river-continues" aria-pressed={Boolean(river.continuesOffMap)} aria-label={river.continuesOffMap ? 'Continues off the map; tap to end it on the map' : 'Ends on the map; tap to continue it off the map'} onclick={() => setField({ continuesOffMap: !river!.continuesOffMap })}>{river.continuesOffMap ? 'Off map ↗' : 'Ends here'}</button>
+        <button class="small remove" data-testid="river-remove" aria-label="Remove the {river.name}" onclick={dropRiver}>Remove</button>
       </div>
     {/if}
     <h2>Hex</h2>
-    <p class="hex-info" data-testid="selected-hex" data-hex={selected ?? 'none'} data-terrain={selected ? brushAt(working, selected) : 'none'}>
-      {#if selected}
-        <strong>{selected}</strong> {brushAt(working, selected)}{#if selectedHex?.port}, port of {working.ports[selectedHex.port].name}{/if}{#if changed.has(selected)}{' '}(was {brushAt(saved, selected)}){/if}
-      {:else}Tap a hex{/if}
-    </p>
+    <div class="hex-editor" data-testid="hex-editor" data-hex={selected ?? 'none'} data-spokes={spokes.map((s) => s.direction).join(',')}>
+      <svg class="one-hex" viewBox="-92 -92 184 184" width="160" height="160" role="group" aria-label={selected ? `${selected}: the directions a river leaves it in; tap a spoke to add or clear a river there` : 'No hex chosen'}>
+        {#if selected}
+          <polygon class="hex {brushAt(working, selected)}" points={hexPoints(0, 0, HEX_R)} />
+          {#each DIRECTIONS as d (d)}
+            {@const on = spokes.find((s) => s.direction === d)}
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <polygon
+              class="wedge"
+              role="button"
+              tabindex="0"
+              data-testid="spoke-{d}"
+              data-river={on?.river.id}
+              aria-pressed={Boolean(on)}
+              aria-label="{DIRECTION_NAMES[d]} ({d}): {on ? `the ${on.river.name} leaves here; tap to clear it` : 'no river; tap to lead one here'}"
+              points={wedge(d)}
+              onclick={() => spoke(d)}
+              onkeydown={(e) => e.key === 'Enter' && spoke(d)}
+            />
+            <line class="spoke" class:river={on} x1="0" y1="0" x2={(Math.cos(bearing(d)) * HEX_R * 0.87).toFixed(1)} y2={(Math.sin(bearing(d)) * HEX_R * 0.87).toFixed(1)} />
+            <text class="dir" x={(Math.cos(bearing(d)) * HEX_R * 1.15).toFixed(1)} y={(Math.sin(bearing(d)) * HEX_R * 1.15).toFixed(1)}>{d}</text>
+          {/each}
+          {#if cataractHere}<g class="cataract" transform="scale({HEX_R * 0.5})"><circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" /></g>{/if}
+        {/if}
+      </svg>
+      <p class="hex-info" data-testid="selected-hex" data-hex={selected ?? 'none'} data-terrain={selected ? brushAt(working, selected) : 'none'}>
+        {#if selected}
+          <strong>{selected}</strong> {brushAt(working, selected)}{#if selectedHex?.port}, port of {working.ports[selectedHex.port].name}{/if}{#if changed.has(selected)}{' '}(was {brushAt(saved, selected)}){/if}
+          {#if riversThrough.length}<br /><span class="dim">{riversThrough.map((r) => r.name).join(', ')}{cataractHere ? '; cataract' : ''}</span>{/if}
+          <br /><span class="dim">Spokes: blue where a river leaves; tap one to add or clear</span>
+        {:else}Tap a hex on the map{/if}
+      </p>
+    </div>
     <h2>Changes</h2>
     <ul class="changes" data-testid="editor-changes" data-count={changes.length}>
       {#each changes as ch (ch.kind + ch.id)}
@@ -329,7 +373,7 @@
   .editor {
     height: 100vh;
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr 372px;
     overflow: hidden;
   }
   .pane {
@@ -504,16 +548,17 @@
   }
   .brushes {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr;
     gap: 6px;
   }
   .brush {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 0 10px;
+    gap: 6px;
+    padding: 0 8px;
     text-align: left;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
+    line-height: 1.1;
   }
   .swatch {
     width: 18px;
@@ -569,8 +614,16 @@
   }
   .fields {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     gap: 6px;
+  }
+  .fields label:nth-child(-n + 2) {
+    grid-column: span 2;
+  }
+  .fields .small {
+    align-self: end;
+    font-size: 0.8rem;
+    padding: 0 6px;
   }
   .fields label {
     display: grid;
@@ -581,6 +634,55 @@
   .remove {
     border-style: dashed;
   }
+  .hex-editor {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .one-hex {
+    flex: none;
+    overflow: visible;
+  }
+  .one-hex .hex {
+    stroke-width: 2;
+  }
+  .wedge {
+    fill: transparent;
+    cursor: pointer;
+  }
+  .wedge:hover {
+    fill: rgba(143, 196, 255, 0.2);
+  }
+  .wedge:focus-visible {
+    outline: none;
+    fill: rgba(143, 196, 255, 0.3);
+  }
+  .spoke {
+    stroke: rgba(28, 42, 46, 0.25);
+    stroke-width: 3;
+    stroke-dasharray: 4 4;
+    pointer-events: none;
+  }
+  .spoke.river {
+    stroke: #2d72c9;
+    stroke-width: 9;
+    stroke-dasharray: none;
+    stroke-linecap: round;
+  }
+  .dir {
+    fill: #e8d8b0;
+    font-size: 15px;
+    font-weight: 700;
+    text-anchor: middle;
+    dominant-baseline: central;
+    pointer-events: none;
+  }
+  .one-hex .cataract {
+    pointer-events: none;
+  }
+  .hex-info {
+    line-height: 1.3;
+  }
   .changes {
     margin: 0;
     padding: 0;
@@ -588,7 +690,7 @@
     display: grid;
     gap: 4px;
     font-size: 0.85rem;
-    max-height: 14vh;
+    max-height: 18vh;
     overflow: auto;
   }
   .changes li {

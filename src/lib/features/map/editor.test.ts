@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { directionTo } from './hex';
 import board from './board.json';
 import raw from './board.json?raw';
-import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverTap, serialiseBoard, toggleCataract, updateRiver, validateBoard, type RawBoard } from './editor';
+import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverSpokes, riverTap, serialiseBoard, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type RawBoard } from './editor';
 
 const BOARD = board as RawBoard;
 
@@ -121,5 +122,48 @@ describe('rivers in the map editor (prompt 48)', () => {
     expect(validateBoard(withRiver({ joins: 'r' }))).toBe('the R joins r, which is no river');
     expect(validateBoard(withRiver({ drainage: 0 }))).toBe('the R has a bad drainage number');
     expect(validateBoard(withRiver({ id: 'niger' }))).toBe('two rivers are called niger');
+  });
+});
+
+describe('the single hex editor (prompt 49)', () => {
+  const river = (b: RawBoard, id: string) => b.rivers.find((r) => r.id === id)!;
+  const spokes = (b: RawBoard, hex: Parameters<typeof riverSpokes>[1]) => riverSpokes(b, hex).map((s) => `${s.direction}:${s.river.id}`);
+  it('reads the directions the rivers leave a hex in from their courses', () => {
+    expect(spokes(BOARD, 'c2r6')).toEqual(['1:niger', '2:benue', '3:niger']); // the Niger's junction with the Benue
+    expect(spokes(BOARD, 'c3r6')).toEqual(['5:benue']); // the Benue's inland end
+    expect(spokes(BOARD, 'c12r12')).toEqual([]);
+    expect(spokes(BOARD, 'c20r1').sort()).toEqual([`${directionTo('c20r1', 'c20r2')}:white-nile`, `${directionTo('c20r1', 'c21r2')}:blue-nile`].sort()); // Khartoum: both Niles leave
+  });
+  it('adds a spoke by extending the river that ends here, and clears one by taking the end hex off', () => {
+    const longer = toggleRiverSpoke(BOARD, 'c3r6', 2) as RawBoard; // east of the Benue's end: c4r6
+    expect(river(longer, 'benue').path).toEqual(['c2r6', 'c3r6', 'c4r6']);
+    expect(spokes(longer, 'c3r6')).toEqual(['2:benue', '5:benue']);
+    const back = toggleRiverSpoke(longer, 'c3r6', 2) as RawBoard; // the same spoke again: c4r6 comes off
+    expect(river(back, 'benue').path).toEqual(['c2r6', 'c3r6']);
+    // From the new end's side: clearing the spoke back toward the river takes the end hex itself off.
+    expect(river(toggleRiverSpoke(longer, 'c4r6', 5) as RawBoard, 'benue').path).toEqual(['c2r6', 'c3r6']);
+    // A spoke toward a hex at the other river's end extends that river to here.
+    expect(river(toggleRiverSpoke(BOARD, 'c4r6', 5) as RawBoard, 'benue').path).toEqual(['c2r6', 'c3r6', 'c4r6']);
+  });
+  it('refuses to cut a course in the middle or to orphan a tributary, and keeps rivers on land', () => {
+    expect(toggleRiverSpoke(BOARD, 'c2r6', directionTo('c2r6', 'c2r7')!)).toBe('the Niger runs on through c2r6 and c2r7: take its hexes off from an end');
+    // The Blue Nile joins the White Nile at Khartoum (c20r1), the White Nile's mouth: that end cannot come off.
+    expect(toggleRiverSpoke(BOARD, 'c20r1', directionTo('c20r1', 'c20r2')!)).toBe('the Blue Nile joins the White Nile at c20r1: move the junction first');
+    // A spoke toward a blank land hex beside the Benue's end extends it; one toward the sea is refused.
+    expect(river(toggleRiverSpoke(BOARD, 'c3r6', directionTo('c3r6', 'c3r5')!) as RawBoard, 'benue').path).toEqual(['c2r6', 'c3r6', 'c3r5']);
+    expect(toggleRiverSpoke(BOARD, 'c2r8', directionTo('c2r8', 'c1r8')!)).toBe('c1r8 is sea: a river runs on land');
+  });
+  it('starts a tributary from a hex in the middle of a course, and a new river from a hex without one', () => {
+    const tributary = toggleRiverSpoke(BOARD, 'c2r7', 2) as RawBoard; // east of the Niger's second hex: c3r7, jungle
+    const t = tributary.rivers.at(-1)!;
+    expect(t).toEqual({ id: 'river-13', name: 'River 13', joins: 'niger', path: ['c2r7', 'c3r7'], cataracts: [] });
+    expect(validateBoard(tributary)).toBeNull();
+    expect(spokes(tributary, 'c2r7')).toEqual(['2:river-13', '4:niger', '6:niger']);
+    const fresh = toggleRiverSpoke(BOARD, 'c12r12', 2) as RawBoard;
+    expect(fresh.rivers.at(-1)).toEqual({ id: 'river-13', name: 'River 13', path: ['c12r12', 'c13r12'], cataracts: [] });
+    expect(changesBetween(BOARD, fresh)).toEqual([{ kind: 'river', id: 'river-13', name: 'River 13', summary: 'added, 2 hexes' }]);
+    // Two rivers that do not meet: the Niger's junction hex toward the Ogooue? Both carry rivers already.
+    const twoRivers = toggleRiverSpoke(toggleRiverSpoke(BOARD, 'c12r12', 2) as RawBoard, 'c12r14', 6) as RawBoard; // a second new river below
+    expect(twoRivers.rivers).toHaveLength(14);
   });
 });

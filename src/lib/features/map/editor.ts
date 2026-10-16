@@ -3,7 +3,7 @@
 // The transcription from the photograph (tools/mapfit, RQ-5) misread some hexes; the editor at /editor/ corrects them by
 // hand and sends the whole board to the capture server as a `save` command, which writes `board.json` in the source tree.
 import type { PortId, Terrain } from './manifest';
-import { directionTo, parseHexId, type HexId } from './hex';
+import { DIRECTIONS, directionTo, neighbour, parseHexId, type Direction, type HexId } from './hex';
 
 export const TERRAINS: readonly Terrain[] = ['desert', 'mountain', 'swamp', 'jungle', 'veldt', 'lake', 'jungle-swamp', 'jungle-mountain'];
 
@@ -297,3 +297,54 @@ export interface SaveCommand {
   changes: Change[];
   data: RawBoard;
 }
+
+// ---- The single hex editor (prompt 49) ------------------------------------------------------
+
+/** The rivers through a hex and the directions they leave it in, from the courses: a spoke per neighbouring course hex. */
+export function riverSpokes(board: RawBoard, hex: HexId): { direction: Direction; river: RawRiver }[] {
+  const out: { direction: Direction; river: RawRiver }[] = [];
+  for (const r of board.rivers) {
+    const i = r.path.indexOf(hex);
+    if (i < 0) continue;
+    for (const other of [r.path[i - 1], r.path[i + 1]]) {
+      if (!other) continue;
+      const d = directionTo(hex, other as HexId);
+      if (d !== null && !out.some((o) => o.direction === d)) out.push({ direction: d, river: r });
+    }
+  }
+  return out.sort((a, b) => a.direction - b.direction);
+}
+
+const isEnd = (r: RawRiver, hex: string) => r.path[0] === hex || r.path[r.path.length - 1] === hex;
+
+/**
+ * A spoke of the single hex editor tapped: the river edge between the hex and its neighbour in that direction comes or
+ * goes, as a path edit. A spoke already there is cleared by taking the end hex off its course (a course that runs on
+ * through both hexes is refused: split it from an end). A spoke added extends the river whose course ends at either hex,
+ * else starts a tributary from a hex on a course, else a new river with its mouth at the hex tapped.
+ */
+export function toggleRiverSpoke(board: RawBoard, hex: HexId, direction: Direction): RawBoard | string {
+  const n = neighbour(hex, direction);
+  for (const r of board.rivers) {
+    const i = r.path.indexOf(hex), j = r.path.indexOf(n);
+    if (i < 0 || j < 0 || Math.abs(i - j) !== 1) continue;
+    const drop = isEnd(r, hex) ? hex : isEnd(r, n) ? n : null;
+    if (!drop) return `the ${r.name} runs on through ${hex} and ${n}: take its hexes off from an end`;
+    const orphan = board.rivers.find((t) => t.joins === r.id && t.path[0] === drop);
+    if (orphan) return `the ${orphan.name} joins the ${r.name} at ${drop}: move the junction first`;
+    return withRiver(board, r.id, { ...r, path: r.path.filter((h) => h !== drop), cataracts: r.cataracts.filter((h) => h !== drop) });
+  }
+  if (!board.hexes[n]) return `${n} is sea: a river runs on land`;
+  const endingHere = board.rivers.find((r) => isEnd(r, hex) && !r.path.includes(n));
+  if (endingHere) return riverTap(board, endingHere.id, n);
+  const endingThere = board.rivers.find((r) => isEnd(r, n) && !r.path.includes(hex));
+  if (endingThere) return riverTap(board, endingThere.id, hex);
+  const through = board.rivers.find((r) => r.path.includes(hex));
+  if (through && board.rivers.some((r) => r.path.includes(n))) return `both ${hex} and ${n} already carry rivers that do not meet here`;
+  const { board: added, id } = addRiver(board);
+  const river = added.rivers.find((r) => r.id === id)!;
+  return withRiver(added, id, { ...river, ...(through ? { joins: through.id } : {}), path: [hex, n] });
+}
+
+export const DIRECTION_NAMES: Record<Direction, string> = { 1: 'north-east', 2: 'east', 3: 'south-east', 4: 'south-west', 5: 'west', 6: 'north-west' };
+export { DIRECTIONS };

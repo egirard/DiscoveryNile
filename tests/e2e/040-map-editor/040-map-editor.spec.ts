@@ -8,7 +8,7 @@ test.describe('040 - Map editor', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Map editor',
-      'The board was transcribed from a photograph of the 1978 map and some hexes were misread (RQ-5). The map editor at /editor/ is a tool of its own, apart from the table: every hex of the grid drawn north up, sea and land, a brush of eight terrains, blank and sea, the rivers listed with a course tool that adds a hex at either end with a tap, a cataract tool and the river\'s fields, the changes listed with a take-back each, and Save sending the whole board to the diagnostics capture server as a save command, which writes board.json in the source tree for the dev server to pick up. A port and a river hex stay land whatever the brush.'
+      'The board was transcribed from a photograph of the 1978 map and some hexes were misread (RQ-5). The map editor at /editor/ is a tool of its own, apart from the table: every hex of the grid drawn north up, sea and land, a brush of eight terrains, blank and sea, the rivers listed with a course tool that adds a hex at either end with a tap, a cataract tool and the river\'s fields, a single hex editor showing the hex tapped with six spokes, blue where a river leaves it, each a tap to add or clear that river edge, the changes listed with a take-back each, and Save sending the whole board to the diagnostics capture server as a save command, which writes board.json in the source tree for the dev server to pick up. A port and a river hex stay land whatever the brush.'
     );
 
     // No capture server runs in E2E: the save command is answered here, as the server would, and its body is kept.
@@ -151,6 +151,50 @@ test.describe('040 - Map editor', () => {
           await expect(page.getByTestId('river-drainage')).toHaveValue('9');
           await expect(page.getByTestId('change-river-river-13')).toContainText('River 13: added, 2 hexes');
           await expect(page.getByTestId('editor-changes')).toHaveAttribute('data-count', '3');
+        } }
+      ],
+      status: 'edited'
+    });
+
+    // The single hex editor (prompt 49): c13r12, the new river's inland end, is the hex chosen; its spokes are edited.
+    await expect(page.getByTestId('hex-editor')).toHaveAttribute('data-hex', 'c13r12');
+    await page.getByTestId('spoke-2').click();
+
+    await steps.step('spoke-added', {
+      description: 'The hex editor shows c13r12 with six spokes, the one to the west blue where River 13 comes in; a tap on the east spoke leads the river on to c14r12: the spoke turns blue and the course on the map grows at once',
+      verifications: [
+        { spec: 'The hex editor shows spokes 2 and 5 as river, both River 13\'s; the course on the map runs c12r12, c13r12, c14r12 and the change says three hexes', check: async () => {
+          await expect(page.getByTestId('hex-editor')).toHaveAttribute('data-spokes', '2,5');
+          await expect(page.getByTestId('spoke-2')).toHaveAttribute('aria-pressed', 'true');
+          await expect(page.getByTestId('spoke-2')).toHaveAttribute('data-river', 'river-13');
+          await expect(page.getByTestId('spoke-5')).toHaveAttribute('aria-pressed', 'true');
+          await expect(page.getByTestId('spoke-1')).toHaveAttribute('aria-pressed', 'false');
+          await expect(page.getByTestId('river-course-river-13')).toHaveAttribute('data-hexes', 'c12r12,c13r12,c14r12');
+          await expect(page.getByTestId('change-river-river-13')).toContainText('River 13: added, 3 hexes');
+        } }
+      ],
+      status: 'edited'
+    });
+
+    await page.getByTestId('spoke-2').click();
+
+    await steps.step('spoke-cleared', {
+      description: 'The same spoke tapped again clears it: c14r12 comes off the river\'s end, the spoke is empty and the course on the map is two hexes again',
+      verifications: [
+        { spec: 'Only spoke 5 is river; the course is c12r12, c13r12; a spoke toward the middle of a course is refused with the reason', check: async () => {
+          await expect(page.getByTestId('hex-editor')).toHaveAttribute('data-spokes', '5');
+          await expect(page.getByTestId('spoke-2')).toHaveAttribute('aria-pressed', 'false');
+          await expect(page.getByTestId('river-course-river-13')).toHaveAttribute('data-hexes', 'c12r12,c13r12');
+          await expect(page.getByTestId('change-river-river-13')).toContainText('River 13: added, 2 hexes');
+          // The Niger's second hex: its spoke on to the junction cannot be cleared, the river running on through both.
+          await page.getByTestId('tool-river').click(); // the course tool put down, a tap on the map only chooses the hex
+          await expect(page.getByTestId('tool-river')).toHaveAttribute('aria-pressed', 'false');
+          await page.getByTestId('edit-hex-c2r7').click();
+          await expect(page.getByTestId('hex-editor')).toHaveAttribute('data-spokes', '4,6');
+          await page.getByTestId('spoke-6').click();
+          await expect(page.getByTestId('editor-status')).toHaveText('the Niger runs on through c2r7 and c2r6: take its hexes off from an end');
+          await expect(page.getByTestId('river-course-niger')).toHaveAttribute('data-hexes', 'c2r8,c2r7,c2r6,c2r5');
+          await page.getByTestId('edit-hex-c13r12').click();
         } }
       ],
       status: 'edited'
