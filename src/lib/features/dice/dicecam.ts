@@ -173,6 +173,8 @@ export interface Considered {
   watch: Watch;
   /** The values to take, when the reading settles the throw. */
   accept: number[] | null;
+  /** Where each die taken lies, a fraction of the frame (null when the engine did not say), sent with the throw (prompt 37). */
+  lay: (Point | null)[] | null;
   /** How many dice were thrown (not resting where they lay), for the status line. */
   seen: number;
   /** How many dice rest where they lay, for the console's line. */
@@ -189,21 +191,105 @@ export interface Considered {
  * gathered in parts takes the dice thrown, one or more, up to what is still wanted.
  */
 export function consider(watch: Watch, reading: Reading): Considered {
-  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, seen: 0, resting: reading.dice.length, stale: true };
+  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, lay: null, seen: 0, resting: reading.dice.length, stale: true };
   const t = thrown(reading, watch.ignore);
   const seen = t.thrown.length;
   const resting = t.resting;
-  if (seen === 0) return { watch: { ...watch, pending: null }, accept: null, seen, resting, stale: true };
+  if (seen === 0) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, stale: true };
   const whole = !watch.gathered && seen < watch.count && reading.dice.length === watch.count;
   const dice = whole ? reading.dice : t.thrown;
   const fits = whole || seen === watch.count || (watch.gathered && seen < watch.count);
   const good = fits && dice.every((d) => d.confidence >= SURE && !d.askew);
-  if (!good) return { watch: { ...watch, pending: null }, accept: null, seen, resting, stale: false };
+  if (!good) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, stale: false };
   const values = dice.map((d) => d.value);
   const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.length === values.length && watch.pending.values.every((v, i) => v === values[i]);
   const agreed = same ? watch.pending!.agreed + 1 : 1;
-  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, seen, resting, stale: false };
-  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, seen, resting, stale: false };
+  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, lay: dice.map((d) => d.normalizedPosition ?? null), seen, resting, stale: false };
+  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, lay: null, seen, resting, stale: false };
+}
+
+// ---- A die in the picture tapped (PROMPTS.md, prompt 37) ---------------------------------------------------------
+
+/** The die of a reading nearest `point`, within a die's width, or none. */
+export function nearestDie<T extends { normalizedPosition?: Point }>(dice: T[], point: Point): T | null {
+  let best: T | null = null;
+  let nearest = MOVED_LESS_THAN;
+  for (const d of dice) {
+    if (!d.normalizedPosition) continue;
+    const dist = Math.max(Math.abs(d.normalizedPosition.x - point.x), Math.abs(d.normalizedPosition.y - point.y));
+    if (dist < nearest) {
+      nearest = dist;
+      best = d;
+    }
+  }
+  return best;
+}
+
+/** A die of the game lying in the tray: the throw it came from, its place in it, the seat that threw it, and the face the game has for it now. */
+export interface GameDie {
+  eventId: string;
+  index: number;
+  seat: string;
+  value: number;
+}
+
+/**
+ * The die of the game lying at `point` (a fraction of the frame): the latest `dice/rolled` with a die within a die's
+ * width of it, by where the throw lay (`lay`, sent with each throw the dicecam read), its face as the game has it
+ * now, corrections that stood (not among `refused`) applied. None when nothing of the game lies there: dice from
+ * before the game, or dice moved about between throws.
+ */
+export function dieAt(events: readonly { id: string; type: string; payload: Record<string, unknown> }[], point: Point, refused: ReadonlySet<string>): GameDie | null {
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (e.type !== 'dice/rolled') continue;
+    const { seat, values, lay } = e.payload as { seat?: unknown; values?: unknown; lay?: unknown };
+    if (!Array.isArray(values) || !Array.isArray(lay) || typeof seat !== 'string') continue;
+    const dice = lay.map((p, index) => ({ index, normalizedPosition: p && typeof p === 'object' ? (p as Point) : undefined }));
+    const hit = nearestDie(dice, point);
+    if (!hit) continue;
+    let value = values[hit.index] as number;
+    for (const c of events.slice(i + 1)) {
+      if (c.type !== 'dice/corrected' || refused.has(c.id)) continue;
+      const q = c.payload as { eventId?: unknown; index?: unknown; value?: unknown };
+      if (q.eventId === e.id && q.index === hit.index && typeof q.value === 'number') value = q.value;
+    }
+    return { eventId: e.id, index: hit.index, seat, value };
+  }
+  return null;
+}
+
+/** A die being read again at a tap on it: which die of the game, where it lies, and the faces read since. */
+export interface Recheck extends GameDie {
+  at: Point;
+  seen: number[];
+}
+
+export type RecheckVerdict = { verdict: 'checking' } | { verdict: 'same' } | { verdict: 'changed'; value: number } | { verdict: 'gone' };
+
+/**
+ * Read the die again from a settled reading: the die within a die's width of where it lies is read once more, and
+ * two consecutive readings that agree are its face: the same as the game has (`same`) or another (`changed`, to be
+ * corrected). A die no longer there is `gone`.
+ */
+export function rechecked(check: Recheck, reading: Reading): { check: Recheck; result: RecheckVerdict } {
+  const die = nearestDie(reading.dice, check.at);
+  if (!die) return { check, result: { verdict: 'gone' } };
+  const seen = [...check.seen, die.value];
+  const next = { ...check, seen };
+  const n = seen.length;
+  if (n < AGREEING_READINGS || seen[n - 1] !== seen[n - 2]) return { check: next, result: { verdict: 'checking' } };
+  return { check: next, result: die.value === check.value ? { verdict: 'same' } : { verdict: 'changed', value: die.value } };
+}
+
+/** The dock's note for a die read again (prompt 37). */
+export function recheckText(check: GameDie, result: RecheckVerdict): string {
+  switch (result.verdict) {
+    case 'checking': return 'Reading the die again…';
+    case 'same': return `Read again: still a ${check.value}. Tap it again to set its face`;
+    case 'changed': return `Read again: a ${result.value}, not a ${check.value}`;
+    case 'gone': return 'The die is no longer there';
+  }
 }
 
 /**

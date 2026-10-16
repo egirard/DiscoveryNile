@@ -8,14 +8,53 @@
   import { onMount } from 'svelte';
   import { startEngine } from './engine';
   import { drawOverlay, fitFrame } from './overlay';
-  import { cameraFailure, dockNote, isEngineMessage, type DicecamStatus, type EngineMessage, type MotionStatus, type Roi, type SeenDie } from './dicecam';
+  import { cameraFailure, dockNote, isEngineMessage, nearestDie, type DicecamStatus, type EngineMessage, type MotionStatus, type Point, type Roi, type SeenDie } from './dicecam';
 
+  /** A tap on the picture (PROMPTS.md, prompt 37): the die under the finger as last read, if any, and where the finger was. */
+  export interface DockTap {
+    die: SeenDie | null;
+    /** The tap as a fraction of the frame. */
+    point: Point;
+    client: Point;
+  }
   interface Props {
     url: string;
     onmessage: (message: EngineMessage) => void;
     onstatus: (status: DicecamStatus) => void;
+    ontap?: (tap: DockTap) => void;
+    /** A note over the picture: what became of a die tapped (prompt 37). */
+    hint?: string | null;
+    /** The quarter turn the page gives the dock (0, 90, 180 or 270), so a tap on the turned picture finds its die. */
+    rotation?: number;
   }
-  let { url, onmessage, onstatus }: Props = $props();
+  let { url, onmessage, onstatus, ontap, hint = null, rotation = 0 }: Props = $props();
+  /** The last reading and where the frame sits on the canvas, for a tap to find its die. */
+  let tappable: { dice: SeenDie[]; fit: ReturnType<typeof fitFrame>; frame: { w: number; h: number } } | null = null;
+  function tapped(e: MouseEvent) {
+    if (!ontap) return;
+    const el = e.currentTarget as HTMLCanvasElement;
+    const r = el.getBoundingClientRect();
+    // The canvas may be turned with the dock: the tap is taken in the canvas's own frame of reference.
+    const local = turnedBack(e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2);
+    const x = local.x + el.clientWidth / 2;
+    const y = local.y + el.clientHeight / 2;
+    if (!tappable) {
+      ontap({ die: null, point: { x: -1, y: -1 }, client: { x: e.clientX, y: e.clientY } });
+      return;
+    }
+    const { fit, frame, dice } = tappable;
+    const point = { x: (x - fit.x) / fit.scale / frame.w, y: (y - fit.y) / fit.scale / frame.h };
+    ontap({ die: nearestDie(dice, point), point, client: { x: e.clientX, y: e.clientY } });
+  }
+  /** Undo the quarter turn the page gives the dock: a tap's offset from the picture's centre, in the canvas's own frame. */
+  function turnedBack(dx: number, dy: number): Point {
+    switch (((rotation % 360) + 360) % 360) {
+      case 90: return { x: dy, y: -dx };
+      case 180: return { x: -dx, y: -dy };
+      case 270: return { x: -dy, y: dx };
+      default: return { x: dx, y: dy };
+    }
+  }
   let canvas: HTMLCanvasElement | undefined = $state();
   let status = $state<DicecamStatus>('starting');
   let motion = $state<MotionStatus | null>(null);
@@ -100,6 +139,7 @@
       const fh = video.videoHeight;
       if (!fw || !fh) return;
       const fit = fitFrame(fw, fh, w, h);
+      tappable = last ? { dice: last, fit, frame: { w: fw, h: fh } } : null;
       c2d!.drawImage(video, fit.x, fit.y, fw * fit.scale, fh * fit.scale);
       // The overlay is drawn in the frame's own pixels, placed and scaled as the frame is (and the canvas's density).
       drawOverlay(c2d!, last, roi, { x: dpr * fit.x, y: dpr * fit.y, scale: dpr * fit.scale });
@@ -209,9 +249,12 @@
 </script>
 
 <div class="dock" data-testid="dicecam-dock" data-status={status} data-motion={motion ?? ''} data-frames={frames} data-readings={readings} data-e2e-fit>
-  <canvas bind:this={canvas} data-testid="dicecam-canvas" aria-label="The dicecam: the dice tray as the camera sees it"></canvas>
+  <canvas bind:this={canvas} data-testid="dicecam-canvas" aria-label="The dicecam: the dice tray as the camera sees it; tap a die to have it read again" onclick={tapped}></canvas>
   {#if dockNote(status)}
     <p class="note" data-testid="dicecam-note">{dockNote(status)}</p>
+  {/if}
+  {#if hint}
+    <p class="hint" data-testid="dicecam-hint">{hint}</p>
   {/if}
   <span class="label" aria-hidden="true">dicecam{#if motion}<span class="motion" data-testid="dicecam-motion">{motion}</span>{/if}</span>
 </div>
@@ -241,6 +284,20 @@
     place-items: center;
     font-size: calc(var(--target) * 0.3);
     color: #9a9a9a;
+    pointer-events: none;
+  }
+  .hint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    margin: 0;
+    padding: 2px 8px;
+    font-size: calc(var(--target) * 0.24);
+    font-weight: 700;
+    text-align: center;
+    background: rgba(28, 42, 46, 0.8);
+    color: var(--paper);
     pointer-events: none;
   }
   .label {

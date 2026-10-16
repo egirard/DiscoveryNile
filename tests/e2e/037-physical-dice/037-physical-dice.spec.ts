@@ -17,6 +17,13 @@ async function endTurn(page: Page, seat: string) {
 async function tap(page: Page, id: string, times: number) {
   for (let i = 0; i < times; i++) await page.getByTestId(id).click();
 }
+/** Tap the dicecam's picture at a point given in the camera frame's own pixels (the frame is letterboxed; the dock is parked, unturned). */
+async function tapTray(page: Page, x: number, y: number) {
+  const canvas = page.getByTestId('dicecam-canvas');
+  const box = (await canvas.boundingBox())!;
+  const scale = Math.min(box.width / TRAY.width, box.height / TRAY.height);
+  await canvas.click({ position: { x: (box.width - TRAY.width * scale) / 2 + x * scale, y: (box.height - TRAY.height * scale) / 2 + y * scale } });
+}
 /** The colours of the dicecam's canvas at points given in the camera frame's own pixels (the frame is letterboxed). */
 async function sample(page: Page, points: Record<string, [number, number]>): Promise<Record<string, number[]>> {
   return page.getByTestId('dicecam-canvas').evaluate((c: HTMLCanvasElement, { points, frame }) => {
@@ -168,7 +175,8 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-so-far-top-1')).toHaveCount(0);
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ values: [6, 6, 6, 6] }] });
-          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [6, 6, 6, 6] }]);
+          // The throw carries where each die lay when the dicecam read it (prompt 37), so a tap on the picture finds its die.
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [6, 6, 6, 6], lay: [0, 1, 2, 3].map((i) => ({ x: TRAY.dice[i] / TRAY.width, y: TRAY.y / TRAY.height })) }]);
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -447,7 +455,7 @@ test.describe('037 - Physical dice', () => {
           const s = await state(page);
           const evs = await events(page);
           const hunt = evs.filter((e) => e.type === 'dice/rolled').at(-1)!;
-          expect(hunt.payload).toEqual({ seat: 'bottom-1', values: [5] }); // the throw as rolled is kept
+          expect(hunt.payload).toMatchObject({ seat: 'bottom-1', values: [5] }); // the throw as rolled is kept
           expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', eventId: hunt.id, index: 0, value: 2 }]);
           const meal = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!;
           expect(meal).toMatchObject({ kind: 'hunting', rolls: [{ label: 'hunting', value: 2, from: { eventId: hunt.id, index: 0, corrected: true } }] });
@@ -493,12 +501,82 @@ test.describe('037 - Physical dice', () => {
     await page.getByTestId('log-expand-bottom-1').click();
     await expect(page.getByTestId('turn-log-bottom-1')).toHaveCount(0);
 
+    // The hunt's die is doubted once more, this time in the picture (prompt 37): a tap on it has the dicecam read it again.
+    await tapTray(page, TRAY.dice[1], TRAY.y);
+    await expect(page.getByTestId('dicecam-hint')).toHaveText('Reading the die again…');
+
+    await steps.step('die-tapped-in-the-picture', {
+      description: 'A tap on the hunt\'s die in the dicecam\'s picture: the table finds the throw it came from by where the die lies, says over the picture that it is reading the die again, and waits for the engine\'s next readings of it',
+      verifications: [
+        { spec: 'The dock says the die is being read again; nothing has changed in the game yet', check: async () => {
+          await expect(page.getByTestId('dicecam-hint')).toHaveText('Reading the die again…');
+          expect((await events(page)).filter((e) => e.type === 'dice/corrected')).toHaveLength(2);
+          expect((await state(page)).diagnostics).toHaveLength(1);
+          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '2');
+        } }
+      ]
+    });
+
+    // The engine reads the tray twice more: the lost die a one as before, the hunt's die a six this time.
+    await dicecamSays(page, settled('throw-6', [1, 6]));
+    await dicecamSays(page, settled('throw-6', [1, 6]));
+    await expect(page.getByTestId('dicecam-hint')).toHaveText('Read again: a 6, not a 2');
+
+    await steps.step('die-read-again', {
+      description: 'Two readings agree the die is a six: the table corrects it as the menu would, the game is folded again with the hunt a six, three rations a hunter, and the dock says what it read',
+      verifications: [
+        { spec: 'A third dice/corrected names the hunt\'s throw and the six; the line reads the six, marked; the bag is eighteen rations and the stores hold six more than the five left them', check: async () => {
+          const evs = await events(page);
+          const s = await state(page);
+          const hunt = evs.filter((e) => e.type === 'dice/rolled').at(-1)!;
+          expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', eventId: hunt.id, index: 0, value: 2 }, expect.objectContaining({ value: 4 }), { seat: 'bottom-1', eventId: hunt.id, index: 0, value: 6 }]);
+          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'hunting', rolls: [{ label: 'hunting', value: 6, from: { eventId: hunt.id, index: 0, corrected: true } }] });
+          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('18 rations bagged');
+          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '6');
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food + 6);
+          expect(s.diagnostics).toHaveLength(1);
+        } }
+      ]
+    });
+
+    await tapTray(page, TRAY.dice[1], TRAY.y);
+    await expect(page.getByTestId('die-menu-bottom-1')).toBeVisible();
+
+    await steps.step('die-menu-in-the-picture', {
+      description: 'The same die tapped again opens the six faces over the picture, the six it now shows marked, for the player to set it by hand',
+      verifications: [
+        { spec: 'The menu stands over the dock with the six marked, and the dock\'s note is gone', check: async () => {
+          await expect(page.getByTestId('die-menu-bottom-1')).toHaveAttribute('data-current', '6');
+          await expect(page.getByTestId('die-set-6-bottom-1')).toHaveClass(/current/);
+          await expect(page.getByTestId('dicecam-hint')).toHaveCount(0);
+        } }
+      ]
+    });
+
+    await page.getByTestId('die-set-4-bottom-1').click();
+    await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '4');
+
+    await steps.step('die-set-from-the-picture', {
+      description: 'A four is chosen: the hunt is two rations a hunter again, the stores as the five had left them, the die on the rail a four with its mark',
+      verifications: [
+        { spec: 'A fourth dice/corrected sets the die to four; the line and the stores read as after the five; nothing else was refused', check: async () => {
+          const evs = await events(page);
+          const s = await state(page);
+          expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => (e.payload as { value: number }).value)).toEqual([2, 4, 6, 4]);
+          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('12 rations bagged');
+          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-corrected', 'true');
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food);
+          expect(s.diagnostics).toHaveLength(1);
+        } }
+      ]
+    });
+
     const before = await state(page);
     await page.reload();
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('persists-after-reload', {
-      description: 'Carry on closes the notice and the table is free again; after a reload the log replays the same game from the recorded throws and the correction among them: the same map, the same log with the hunt\'s die a two, physical dice still on and the dicecam back in its corner, its camera and engine started again',
+      description: 'After a reload the log replays the same game from the recorded throws and the corrections among them: the same map, the same log with the hunt\'s die a four, physical dice still on and the dicecam back in its corner, its camera and engine started again',
       verifications: [
         { spec: 'The state is the same as before the reload, the correction applied again and the refusal noted again, and the dicecam is active again', check: async () => {
           const after = await state(page);
@@ -507,7 +585,7 @@ test.describe('037 - Physical dice', () => {
           expect(after.history).toEqual(before.history);
           expect(after.rng).toEqual(before.rng);
           expect(after.diagnostics).toEqual(before.diagnostics);
-          expect(after.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!.rolls[0]).toMatchObject({ value: 2, from: { corrected: true } });
+          expect(after.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!.rolls[0]).toMatchObject({ value: 4, from: { corrected: true } });
           await expect(page.getByTestId('die-notice-bottom-1')).toHaveCount(0);
           expect(after.awaiting).toBeNull();
           await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'active');

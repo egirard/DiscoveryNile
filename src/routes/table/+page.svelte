@@ -4,6 +4,7 @@
   import QRCode from 'qrcode';
   import { openGame, type Game } from '$lib/game/store';
   import type { GameState, LoggedTurn } from '$lib/game/state';
+  import type { GameEvent } from '$lib/game/events';
   import { initialState } from '$lib/game/state';
   import SeatRail from '$features/seats/SeatRail.svelte';
   import { rotationFor, seatsFor, type Seat } from '$lib/tabletop/seats';
@@ -54,7 +55,8 @@
   import Dicecam from '$features/dice/Dicecam.svelte';
   import RadialMenu from '$features/dice/RadialMenu.svelte';
   import type { Roll } from '$features/map/generate';
-  import { consider, gathering, lieOf, moved, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
+  import { consider, dieAt, gathering, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type Watch } from '$features/dice/dicecam';
+  import type { DockTap } from '$features/dice/Dicecam.svelte';
   import { log as diagLog } from '$lib/diagnostics/diag';
   import { isPhysical, type DieSource } from '$lib/game/random';
 
@@ -63,6 +65,8 @@
 
   let game = $state<Game | null>(null);
   let gameState = $state<GameState>(initialState());
+  /** The game's events as last reduced, kept outside the state proxy (which would cache the list) for the dice corrections (prompt 37). */
+  let gameEvents: GameEvent[] = [];
   let status = $state<'offline' | 'syncing' | 'synced'>('syncing');
   let qr = $state<Record<string, { url: string; image: string }>>({});
   let diagonal = $state(55);
@@ -342,11 +346,12 @@
     if (awaiting) diagLog('dice/asked', { seat: awaiting.seat, count: awaiting.count, have: awaiting.have, prompt: awaiting.prompt, rolled: awaiting.rolled, lying: lastReading?.dice ?? null });
   });
   function onDicecam(m: EngineMessage) {
-    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
+    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); recheck = null; dockHint = null; diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
     else if (m.type === 'removed') { dicecamSeen = m.remaining; dicecamStale = false; }
     else if (m.type === 'error') diagLog('dicecam/error', m.message);
     else if (m.type === 'settled') {
       lastReading = lieOf(m);
+      if (recheck) readAgain(m);
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
       const judged = consider(watch, m);
       watch = judged.watch;
@@ -358,11 +363,46 @@
       const verdict = (judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count - awaiting.have.length} wanted`) + (judged.stale ? '' : lying);
       console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), verdict);
       diagLog('dicecam/reading', { rollId: m.rollId, kind: m.kind, dice: m.dice.map((d) => ({ value: d.value, confidence: Number(d.confidence.toFixed(2)), askew: d.askew ?? false, at: d.normalizedPosition ?? null })), verdict });
-      if (judged.accept) { lastThrow = lastReading; watch = null; rolled(awaiting.seat, judged.accept); }
+      if (judged.accept) { lastThrow = lastReading; watch = null; recheck = null; dockHint = null; rolled(awaiting.seat, judged.accept, judged.lay ?? undefined); }
     }
   }
-  async function rolled(seat: string, values: number[]) {
-    await game?.append('dice/rolled', { seat, values });
+  /** A throw to the game, with where each die lay when the dicecam read it (prompt 37), so a tap on the picture finds its die. */
+  async function rolled(seat: string, values: number[], lay?: (Point | null)[]) {
+    await game?.append('dice/rolled', lay ? { seat, values, lay } : { seat, values });
+  }
+  // A die in the picture tapped (prompt 37): the die of the game lying there is read again from the readings that
+  // follow, and set right when two agree on another face; a second tap on it opens the six faces instead.
+  let recheck: Recheck | null = null;
+  let dockHint = $state<string | null>(null);
+  function onDockTap(tap: DockTap) {
+    const refused = new Set(gameState.diagnostics.map((d) => d.eventId));
+    const found = tap.die?.normalizedPosition ? dieAt(gameEvents, tap.die.normalizedPosition, refused) : null;
+    diagLog('dicecam/tapped', { at: tap.point, die: tap.die ? { value: tap.die.value, at: tap.die.normalizedPosition ?? null } : null, found });
+    if (!tap.die) { dockHint = 'No die there'; return; }
+    if (!found) { dockHint = 'Not a die of the game'; return; }
+    const seat = seats.find((s) => s.id === found.seat) ?? seats[0];
+    if (recheck && recheck.eventId === found.eventId && recheck.index === found.index) {
+      // Tapped again: the player sets the face.
+      recheck = null;
+      dockHint = null;
+      openDieMenu(seat, { label: 'die', value: found.value, from: { eventId: found.eventId, index: found.index } }, new DOMRect(tap.client.x, tap.client.y, 0, 0), dockPlace.rotation);
+      return;
+    }
+    recheck = { ...found, at: tap.die.normalizedPosition!, seen: [] };
+    dockHint = recheckText(found, { verdict: 'checking' });
+  }
+  function readAgain(reading: { rollId: string; dice: { value: number; confidence: number; askew?: boolean; normalizedPosition?: Point }[] }) {
+    if (!recheck) return;
+    const r = rechecked(recheck, reading);
+    recheck = r.check;
+    dockHint = recheckText(recheck, r.result);
+    diagLog('dicecam/recheck', { die: { eventId: recheck.eventId, index: recheck.index, value: recheck.value }, seen: recheck.seen, verdict: r.result.verdict });
+    if (r.result.verdict === 'gone') recheck = null;
+    else if (r.result.verdict === 'changed') {
+      const { seat, eventId, index } = recheck;
+      recheck = { ...recheck, value: r.result.value };
+      void game?.append('dice/corrected', { seat, eventId, index, value: r.result.value });
+    }
   }
   /** The table rolls the rest of a gathered throw from the generator (prompt 33). */
   async function rolledAuto(seat: string) {
@@ -399,7 +439,7 @@
     const fresh = diagnostics.slice(noticedRefusals);
     noticedRefusals = diagnostics.length;
     for (const d of fresh) {
-      const e = game?.events.find((x) => x.id === d.eventId);
+      const e = gameEvents.find((x) => x.id === d.eventId);
       if (e?.type !== 'dice/corrected') continue;
       const { seat: id, value } = e.payload as { seat?: string; value?: number };
       const seat = seats.find((s) => s.id === id) ?? seats[0];
@@ -477,6 +517,7 @@
     openGame({
       layout,
       onChange: (g) => {
+        gameEvents = g.events;
         gameState = g.state;
         status = g.status;
       },
@@ -554,7 +595,7 @@
   {/each}
   {#if physical && DICECAM_URL}
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
-      <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} />
+      <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} ontap={onDockTap} hint={dockHint} rotation={dockPlace.rotation} />
     </div>
   {/if}
 

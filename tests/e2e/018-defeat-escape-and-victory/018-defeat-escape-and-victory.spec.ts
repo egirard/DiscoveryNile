@@ -134,7 +134,7 @@ test.describe('018 - Defeat, escape and victory', () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a throw; 8 more dice wanted');
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 12, have: [1, 2, 3, 4], rolled: [] });
-          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }]);
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([expect.objectContaining({ seat: 'bottom-1', values: [1, 2, 3, 4] })]);
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -155,7 +155,7 @@ test.describe('018 - Defeat, escape and victory', () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a throw; 7 more dice wanted');
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 12, have: [1, 2, 3, 4, 6], rolled: [] });
-          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }, { seat: 'bottom-1', values: [6] }]);
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([expect.objectContaining({ seat: 'bottom-1', values: [1, 2, 3, 4] }), expect.objectContaining({ seat: 'bottom-1', values: [6] })]);
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -188,7 +188,7 @@ test.describe('018 - Defeat, escape and victory', () => {
           expect(s.diagnostics).toEqual([]);
         } },
         { spec: 'The throw is four dice/rolled events: the four from the dicecam, the six tossed in, the tapped five, and the table\'s roll of the rest', check: async () => {
-          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', values: [1, 2, 3, 4] }, { seat: 'bottom-1', values: [6] }, { seat: 'bottom-1', values: [5] }, { seat: 'bottom-1', auto: true }]);
+          expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload)).toEqual([expect.objectContaining({ seat: 'bottom-1', values: [1, 2, 3, 4] }), expect.objectContaining({ seat: 'bottom-1', values: [6] }), { seat: 'bottom-1', values: [5] }, { seat: 'bottom-1', auto: true }]);
         } }
       ]
     });

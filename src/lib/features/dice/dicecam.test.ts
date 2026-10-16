@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cameraFailure, consider, dockNote, gathering, isEngineMessage, lieOf, moved, sameLie, statusText, thrown, watching, type Reading } from './dicecam';
+import { cameraFailure, consider, dieAt, dockNote, gathering, isEngineMessage, lieOf, moved, nearestDie, rechecked, recheckText, sameLie, statusText, thrown, watching, type Reading, type Recheck } from './dicecam';
 
 const reading = (rollId: string, values: number[], confidence = 0.9, askew = false): Reading => ({ rollId, dice: values.map((value) => ({ value, confidence, askew })) });
 /** A reading with the dice placed in a row, the i-th at x = 0.2 + 0.2 i, shifted by `dx`. */
@@ -225,5 +225,60 @@ describe('reading the dicecam', () => {
     expect(cameraFailure(new DOMException('busy', 'NotReadableError'))).toBe('camera-in-use');
     expect(cameraFailure(new TypeError('no mediaDevices'))).toBe('unsupported');
     expect(cameraFailure('?')).toBe('error');
+  });
+});
+
+describe('a die in the picture tapped (prompt 37)', () => {
+  const rolled = (id: string, seat: string, values: number[], lay?: ({ x: number; y: number } | null)[]) => ({ id, type: 'dice/rolled', payload: lay ? { seat, values, lay } : { seat, values } });
+  const corrected = (id: string, eventId: string, index: number, value: number) => ({ id, type: 'dice/corrected', payload: { seat: 'bottom-1', eventId, index, value } });
+  const row = (n: number) => Array.from({ length: n }, (_, i) => ({ x: 0.2 + 0.2 * i, y: 0.5 }));
+  it('sends where each die of a throw lay with the throw', () => {
+    const w = moved(watching(2)); // the engine saw the dice roll: the first reading is a throw
+    const c = twice(w, lying('r1', [3, 5]));
+    expect(c.accept).toEqual([3, 5]);
+    expect(c.lay).toEqual([{ x: 0.2, y: 0.5 }, { x: 0.4, y: 0.5 }]);
+    expect(twice(moved(watching(2)), reading('r1', [3, 5])).lay).toEqual([null, null]);
+    // Only the dice thrown: three resting and a fourth tossed in beside them.
+    const beside = twice(watching(1, lieOf(lying('r0', [1, 1, 1]))), lying('r0', [1, 1, 1, 6]));
+    expect(beside.accept).toEqual([6]);
+    expect(beside.lay).toEqual([{ x: 0.8, y: 0.5 }]);
+  });
+  it('finds the die of the game lying at a point by the latest throw that lay there, its face as the game has it now', () => {
+    const events = [
+      rolled('e1', 'bottom-1', [6, 6, 6, 6], row(4)),
+      rolled('e2', 'top-1', [1, 1, 1, 1]), // tapped faces: nowhere in the picture
+      rolled('e3', 'bottom-1', [5], [{ x: 0.4, y: 0.5 }]), // a die picked up and rolled where the second lay
+      corrected('c1', 'e3', 0, 2),
+      corrected('c2', 'e1', 0, 3)
+    ];
+    const none = new Set<string>();
+    expect(dieAt(events, { x: 0.41, y: 0.52 }, none)).toEqual({ eventId: 'e3', index: 0, seat: 'bottom-1', value: 2 });
+    expect(dieAt(events, { x: 0.21, y: 0.5 }, none)).toEqual({ eventId: 'e1', index: 0, seat: 'bottom-1', value: 3 });
+    // A correction refused did not change the die.
+    expect(dieAt(events, { x: 0.21, y: 0.5 }, new Set(['c2']))).toEqual({ eventId: 'e1', index: 0, seat: 'bottom-1', value: 6 });
+    expect(dieAt(events, { x: 0.8, y: 0.5 }, none)).toEqual({ eventId: 'e1', index: 3, seat: 'bottom-1', value: 6 });
+    // Nothing of the game lies a die's width from every throw.
+    expect(dieAt(events, { x: 0.5, y: 0.8 }, none)).toBeNull();
+    expect(dieAt(events, { x: 0.2, y: 0.5 }, none)?.eventId).toBe('e1');
+    expect(nearestDie(lying('r', [1, 2]).dice, { x: 0.44, y: 0.5 })?.value).toBe(2);
+    expect(nearestDie(lying('r', [1, 2]).dice, { x: 0.3, y: 0.5 })).toBeNull(); // midway, outside both by a die's width? 0.1 from each: within 0.06? no
+  });
+  it('reads a tapped die again until two readings agree, and says whether it changed, stayed or went', () => {
+    const check: Recheck = { eventId: 'e3', index: 0, seat: 'bottom-1', value: 2, at: { x: 0.4, y: 0.5 }, seen: [] };
+    let r = rechecked(check, lying('r1', [1, 6]));
+    expect(r.result).toEqual({ verdict: 'checking' });
+    expect(recheckText(check, r.result)).toBe('Reading the die again…');
+    r = rechecked(r.check, lying('r1', [1, 5]));
+    expect(r.result).toEqual({ verdict: 'checking' }); // 6 then 5: no two agree yet
+    r = rechecked(r.check, lying('r1', [1, 5]));
+    expect(r.result).toEqual({ verdict: 'changed', value: 5 });
+    expect(recheckText(check, r.result)).toBe('Read again: a 5, not a 2');
+    expect(r.check.seen).toEqual([6, 5, 5]);
+    const same = rechecked(rechecked(check, lying('r1', [1, 2])).check, lying('r1', [1, 2]));
+    expect(same.result).toEqual({ verdict: 'same' });
+    expect(recheckText(check, same.result)).toBe('Read again: still a 2. Tap it again to set its face');
+    const gone = rechecked(check, lying('r2', [1]));
+    expect(gone.result).toEqual({ verdict: 'gone' });
+    expect(recheckText(check, gone.result)).toBe('The die is no longer there');
   });
 });
