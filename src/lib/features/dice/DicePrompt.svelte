@@ -8,6 +8,7 @@
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import LogLine from '$features/exploration/LogLine.svelte';
   import type { RollRecord } from '$lib/game/state';
+  import type { Roll } from '$features/map/generate';
   import { PIPS } from '$lib/ui/pips';
   import { DICE_AT_HAND, statusText, type DicecamStatus } from './dicecam';
   import { uncovered } from './prompt';
@@ -32,8 +33,10 @@
     onroll: (values: number[]) => void;
     /** The table rolls the rest of a gathered throw. */
     onauto?: () => void;
+    /** A die in the lines so far was tapped, to set its face (prompt 37). */
+    oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, onroll, onauto }: Props = $props();
+  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, onroll, onauto, oncorrect }: Props = $props();
   const gathered = $derived(count > DICE_AT_HAND);
   const pending = $derived(uncovered(rolled, sofar));
   const remaining = $derived(count - have.length);
@@ -68,7 +71,7 @@
   {#if sofar.length || pending.length}
     <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="Already rolled for this action">
       {#each sofar as r, i (i)}
-        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" /></li>
+        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
       {/each}
       {#each pending as r, i (i)}
         <li><span class="what">{what(r.prompt)}</span> <DiceRoll values={r.values} label={what(r.prompt)} size="calc(var(--target) * 0.45)" /></li>

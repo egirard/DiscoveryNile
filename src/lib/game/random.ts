@@ -72,6 +72,19 @@ export class DiceNeeded extends Error {
   }
 }
 
+/** Which throw a physical die came from (PROMPTS.md, prompt 37): the `dice/rolled` event and the die's place in it; `corrected` once a player set its face by hand. */
+export interface DieSource {
+  eventId: string;
+  index: number;
+  corrected?: true;
+}
+
+/** A scripted die as it was read, in reading order: its value and, for a die rolled at the table, its throw. */
+export interface ReadDie {
+  value: number;
+  from: DieSource | null;
+}
+
 export interface RngObject {
   seed: number;
   /** The main stream's generator state. */
@@ -80,7 +93,11 @@ export interface RngObject {
   streams: Partial<Record<Stream, number>>;
   /** Scripted die values per stream, consumed by `d6` before the generator (tests and scenarios), and the physical dice as they are rolled. */
   scripts: Partial<Record<Stream, number[]>>;
+  /** The throw each scripted die came from, parallel to `scripts` (null for a value a scenario scripted), prompt 37. */
+  sources?: Partial<Record<Stream, (DieSource | null)[]>>;
   next: Partial<Record<Stream, number>>;
+  /** With physical dice, the scripted dice read since the last event settled, in order (prompt 37): how a log line's dice find their throws. */
+  read?: ReadDie[];
   /** The dice are rolled at the table: a roll with no value scripted asks for one instead of drawing from the generator. */
   physical?: boolean;
 }
@@ -147,7 +164,11 @@ export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNA
   if (typeof state !== 'number') {
     const script = state.scripts[stream];
     const i = state.next[stream] ?? 0;
-    if (script && i < script.length) return { state: { ...state, next: { ...state.next, [stream]: i + 1 } }, value: script[i] };
+    if (script && i < script.length) {
+      const next = { ...state.next, [stream]: i + 1 };
+      if (!state.physical) return { state: { ...state, next }, value: script[i] };
+      return { state: { ...state, next, read: [...(state.read ?? []), { value: script[i], from: state.sources?.[stream]?.[i] ?? null }] }, value: script[i] };
+    }
     if (state.physical) throw new DiceNeeded(stream, 1, ask, i);
   }
   const r = nextRandom(state, stream);
@@ -192,11 +213,16 @@ export function withPhysical(state: RngState, on: boolean): RngState {
  * scenario scripted for later, so a game scripted up to a point can turn physical dice on there and still find
  * its later script in place. Without `at` they go at the end.
  */
-export function withRolled(state: RngState, stream: Stream, values: number[], at?: number): RngState {
+export function withRolled(state: RngState, stream: Stream, values: number[], at?: number, sources?: DieSource[]): RngState {
   const o = asObject(state);
   const script = o.scripts[stream] ?? [];
   const i = Math.min(at ?? script.length, script.length);
-  return { ...o, scripts: { ...o.scripts, [stream]: [...script.slice(0, i), ...values, ...script.slice(i)] } };
+  const next: RngObject = { ...o, scripts: { ...o.scripts, [stream]: [...script.slice(0, i), ...values, ...script.slice(i)] } };
+  if (!sources && !o.sources) return next;
+  // The throws the dice came from, kept beside the script (prompt 37); a value scripted by a scenario has none.
+  const known = o.sources?.[stream] ?? [];
+  const from = Array.from({ length: script.length }, (_, k) => known[k] ?? null);
+  return { ...next, sources: { ...o.sources, [stream]: [...from.slice(0, i), ...(sources ?? values.map(() => null)), ...from.slice(i)] } };
 }
 
 /** Dice from a stream's generator whatever is scripted and whether the dice are physical: the table rolling the rest of a throw (PROMPTS.md, prompt 33). */
@@ -216,8 +242,14 @@ export function settled(state: RngState): RngState {
   const used = Object.entries(state.next).filter(([, n]) => (n ?? 0) > 0);
   if (used.length === 0) return state;
   const scripts = { ...state.scripts };
-  for (const [stream, n] of used) scripts[stream as Stream] = (scripts[stream as Stream] ?? []).slice(n);
-  return { ...state, scripts, next: {} };
+  const sources = state.sources ? { ...state.sources } : undefined;
+  for (const [stream, n] of used) {
+    scripts[stream as Stream] = (scripts[stream as Stream] ?? []).slice(n);
+    if (sources?.[stream as Stream]) sources[stream as Stream] = sources[stream as Stream]!.slice(n);
+  }
+  const { read: _read, ...rest } = state;
+  void _read;
+  return { ...rest, scripts, next: {}, ...(sources ? { sources } : {}) };
 }
 
 /** Fisher–Yates with the serialisable PRNG, always on the main stream. */

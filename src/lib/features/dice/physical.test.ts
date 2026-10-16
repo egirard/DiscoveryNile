@@ -98,7 +98,8 @@ describe('the reducer with physical dice', () => {
     expect(auto.awaiting!.rolled[0].values).toHaveLength(4);
     expect(auto.awaiting!.rolled[0].values[0]).toBe(6);
     expect(auto.awaiting!.rolled[0].values.slice(1).every((v) => v >= 1 && v <= 6)).toBe(true);
-    expect(reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6] }), event('dice/rolled', { seat: 'bottom-1', auto: true })])).toEqual(auto);
+    const autoEvents = [...events, event('dice/rolled', { seat: 'bottom-1', values: [6] }), event('dice/rolled', { seat: 'bottom-1', auto: true })];
+    expect(reduce(autoEvents)).toEqual(reduce(autoEvents));
     const generator = reduce([...lobby(), event('game/started', {})]);
     expect(auto.awaiting!.rolled[0].values.slice(1)).toEqual(generator.rollOff!['bottom-1'][0].slice(0, 3)); // the generator's own first three dice
   });
@@ -161,9 +162,11 @@ describe('the reducer with physical dice', () => {
     expect(asked.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 1, prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", rolled: [] });
     // The lines so far go with the next ask (prompt 34): found the way, the terrain die is asked with the lost check's
     // line, its verdict on it. (Lost at the port there is no hunt to ask for; scenario 037 reads the hunt's ask in the field.)
-    const found = reduce([...landed, event('dice/rolled', { seat: 'bottom-1', values: [4] })]);
+    const four = event('dice/rolled', { seat: 'bottom-1', values: [4] });
+    const found = reduce([...landed, four]);
     expect(found.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ values: [4] }] });
-    expect(found.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way', rolls: [{ label: 'lost check', value: 4 }] })]);
+    // The line's die knows its throw (prompt 37), so a tap on it can set it right.
+    expect(found.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way', rolls: [{ label: 'lost check', value: 4, from: { eventId: four.id, index: 0 } }] })]);
     expect(uncovered(found.awaiting!.rolled, found.awaiting!.sofar)).toEqual([]);
     const lost = reduce([...landed, event('dice/rolled', { seat: 'bottom-1', values: [1] })]);
     expect(lost.awaiting).toBeNull();

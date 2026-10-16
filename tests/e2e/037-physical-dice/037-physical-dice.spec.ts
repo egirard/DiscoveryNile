@@ -418,19 +418,97 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
+    // The hunt's five is doubted (prompt 37): a tap on the die at the rail opens the six faces round it.
+    const fed = await state(page);
+    await page.getByTestId('dice-hunting-bottom-1').click();
+    await expect(page.getByTestId('die-menu-bottom-1')).toBeVisible();
+
+    await steps.step('die-tapped-at-the-rail', {
+      description: 'The hunt\'s die at bottom-1\'s rail is tapped: a radial menu of the six faces opens round it, turned to the seat, the five the die shows marked, an X in the centre to leave it as it is; nothing has changed yet',
+      verifications: [
+        { spec: 'The menu stands over the rail with six faces and the centre, the five marked as the die\'s face; no correction has been sent', check: async () => {
+          await expect(page.getByTestId('die-menu-bottom-1')).toHaveAttribute('data-current', '5');
+          await expect(page.locator('[data-testid^="die-set-"][data-testid$="-bottom-1"]')).toHaveCount(6);
+          await expect(page.getByTestId('die-set-5-bottom-1')).toHaveClass(/current/);
+          await expect(page.getByTestId('die-menu-cancel-bottom-1')).toBeVisible();
+          expect((await events(page)).filter((e) => e.type === 'dice/corrected')).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.getByTestId('die-set-2-bottom-1').click();
+    await expect(page.getByTestId('die-menu-bottom-1')).toHaveCount(0);
+    await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '2');
+
+    await steps.step('hunt-die-set-by-hand', {
+      description: 'The two is chosen: the game is folded again from the recorded throws with the hunt\'s die a two, so the meal bags a ration a hunter instead of two and the stores hold less; the line reads the two with the mark of a die set by hand',
+      verifications: [
+        { spec: 'A dice/corrected event names the hunt\'s throw, its die and the two; the line\'s die is a two, marked; the bag and the food are smaller; nothing was refused', check: async () => {
+          const s = await state(page);
+          const evs = await events(page);
+          const hunt = evs.filter((e) => e.type === 'dice/rolled').at(-1)!;
+          expect(hunt.payload).toEqual({ seat: 'bottom-1', values: [5] }); // the throw as rolled is kept
+          expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', eventId: hunt.id, index: 0, value: 2 }]);
+          const meal = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!;
+          expect(meal).toMatchObject({ kind: 'hunting', rolls: [{ label: 'hunting', value: 2, from: { eventId: hunt.id, index: 0, corrected: true } }] });
+          const was = fed.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!;
+          expect(was.outcome).toContain('12 rations bagged');
+          expect(meal.outcome).toContain('6 rations bagged');
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food - 6);
+          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-corrected', 'true');
+          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('6 rations bagged');
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    // The lost check's one is doubted too: in the open log its die is tapped and a four chosen. But the hunt's die
+    // was rolled after it, and with the way found that die would have been read for the terrain, so the one stays.
+    await page.getByTestId('log-expand-bottom-1').click();
+    await expect(page.getByTestId('turn-log-bottom-1')).toBeVisible();
+    await page.getByTestId('dice-lost-check-bottom-1').last().click();
+    await expect(page.getByTestId('die-menu-bottom-1')).toHaveAttribute('data-current', '1');
+    await page.getByTestId('die-set-4-bottom-1').click();
+    await expect(page.getByTestId('die-notice-bottom-1')).toBeVisible();
+
+    await steps.step('correction-refused', {
+      description: 'In the open log the lost check\'s die is tapped and a four chosen; the game cannot have gone that way, the hunt\'s die rolled after it would have answered the terrain\'s ask instead, so a notice at bottom-1\'s edge says the die stays a one and why, over the held table',
+      verifications: [
+        { spec: 'The notice gives the reason; the correction is a refused event, and the game is as it was: the lost check a one, the turn top-1\'s', check: async () => {
+          await expect(page.getByTestId('die-notice-why-bottom-1')).toHaveText('The die stays a 1: the throw for the hunt that followed would answer another ask (for the direction of the terrain to copy).');
+          const s = await state(page);
+          const evs = await events(page);
+          expect(evs.filter((e) => e.type === 'dice/corrected')).toHaveLength(2);
+          expect(s.diagnostics).toEqual([{ eventId: evs.at(-1)!.id, reason: 'the die stays a 1: the throw for the hunt that followed would answer another ask (for the direction of the terrain to copy)' }]);
+          const played = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
+          expect(played.log.filter((r) => r.kind !== 'action').map((r) => [r.kind, r.rolls.map((x) => x.value)])).toEqual([['disaster', []], ['lost-check', [1]], ['hunting', [2]]]);
+          expect(s.turn!.current).toBe('top-1');
+          await expect(page.getByTestId('die-menu-bottom-1')).toHaveCount(0);
+        } }
+      ]
+    });
+
+    await page.getByTestId('die-notice-ok-bottom-1').click();
+    await expect(page.getByTestId('die-notice-bottom-1')).toHaveCount(0);
+    await page.getByTestId('log-expand-bottom-1').click();
+    await expect(page.getByTestId('turn-log-bottom-1')).toHaveCount(0);
+
     const before = await state(page);
     await page.reload();
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('persists-after-reload', {
-      description: 'After a reload the log replays the same game from the recorded throws: the same map, the same log, physical dice still on and the dicecam back in its corner, its camera and engine started again',
+      description: 'Carry on closes the notice and the table is free again; after a reload the log replays the same game from the recorded throws and the correction among them: the same map, the same log with the hunt\'s die a two, physical dice still on and the dicecam back in its corner, its camera and engine started again',
       verifications: [
-        { spec: 'The state is the same as before the reload and the dicecam is active again', check: async () => {
+        { spec: 'The state is the same as before the reload, the correction applied again and the refusal noted again, and the dicecam is active again', check: async () => {
           const after = await state(page);
           expect(after.map).toEqual(before.map);
           expect(after.turn).toEqual(before.turn);
           expect(after.history).toEqual(before.history);
           expect(after.rng).toEqual(before.rng);
+          expect(after.diagnostics).toEqual(before.diagnostics);
+          expect(after.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)!.rolls[0]).toMatchObject({ value: 2, from: { corrected: true } });
+          await expect(page.getByTestId('die-notice-bottom-1')).toHaveCount(0);
           expect(after.awaiting).toBeNull();
           await expect(page.getByTestId('dicecam-dock')).toHaveAttribute('data-status', 'active');
           await expect(page.getByTestId('physical-dice')).toHaveCount(0);

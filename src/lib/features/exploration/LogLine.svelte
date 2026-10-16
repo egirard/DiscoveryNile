@@ -3,6 +3,7 @@
   // record, the disaster card if one was drawn, the dice, the modifiers that applied and the outcome.
   // Colours come from the container (paper on the rail's ink, ink on the panel's paper).
   import type { RollRecord } from '$lib/game/state';
+  import type { Roll } from '$features/map/generate';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import { card as cardOf } from '$features/cards/deck';
 
@@ -13,8 +14,12 @@
     rail?: boolean;
     /** Put before every id, where the line is shown somewhere other than the log (the dice prompt's lines so far, prompt 34). */
     idPrefix?: string;
+    /** A die rolled at the table was tapped, to set its face (prompt 37): the roll and where the die is drawn. */
+    oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { record: r, seat, rail = false, idPrefix = '' }: Props = $props();
+  let { record: r, seat, rail = false, idPrefix = '', oncorrect }: Props = $props();
+  /** The dice can be tapped when they know their throws and someone listens. */
+  const tappable = $derived(Boolean(oncorrect) && r.rolls.some((x) => x.from));
   const KIND: Record<string, string> = {
     'first-player': 'First player', 'lost-check': 'Lost check', terrain: 'Terrain', natives: 'Natives', disaster: 'Disaster card', hunting: 'Hunting', water: 'Water',
     reaction: 'Native reaction', combat: 'Fight', defeat: 'Defeat', captivity: 'Captivity', victory: 'Victory', loot: 'Loot', negotiation: 'Negotiation',
@@ -51,7 +56,7 @@
         </span>
       {/each}
     {:else if r.rolls.length}
-      <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" />
+      <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" marks={r.rolls.slice(0, 6).map((x) => x.from?.corrected === true)} testid={tappable ? `${idPrefix}dice-${r.kind}-${seat}` : undefined} ontap={tappable ? (i, anchor) => { const roll = r.rolls[i]; if (roll?.from) oncorrect?.(roll, anchor); } : undefined} />
       {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
     {/if}
     {#if r.modifiers?.length}

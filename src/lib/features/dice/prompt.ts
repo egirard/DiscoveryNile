@@ -3,6 +3,11 @@
 // at the place the rule rolls, so the prompt and the roll can never disagree.
 import type { DiceAsk } from '$lib/game/random';
 
+/** "for first player" out of "Roll 4 D6 for first player; the highest total goes first": what the ask was for. */
+export function askWhat(prompt: string): string {
+  return prompt.replace(/^Roll (a|\d+) D6 /, '').split(';')[0];
+}
+
 /** "Roll a D6 {what}; {hint}" or "Roll 4 D6 {what}; {hint}". */
 export function promptText(count: number, ask: DiceAsk): string {
   const what = count === 1 ? 'a D6' : `${count} D6`;

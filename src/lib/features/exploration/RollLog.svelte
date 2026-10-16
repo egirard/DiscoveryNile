@@ -5,6 +5,7 @@
   // that opens the rest of the log inside the box, which grows inward to hold a few lines above the latest;
   // the "−" in the "+"'s place collapses it again.
   import type { LoggedTurn } from '$lib/game/state';
+  import type { Roll } from '$features/map/generate';
   import LogLine from './LogLine.svelte';
   import TurnLog from './TurnLog.svelte';
 
@@ -17,8 +18,10 @@
     /** The rest of the log is open in the box above the latest line; "+" opens it and "−" in its place closes it. */
     expanded?: boolean;
     ontoggle?: () => void;
+    /** A die in the log was tapped, to set its face (prompt 37): the roll and where the die is drawn. */
+    oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, turns, expanded = false, ontoggle }: Props = $props();
+  let { seat, turns, expanded = false, ontoggle, oncorrect }: Props = $props();
   const all = $derived(turns.flatMap((t) => t.log));
   const latest = $derived(all.at(-1));
   /** The seat's latest turn: the one in progress when it is the seat's, else the last it played. */
@@ -32,11 +35,11 @@
   <div class="box" class:expanded data-testid="log-box-{seat}" data-expanded={expanded}>
     {#if ontoggle && expanded}
       <!-- The earlier lines, above the latest so the lines read in order; the latest stays the box's last line. -->
-      <TurnLog {seat} {turns} />
+      <TurnLog {seat} {turns} {oncorrect} />
     {/if}
     <span class="latest">
       <span class="log" data-testid="roll-log-{seat}" data-lost={lost} data-rolls={rolls} data-records={all.length} data-turns={turns.length}>
-        <LogLine record={latest} {seat} rail />
+        <LogLine record={latest} {seat} rail {oncorrect} />
         {#if lost}
           <span class="badge" data-testid="lost-badge-{seat}" aria-label="The expedition is lost this turn">?</span>
         {/if}

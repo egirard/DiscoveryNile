@@ -2,7 +2,7 @@
 export const SCHEMA_VERSION = 1;
 export const REDUCER_VERSION = 1;
 
-export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'game/begun' | 'turn/ended' | 'disaster/faced' | 'cards/discarded' | 'voyage/booked' | 'expedition/outfitted' | 'expedition/moved' | 'water/taken' | 'natives/policy' | 'natives/spoils' | 'natives/offered' | 'natives/traded' | 'natives/done' | 'specialty/performed' | 'expedition/reorganised' | 'cache/recovered' | 'expedition/returned' | 'hex/published' | 'explorer/retired' | 'expedition/joined' | 'expedition/split' | 'game/end-voted' | 'game/ended' | 'game/continued' | 'turn/undone' | 'dice/physical' | 'dice/rolled';
+export type GameEventType = 'game/created' | 'seat/taken' | 'seat/left' | 'explorer/commissioned' | 'game/started' | 'game/begun' | 'turn/ended' | 'disaster/faced' | 'cards/discarded' | 'voyage/booked' | 'expedition/outfitted' | 'expedition/moved' | 'water/taken' | 'natives/policy' | 'natives/spoils' | 'natives/offered' | 'natives/traded' | 'natives/done' | 'specialty/performed' | 'expedition/reorganised' | 'cache/recovered' | 'expedition/returned' | 'hex/published' | 'explorer/retired' | 'expedition/joined' | 'expedition/split' | 'game/end-voted' | 'game/ended' | 'game/continued' | 'turn/undone' | 'dice/physical' | 'dice/rolled' | 'dice/corrected';
 
 export interface GameEvent {
   id: string;

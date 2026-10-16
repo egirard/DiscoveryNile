@@ -1,6 +1,8 @@
 import { REDUCER_VERSION, SCHEMA_VERSION, type GameEvent } from './events';
 import { initialState, type AwaitingDice, type GameState } from './state';
-import { DiceNeeded, generated, settled, withPhysical, withRolled } from './random';
+import { DiceNeeded, generated, settled, withPhysical, withRolled, type DieSource } from './random';
+import { readOf, tagNew, tagRolls } from './sources';
+import { askWhat } from '$features/dice/prompt';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
 import { endTurnAfterLost, facesTheCardFirst, reduceTurn } from '$features/turn/reducer';
@@ -14,7 +16,7 @@ export type Step = (state: GameState, event: GameEvent) => GameState | string;
 // why the event is illegal (which becomes a diagnostic and leaves state untouched).
 const steps: Step[] = [reduceSeats, reduceExplorers, reduceTurn, reduceExploration];
 
-const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'disaster/faced', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled']);
+const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'disaster/faced', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled', 'dice/corrected']);
 
 /**
  * A choice not yet resolved by dice can be taken back within the turn (docs/tabletop-ux.md): the event rolled no die,
@@ -31,6 +33,8 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
   if (event.schemaVersion !== SCHEMA_VERSION || event.reducerVersion !== REDUCER_VERSION) {
     return reject(state, event, `incompatible version ${event.schemaVersion}/${event.reducerVersion}`);
   }
+  // A die's face set right after the fact (prompt 37) is applied by `reduce`, which folds the game again with the die changed.
+  if (event.type === 'dice/corrected') return reject(state, event, 'a correction is applied by replaying the game');
   // Physical dice (PROMPTS.md, prompt 18): while an event waits for a roll, only the roll may arrive.
   if (state.awaiting && event.type !== 'dice/rolled') return reject(state, event, `waiting for ${state.awaiting.seat} to roll the dice`);
   if (event.type === 'dice/physical') {
@@ -40,7 +44,7 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
     return { ...state, rng: withPhysical(state.rng, on), undo: null };
   }
   if (event.type === 'dice/rolled') {
-    const { seat, values, auto } = event.payload as { seat?: unknown; values?: unknown; auto?: unknown };
+    const { seat, values, auto, corrected } = event.payload as { seat?: unknown; values?: unknown; auto?: unknown; corrected?: unknown };
     const waiting = state.awaiting;
     if (!waiting) return reject(state, event, 'no roll was asked for');
     if (seat !== waiting.seat) return reject(state, event, `it is ${waiting.seat}'s roll`);
@@ -60,7 +64,11 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
       thrown = values as number[];
     }
     const have = [...waiting.have, ...thrown];
-    rng = withRolled(rng, waiting.stream, thrown, waiting.at + waiting.have.length);
+    // Each die remembers its throw (prompt 37), so a die in the log can be set right; `corrected` marks the dice a
+    // player set by hand (put in the payload by `reduce` when it folds the game again, never sent by the table).
+    const byHand = Array.isArray(corrected) ? corrected : [];
+    const sources: DieSource[] = thrown.map((_, i) => (byHand.includes(i) ? { eventId: event.id, index: i, corrected: true } : { eventId: event.id, index: i }));
+    rng = withRolled(rng, waiting.stream, thrown, waiting.at + waiting.have.length, sources);
     if (have.length < waiting.count) return { ...state, rng, awaiting: { ...waiting, have } };
     const rolled = [...waiting.rolled, { prompt: waiting.prompt, values: have, seat: waiting.seat }];
     return resume({ ...state, rng, awaiting: null }, waiting.event, rolled);
@@ -90,7 +98,10 @@ export function reduceOne(state: GameState, event: GameEvent): GameState {
 function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled']): GameState {
   try {
     const after = apply(state, event);
-    return after.rng === state.rng ? after : { ...after, rng: after.rng === null ? null : settled(after.rng) };
+    if (after.rng === state.rng) return after;
+    // The lines the event wrote are tagged with the dice it read (prompt 37) before the dice are dropped.
+    const tagged = tagNew(state, after);
+    return { ...tagged, rng: tagged.rng === null ? null : settled(tagged.rng) };
   } catch (e) {
     if (!(e instanceof DiceNeeded)) throw e;
     const payloadSeat = (event.payload as { seat?: unknown }).seat;
@@ -116,7 +127,7 @@ function apply(state: GameState, event: GameEvent): GameState {
           result = endTurnAfterLost(result);
         } catch (e) {
           // The hunt's die is asked for: the lost check already made is shown with the ask (prompt 34).
-          if (e instanceof DiceNeeded) e.sofar = [...(e.sofar ?? []), ...result.turn!.log.slice(state.turn?.log.length ?? 0)];
+          if (e instanceof DiceNeeded) e.sofar = [...(e.sofar ?? []), ...tagRolls(result.turn!.log.slice(state.turn?.log.length ?? 0), readOf(result.rng))];
           throw e;
         }
       }
@@ -129,17 +140,85 @@ function apply(state: GameState, event: GameEvent): GameState {
 }
 
 export function reduce(events: readonly GameEvent[]): GameState {
+  return fold(events, true).state;
+}
+
+/** Which ask a `dice/rolled` answered: the held event, which of its asks (the throws before it, the dice of this one in) and the prompt. */
+interface Answer {
+  key: string;
+  prompt: string;
+}
+
+interface Folded {
+  state: GameState;
+  /** The stream as applied: every event but the corrections, the dice they corrected changed in place. */
+  applied: GameEvent[];
+  /** The ask each accepted throw answered, by the throw's event id. */
+  answers: Map<string, Answer>;
+}
+
+/**
+ * Fold the stream. With `correcting`, a `dice/corrected` (PROMPTS.md, prompt 37) is applied by folding the stream so
+ * far again with the die's value changed in its throw, and stands only if the game goes on as it did: every later
+ * event accepted or refused as before, and every later throw answering the ask it answered. Otherwise the correction
+ * is refused with the reason and the game is left as it was.
+ */
+function fold(events: readonly GameEvent[], correcting: boolean): Folded {
   const seen = new Set<string>();
-  let state = initialState();
+  let folded: Folded = { state: initialState(), applied: [], answers: new Map() };
   for (const event of events) {
     if (seen.has(event.id)) {
-      state = reject(state, event, 'duplicate event id');
+      folded = { ...folded, state: reject(folded.state, event, 'duplicate event id') };
       continue;
     }
     seen.add(event.id);
-    state = reduceOne(state, event);
+    if (event.type === 'dice/corrected' && correcting) {
+      folded = correct(folded, event);
+      continue;
+    }
+    const waiting = folded.state.awaiting;
+    const asked: Answer | null = event.type === 'dice/rolled' && waiting ? { key: `${waiting.event.id} ${waiting.rolled.length} ${waiting.have.length} ${waiting.prompt}`, prompt: waiting.prompt } : null;
+    const state = reduceOne(folded.state, event);
+    if (asked && state.diagnostics.length === folded.state.diagnostics.length) folded.answers.set(event.id, asked);
+    folded.applied.push(event);
+    folded = { ...folded, state };
   }
-  return state;
+  return folded;
+}
+
+function correct(folded: Folded, event: GameEvent): Folded {
+  const refuse = (why: string) => ({ ...folded, state: reject(folded.state, event, why) });
+  const { eventId, index, value } = event.payload as { eventId?: unknown; index?: unknown; value?: unknown };
+  if (typeof eventId !== 'string' || !Number.isInteger(index) || !Number.isInteger(value) || (value as number) < 1 || (value as number) > 6) return refuse('dice/corrected needs the throw\'s eventId, the die\'s index and a value of 1 to 6');
+  const at = folded.applied.findIndex((e) => e.id === eventId && e.type === 'dice/rolled');
+  if (at < 0) return refuse('no such throw was rolled at the table');
+  const rolled = folded.applied[at];
+  const payload = rolled.payload as { values?: unknown; auto?: unknown; corrected?: unknown };
+  if (payload.auto === true) return refuse('the table rolled that die itself; it was not read from the tray');
+  if (!Array.isArray(payload.values) || (index as number) < 0 || (index as number) >= payload.values.length) return refuse('that throw has no such die');
+  if (folded.state.diagnostics.some((d) => d.eventId === rolled.id)) return refuse('that throw was refused when it was rolled');
+  const was = payload.values[index as number] as number;
+  if (was === value) return refuse(`the die already shows a ${value}`);
+  const values = payload.values.map((v, k) => (k === index ? value : v));
+  const corrected = [...(Array.isArray(payload.corrected) ? payload.corrected : []), index];
+  const candidate = folded.applied.map((e, k) => (k === at ? { ...e, payload: { ...payload, values, corrected } } : e));
+  const again = fold(candidate, false);
+  const refusedThen = new Set(folded.state.diagnostics.map((d) => d.eventId));
+  const refusedNow = new Map(again.state.diagnostics.map((d) => [d.eventId, d.reason]));
+  const stays = `the die stays a ${was}`;
+  for (const e of candidate.slice(at + 1)) {
+    const then = refusedThen.has(e.id);
+    const now = refusedNow.has(e.id);
+    if (now && !then) return refuse(`${stays}: the ${e.type} that followed would be refused (${refusedNow.get(e.id)})`);
+    if (then && !now) return refuse(`${stays}: the ${e.type} that followed, refused then, would now go through`);
+    if (e.type === 'dice/rolled' && !now) {
+      const before = folded.answers.get(e.id);
+      const after = again.answers.get(e.id);
+      if (before && after && before.key !== after.key) return refuse(`${stays}: the throw ${askWhat(before.prompt)} that followed would answer another ask (${askWhat(after.prompt)})`);
+    }
+  }
+  // The game as it would have gone; the refusals noted so far (earlier corrections among them) are kept.
+  return { state: { ...again.state, diagnostics: folded.state.diagnostics }, applied: candidate, answers: again.answers };
 }
 
 function reject(state: GameState, event: GameEvent, reason: string): GameState {

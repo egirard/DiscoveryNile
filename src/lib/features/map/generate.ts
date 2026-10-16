@@ -1,6 +1,6 @@
 // Exploration rules as pure functions over the serialisable PRNG: the lost check (rules §7.2)
 // and basic terrain generation (rules §7.3). Every roll is returned so the table can show it.
-import { d6, type RngState } from '$lib/game/random';
+import { type DieSource, d6, type RngState } from '$lib/game/random';
 import { needText, okayFrom } from '$features/dice/prompt';
 import { DIRECTIONS, neighbour, type Direction, type HexId } from './hex';
 import { hexAt, isLand, type Terrain } from './manifest';
@@ -8,6 +8,8 @@ import { hexAt, isLand, type Terrain } from './manifest';
 export interface Roll {
   label: string;
   value: number;
+  /** The throw the die came from when it was rolled at the table (PROMPTS.md, prompt 37): tap the die to set its face. */
+  from?: DieSource;
 }
 
 export interface Modifier {

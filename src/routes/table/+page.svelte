@@ -52,9 +52,11 @@
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
+  import RadialMenu from '$features/dice/RadialMenu.svelte';
+  import type { Roll } from '$features/map/generate';
   import { consider, gathering, lieOf, moved, type DicecamStatus, type EngineMessage, type Lie, type Watch } from '$features/dice/dicecam';
   import { log as diagLog } from '$lib/diagnostics/diag';
-  import { isPhysical } from '$lib/game/random';
+  import { isPhysical, type DieSource } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
   const seats = seatsFor(layout);
@@ -369,6 +371,41 @@
   async function toggleDice(on: boolean) {
     await game?.append('dice/physical', { on });
   }
+  // A die set right after the fact (PROMPTS.md, prompt 37): a tap on a die in a log line (the rail's latest, the open
+  // log, the prompt's lines so far) opens a radial menu of the six faces over the die, turned to the seat; the face
+  // chosen goes as `dice/corrected`, which the reducer applies by folding the game again with the die changed, or
+  // refuses with the reason when the game could not have gone on as it did. A refusal is shown at the seat's edge.
+  let dieMenu = $state<{ seat: Seat; from: DieSource; value: number; x: number; y: number; rotation: number } | null>(null);
+  /** Half the menu's width, with a little room: the menu is kept this far inside the viewport. */
+  const menuReach = $derived(target * 1.7 + 4);
+  function openDieMenu(seat: Seat, roll: Roll, anchor: DOMRect, rotation = rotationFor(seat.edge)) {
+    if (!roll.from) return;
+    const x = Math.min(viewport.w - menuReach, Math.max(menuReach, anchor.left + anchor.width / 2));
+    const y = Math.min(viewport.h - menuReach, Math.max(menuReach, anchor.top + anchor.height / 2));
+    dieMenu = { seat, from: roll.from, value: roll.value, x, y, rotation };
+  }
+  async function setDie(seat: string, from: DieSource, was: number, value: number) {
+    dieMenu = null;
+    if (value === was) return;
+    await game?.append('dice/corrected', { seat, eventId: from.eventId, index: from.index, value });
+  }
+  /** A correction the reducer refused, shown at the seat's edge until the player carries on. */
+  let dieNotice = $state<{ seat: Seat; value: number; why: string } | null>(null);
+  /** How many refusals the state held when the game was opened: only a later one is a notice. */
+  let noticedRefusals: number | null = null;
+  $effect(() => {
+    const diagnostics = gameState.diagnostics;
+    if (noticedRefusals === null || diagnostics.length <= noticedRefusals) return;
+    const fresh = diagnostics.slice(noticedRefusals);
+    noticedRefusals = diagnostics.length;
+    for (const d of fresh) {
+      const e = game?.events.find((x) => x.id === d.eventId);
+      if (e?.type !== 'dice/corrected') continue;
+      const { seat: id, value } = e.payload as { seat?: string; value?: number };
+      const seat = seats.find((s) => s.id === id) ?? seats[0];
+      dieNotice = { seat, value: value ?? 0, why: d.reason };
+    }
+  });
   function setDiagonal(inches: number) {
     diagonal = inches;
     writeDiagonalInches(inches);
@@ -450,6 +487,7 @@
     }).then(async (g) => {
       opened = g;
       game = g;
+      noticedRefusals = g.state.diagnostics.length;
       g.publishGeometry(screenGeometry(diagonal, viewport.w, viewport.h));
       if (g.relayUrl) {
         const entries = await Promise.all(
@@ -502,7 +540,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {/if}
   {#if starting}
@@ -518,6 +556,25 @@
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
       <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} />
     </div>
+  {/if}
+
+  {#if dieMenu}
+    <!-- The six faces round the die tapped (prompt 37), turned to the seat; a tap anywhere else leaves the die as it is. -->
+    <div class="menu-scrim" data-testid="die-menu-scrim" role="presentation" onclick={() => (dieMenu = null)}></div>
+    <div class="menu-layer" data-testid="die-menu-place-{dieMenu.seat.id}" data-e2e-fit style="left:{dieMenu.x}px; top:{dieMenu.y}px; rotate:{dieMenu.rotation}deg">
+      <RadialMenu seat={dieMenu.seat.id} current={dieMenu.value} onselect={(v) => setDie(dieMenu!.seat.id, dieMenu!.from, dieMenu!.value, v)} oncancel={() => (dieMenu = null)} />
+    </div>
+  {/if}
+  {#if dieNotice}
+    <!-- The reducer would not change the die: why, at the seat's edge, and the game goes on as it is. -->
+    <div class="scrim" data-testid="die-notice-scrim" aria-hidden="true"></div>
+    <EdgePanel seat={dieNotice.seat} {viewport} inset={railDepth + target * 0.4} testid="die-notice-{dieNotice.seat.id}" raised>
+      <div class="notice" role="alertdialog" aria-labelledby="die-notice-title-{dieNotice.seat.id}">
+        <p class="title" id="die-notice-title-{dieNotice.seat.id}">The die cannot be changed to a {dieNotice.value}</p>
+        <p class="why" data-testid="die-notice-why-{dieNotice.seat.id}">{dieNotice.why.replace(/^./, (c) => c.toUpperCase())}.</p>
+        <button type="button" class="carry-on" data-testid="die-notice-ok-{dieNotice.seat.id}" onclick={() => (dieNotice = null)}>Carry on</button>
+      </div>
+    </EdgePanel>
   {/if}
 
   {#if outfitting}
@@ -711,7 +768,7 @@
       {/snippet}
       {#snippet log()}
         <!-- The rail's second section (prompt 35): the seat's log in its outlined box, inward of the status row; nothing before the game starts. -->
-        <RollLog seat={seat.id} turns={turnsOf(seat.id)} current={gameState.turn?.current === seat.id} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} />
+        <RollLog seat={seat.id} turns={turnsOf(seat.id)} current={gameState.turn?.current === seat.id} expanded={logOpenSeat === seat.id} ontoggle={() => (logOpenSeat = logOpenSeat === seat.id ? null : seat.id)} oncorrect={(roll, anchor) => openDieMenu(seat, roll, anchor)} />
       {/snippet}
     </SeatRail>
   {/each}
@@ -980,6 +1037,46 @@
   .dock-area {
     /* Parked, it sits under the seats' panels (the outfitting chart reaches the corner); centred, above the scrim. */
     position: absolute;
+  }
+  .menu-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+  }
+  .menu-layer {
+    position: absolute;
+    z-index: 8;
+    translate: -50% -50%;
+  }
+  .notice {
+    display: grid;
+    gap: calc(var(--gap) * 0.6);
+    width: calc(var(--target) * 9);
+    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
+  }
+  .notice .title {
+    margin: 0;
+    font-size: calc(var(--target) * 0.42);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .notice .why {
+    margin: 0;
+    font-size: calc(var(--target) * 0.3);
+    line-height: 1.3;
+  }
+  .carry-on {
+    justify-self: end;
+    height: var(--target);
+    padding: 0 calc(var(--gap) * 1.2);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--ink);
+    font: inherit;
+    font-size: calc(var(--target) * 0.3);
+    font-weight: 700;
+    cursor: pointer;
   }
   .dock-area[data-centred='true'] {
     z-index: 6;

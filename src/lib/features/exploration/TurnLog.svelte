@@ -4,14 +4,17 @@
   // below this list. A few lines tall, paper on the rail's ink, scrolling and kept at its end where the
   // newest lines are.
   import type { LoggedTurn, RollRecord } from '$lib/game/state';
+  import type { Roll } from '$features/map/generate';
   import LogLine from './LogLine.svelte';
 
   interface Props {
     seat: string;
     /** The seat's turns, oldest first, each holding only this seat's lines. */
     turns: LoggedTurn[];
+    /** A die in a line was tapped, to set its face (prompt 37). */
+    oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, turns }: Props = $props();
+  let { seat, turns, oncorrect }: Props = $props();
   const groups = $derived.by(() => {
     const flat = turns.flatMap((t) => t.log.map((r) => ({ round: t.round, r })));
     const listed = flat.slice(0, -1); // the latest line is the rail's
@@ -41,7 +44,7 @@
       <li class="round" data-testid="turn-log-round-{g.round}-{seat}">{g.round === 0 ? 'First player' : `Round ${g.round}`}</li>
       {#each g.entries as e (e.i)}
         <li class="entry" data-testid="turn-log-entry-{e.i}-{seat}" data-kind={e.r.kind} data-outcome={e.r.outcome} data-lost={e.r.lost ?? false} data-total={e.r.total ?? ''}>
-          <LogLine record={e.r} {seat} />
+          <LogLine record={e.r} {seat} {oncorrect} />
         </li>
       {/each}
     {/each}
