@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import board from './board.json';
 import raw from './board.json?raw';
-import { brushAt, changesBetween, counts, paint, serialiseBoard, validateBoard, type RawBoard } from './editor';
+import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverTap, serialiseBoard, toggleCataract, updateRiver, validateBoard, type RawBoard } from './editor';
 
 const BOARD = board as RawBoard;
 
@@ -15,15 +15,15 @@ describe('the map editor (prompt 47)', () => {
     const jungle = paint(BOARD, 'c8r20', 'jungle') as RawBoard;
     expect(brushAt(jungle, 'c8r20')).toBe('jungle');
     expect(jungle.hexes['c8r20']).toEqual({ col: 8, row: 20, terrain: 'jungle' });
-    expect(changesBetween(BOARD, jungle)).toEqual([{ id: 'c8r20', from: 'veldt', to: 'jungle' }]);
+    expect(changesBetween(BOARD, jungle)).toEqual([{ kind: 'hex', id: 'c8r20', from: 'veldt', to: 'jungle' }]);
     const blank = paint(jungle, 'c8r20', 'blank') as RawBoard;
     expect(blank.hexes['c8r20'].terrain).toBeNull();
-    expect(changesBetween(BOARD, blank)).toEqual([{ id: 'c8r20', from: 'veldt', to: 'blank' }]);
+    expect(changesBetween(BOARD, blank)).toEqual([{ kind: 'hex', id: 'c8r20', from: 'veldt', to: 'blank' }]);
     const sea = paint(BOARD, 'c8r21', 'sea') as RawBoard;
     expect(sea.hexes['c8r21']).toBeUndefined();
     expect(brushAt(sea, 'c8r21')).toBe('sea');
-    expect(changesBetween(BOARD, sea)).toEqual([{ id: 'c8r21', from: 'jungle', to: 'sea' }]);
-    expect(changesBetween(sea, BOARD)).toEqual([{ id: 'c8r21', from: 'sea', to: 'jungle' }]);
+    expect(changesBetween(BOARD, sea)).toEqual([{ kind: 'hex', id: 'c8r21', from: 'jungle', to: 'sea' }]);
+    expect(changesBetween(sea, BOARD)).toEqual([{ kind: 'hex', id: 'c8r21', from: 'sea', to: 'jungle' }]);
     // The same brush again changes nothing.
     expect(paint(BOARD, 'c8r20', 'veldt')).toBe(BOARD);
   });
@@ -55,5 +55,71 @@ describe('the map editor (prompt 47)', () => {
     const { c2r7: _niger, ...withoutNiger } = BOARD.hexes;
     expect(validateBoard({ ...BOARD, hexes: withoutNiger })).toBe('the Niger runs through c2r7, which is not land');
     expect(validateBoard({ ...BOARD, hexes: { ...BOARD.hexes, c30r50: { col: 30, row: 50, terrain: null } } })).toBe('c30r50 is off the 27×42 board');
+  });
+});
+
+describe('rivers in the map editor (prompt 48)', () => {
+  const river = (b: RawBoard, id: string) => b.rivers.find((r) => r.id === id)!;
+  it('extends a river from either end, takes hexes off its ends, and keeps the file\'s field order', () => {
+    // The Benue ends at the blank c3r6; c4r6 lies beside it.
+    const longer = riverTap(BOARD, 'benue', 'c4r6') as RawBoard;
+    expect(river(longer, 'benue').path).toEqual(['c2r6', 'c3r6', 'c4r6']);
+    expect(Object.keys(river(longer, 'benue'))).toEqual(['id', 'name', 'joins', 'path', 'cataracts']);
+    expect(changesBetween(BOARD, longer)).toEqual([{ kind: 'river', id: 'benue', name: 'Benue', summary: '+c4r6' }]);
+    expect(validateBoard(longer)).toBeNull();
+    expect(riverCandidates(longer, 'benue').sort()).toEqual(['c2r5', 'c2r7', 'c3r5', 'c3r7', 'c4r5', 'c4r7', 'c5r6'].sort());
+    // Tapping the inland end takes it off again; a middle hex is refused; a hex apart is refused; sea is refused.
+    expect(river(riverTap(longer, 'benue', 'c4r6') as RawBoard, 'benue').path).toEqual(['c2r6', 'c3r6']);
+    expect(riverTap(longer, 'benue', 'c3r6')).toBe('c3r6 is in the middle of the Benue: take the hexes off from an end');
+    expect(riverTap(BOARD, 'benue', 'c10r10')).toBe('c10r10 is not next to either end of the Benue (c2r6 to c3r6)');
+    expect(riverTap(BOARD, 'benue', 'c1r6')).toBe('c1r6 is sea: a river runs on land');
+    // A hex beside the mouth becomes the new mouth.
+    const mouth = riverTap(BOARD, 'niger', 'c3r8') as RawBoard;
+    expect(river(mouth, 'niger').path.slice(0, 2)).toEqual(['c3r8', 'c2r8']);
+    expect(changesBetween(BOARD, mouth)[0]).toMatchObject({ kind: 'river', summary: '+c3r8' });
+  });
+  it('marks and unmarks a cataract on a river hex, in the path\'s order', () => {
+    const marked = toggleCataract(BOARD, 'c3r6') as RawBoard;
+    expect(river(marked, 'benue').cataracts).toEqual(['c3r6']);
+    expect(changesBetween(BOARD, marked)).toEqual([{ kind: 'river', id: 'benue', name: 'Benue', summary: 'cataract at c3r6' }]);
+    expect(river(toggleCataract(marked, 'c3r6') as RawBoard, 'benue').cataracts).toEqual([]);
+    expect(toggleCataract(BOARD, 'c10r10')).toBe('no river runs through c10r10');
+    expect(toggleCataract(BOARD, 'c3r6', 'niger')).toBe('c3r6 is not on the Niger');
+    const twice = toggleCataract(toggleCataract(BOARD, 'c20r4') as RawBoard, 'c20r2') as RawBoard;
+    expect(river(twice, 'white-nile').cataracts).toEqual(['c20r2', 'c20r4']);
+    expect(validateBoard(twice)).toBeNull();
+  });
+  it('adds, names and removes rivers, a river another joins staying', () => {
+    const { board: added, id } = addRiver(BOARD);
+    expect(id).toBe('river-13');
+    expect(river(added, id)).toEqual({ id, name: 'River 13', path: [], cataracts: [] });
+    expect(validateBoard(added)).toBe('the River 13 has no hexes');
+    const placed = riverTap(added, id, 'c12r12') as RawBoard;
+    expect(river(placed, id).path).toEqual(['c12r12']);
+    expect(changesBetween(BOARD, placed)).toEqual([{ kind: 'river', id, name: 'River 13', summary: 'added, 1 hex' }]);
+    const named = updateRiver(placed, id, { name: 'Lualaba', drainage: 12, continuesOffMap: true }) as RawBoard;
+    expect(river(named, id)).toEqual({ id, name: 'Lualaba', drainage: 12, continuesOffMap: true, path: ['c12r12'], cataracts: [] });
+    expect(validateBoard(named)).toBeNull();
+    const plain = updateRiver(named, id, { drainage: undefined, continuesOffMap: false }) as RawBoard;
+    expect(Object.keys(river(plain, id))).toEqual(['id', 'name', 'path', 'cataracts']);
+    expect(updateRiver(named, id, { name: ' ' })).toBe('a river needs a name');
+    expect(updateRiver(named, id, { joins: 'nowhere' })).toBe('no river nowhere to join');
+    expect(changesBetween(BOARD, updateRiver(BOARD, 'rufiji', { name: 'Rufiji River', drainage: 11 }) as RawBoard)).toEqual([{ kind: 'river', id: 'rufiji', name: 'Rufiji River', summary: 'named Rufiji River; drainage 11' }]);
+    expect(removeRiver(BOARD, 'niger')).toBe('the Benue joins the Niger: it stays');
+    const gone = removeRiver(BOARD, 'benue') as RawBoard;
+    expect(gone.rivers.map((r) => r.id)).not.toContain('benue');
+    expect(changesBetween(BOARD, gone)).toEqual([{ kind: 'river', id: 'benue', name: 'Benue', summary: 'removed' }]);
+    expect(validateBoard(gone)).toBeNull();
+    expect(normaliseRiver({ id: 'x', name: 'X', path: [], cataracts: [], continuesOffMap: false, drainage: undefined })).toEqual({ id: 'x', name: 'X', path: [], cataracts: [] });
+  });
+  it('refuses a river the file cannot hold', () => {
+    const withRiver = (r: Partial<RawBoard['rivers'][0]>) => ({ ...BOARD, rivers: [...BOARD.rivers, { id: 'r', name: 'R', path: ['c12r12'], cataracts: [], ...r }] });
+    expect(validateBoard(withRiver({ path: ['c12r12', 'c14r12'] }))).toBe('the R jumps from c12r12 to c14r12');
+    expect(validateBoard(withRiver({ path: ['c12r12', 'c13r12', 'c12r12'] }))).toBe('the R runs through a hex twice');
+    expect(validateBoard(withRiver({ cataracts: ['c13r12'] }))).toBe('the R has a cataract at c13r12, off its course');
+    expect(validateBoard(withRiver({ joins: 'niger' }))).toBe('the R joins the Niger at c12r12, which is not on it');
+    expect(validateBoard(withRiver({ joins: 'r' }))).toBe('the R joins r, which is no river');
+    expect(validateBoard(withRiver({ drainage: 0 }))).toBe('the R has a bad drainage number');
+    expect(validateBoard(withRiver({ id: 'niger' }))).toBe('two rivers are called niger');
   });
 });

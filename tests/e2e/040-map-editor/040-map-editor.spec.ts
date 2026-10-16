@@ -8,7 +8,7 @@ test.describe('040 - Map editor', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Map editor',
-      'The board was transcribed from a photograph of the 1978 map and some hexes were misread (RQ-5). The map editor at /editor/ is a tool of its own, apart from the table: every hex of the grid drawn north up, sea and land, a brush of eight terrains, blank and sea, the changes listed with a take-back each, and Save sending the whole board to the diagnostics capture server as a save command, which writes board.json in the source tree for the dev server to pick up. A port and a river hex stay land whatever the brush.'
+      'The board was transcribed from a photograph of the 1978 map and some hexes were misread (RQ-5). The map editor at /editor/ is a tool of its own, apart from the table: every hex of the grid drawn north up, sea and land, a brush of eight terrains, blank and sea, the rivers listed with a course tool that adds a hex at either end with a tap, a cataract tool and the river\'s fields, the changes listed with a take-back each, and Save sending the whole board to the diagnostics capture server as a save command, which writes board.json in the source tree for the dev server to pick up. A port and a river hex stay land whatever the brush.'
     );
 
     // No capture server runs in E2E: the save command is answered here, as the server would, and its body is kept.
@@ -92,28 +92,99 @@ test.describe('040 - Map editor', () => {
       status: 'edited'
     });
 
+    // Rivers (prompt 48): the Benue, which ends at the blank c3r6, is drawn one hex further and renamed.
+    await page.getByTestId('river-select').selectOption('benue');
+    await page.getByTestId('tool-river').click();
+    await expect(page.getByTestId('river-candidate-c4r6')).toBeVisible();
+    await page.getByTestId('edit-hex-c4r6').click();
+    await page.getByTestId('river-name').fill('Benue River');
+
+    await steps.step('river-extended', {
+      description: 'The Benue is chosen from the list of rivers and the course tool taken: the hexes a tap would add glow at either end of its course; a tap on c4r6 beyond its inland end adds it, the course is drawn through, and the river is renamed in its fields; the change is listed for the river',
+      verifications: [
+        { spec: 'The Benue\'s course now runs c2r6, c3r6, c4r6 and is drawn brighter as the chosen river; the next hexes to add glow', check: async () => {
+          await expect(page.getByTestId('river-select')).toHaveValue('benue');
+          await expect(page.getByTestId('tool-river')).toHaveAttribute('aria-pressed', 'true');
+          await expect(page.getByTestId('river-course-benue')).toHaveAttribute('data-hexes', 'c2r6,c3r6,c4r6');
+          await expect(page.getByTestId('river-candidate-c5r6')).toBeVisible();
+          await expect(page.getByTestId('river-candidate-c4r6')).toHaveCount(0);
+          await expect(page.getByTestId('river-fields')).toHaveAttribute('data-river', 'benue');
+          await expect(page.getByTestId('river-joins')).toHaveValue('niger');
+        } },
+        { spec: 'The change list holds the hex and the river: renamed and one hex longer', check: async () => {
+          await expect(page.getByTestId('editor-changes')).toHaveAttribute('data-count', '2');
+          await expect(page.getByTestId('change-river-benue')).toContainText('Benue River: named Benue River; +c4r6');
+          await expect(page.getByTestId('undo-river-benue')).toBeVisible();
+        } }
+      ],
+      status: 'edited'
+    });
+
+    await page.getByTestId('tool-cataract').click();
+    await page.getByTestId('edit-hex-c3r6').click();
+
+    await steps.step('cataract-marked', {
+      description: 'The cataract tool tapped on c3r6, a hex of the Benue\'s course, marks a cataract there, drawn on the map and added to the river\'s change',
+      verifications: [
+        { spec: 'A cataract stands on c3r6 and the river\'s change says so', check: async () => {
+          await expect(page.getByTestId('cataract-c3r6')).toBeVisible();
+          await expect(page.getByTestId('change-river-benue')).toContainText('cataract at c3r6');
+          await expect(page.getByTestId('editor-changes')).toHaveAttribute('data-count', '2');
+        } }
+      ],
+      status: 'edited'
+    });
+
+    await page.getByTestId('river-add').click();
+    await page.getByTestId('edit-hex-c12r12').click();
+    await page.getByTestId('edit-hex-c13r12').click();
+    await page.getByTestId('river-drainage').fill('9');
+
+    await steps.step('river-added', {
+      description: 'A new river is added and chosen with the course tool in hand: two taps lay its course from c12r12 to c13r12, a drainage number is given, and it joins the list and the changes as added',
+      verifications: [
+        { spec: 'The thirteenth river runs c12r12, c13r12 with drainage 9, drawn with its number at the mouth; the list has thirteen rivers and the changes three', check: async () => {
+          await expect(page.getByTestId('river-select')).toHaveAttribute('data-count', '13');
+          await expect(page.getByTestId('river-select')).toHaveValue('river-13');
+          await expect(page.getByTestId('river-course-river-13')).toHaveAttribute('data-hexes', 'c12r12,c13r12');
+          await expect(page.getByTestId('river-fields')).toHaveAttribute('data-river', 'river-13');
+          await expect(page.getByTestId('river-drainage')).toHaveValue('9');
+          await expect(page.getByTestId('change-river-river-13')).toContainText('River 13: added, 2 hexes');
+          await expect(page.getByTestId('editor-changes')).toHaveAttribute('data-count', '3');
+        } }
+      ],
+      status: 'edited'
+    });
+
     await page.getByTestId('save-board').click();
     await expect(page.getByTestId('editor-status')).toHaveAttribute('data-status', 'synced');
 
     await steps.step('saved', {
-      description: 'Save sends the board to the capture server as a save command and the answer is read: the change list empties, the jungle hex stays as the board now is, and the message says the file was written',
+      description: 'Save sends the board to the capture server as a save command and the answer is read: the change list empties, the jungle hex and the rivers stay as the board now is, and the message says the file was written',
       verifications: [
-        { spec: 'The server received one save command for the board with the one change and the hex as painted', check: async () => {
+        { spec: 'The server received one save command for the board with the three changes, the hex as painted and the rivers as drawn', check: async () => {
           expect(saves).toHaveLength(1);
-          const cmd = saves[0] as { type: string; target: string; changes: unknown[]; data: { hexes: Record<string, { terrain: string | null }> } };
+          const cmd = saves[0] as { type: string; target: string; changes: unknown[]; data: { hexes: Record<string, { terrain: string | null }>; rivers: { id: string; name: string; path: string[]; cataracts: string[]; drainage?: number }[] } };
           expect(cmd.type).toBe('save');
           expect(cmd.target).toBe('board');
-          expect(cmd.changes).toEqual([{ id: 'c8r20', from: 'veldt', to: 'jungle' }]);
+          expect(cmd.changes).toEqual([
+            { kind: 'hex', id: 'c8r20', from: 'veldt', to: 'jungle' },
+            { kind: 'river', id: 'benue', name: 'Benue River', summary: 'named Benue River; +c4r6; cataract at c3r6' },
+            { kind: 'river', id: 'river-13', name: 'River 13', summary: 'added, 2 hexes' }
+          ]);
           expect(cmd.data.hexes['c8r20']).toEqual({ col: 8, row: 20, terrain: 'jungle' });
           expect(cmd.data.hexes['c7r19']).toMatchObject({ terrain: 'veldt', port: 'luanda' });
           expect(Object.keys(cmd.data.hexes)).toHaveLength(626);
+          expect(cmd.data.rivers.find((r) => r.id === 'benue')).toEqual({ id: 'benue', name: 'Benue River', joins: 'niger', path: ['c2r6', 'c3r6', 'c4r6'], cataracts: ['c3r6'] });
+          expect(cmd.data.rivers.at(-1)).toEqual({ id: 'river-13', name: 'River 13', drainage: 9, path: ['c12r12', 'c13r12'], cataracts: [] });
         } },
-        { spec: 'Nothing is left to save: the list is empty, Save is disabled, c8r20 stays jungle without the changed outline, and the message names the file', check: async () => {
+        { spec: 'Nothing is left to save: the list is empty, Save is disabled, c8r20 stays jungle without the changed outline, the rivers stay, and the message names the file', check: async () => {
           await expect(page.getByTestId('editor-changes')).toHaveAttribute('data-count', '0');
           await expect(page.getByTestId('save-board')).toBeDisabled();
           await expect(page.getByTestId('edit-hex-c8r20')).toHaveAttribute('data-terrain', 'jungle');
           await expect(page.getByTestId('changed-c8r20')).toHaveCount(0);
-          await expect(page.getByTestId('editor-status')).toHaveText('Saved 1 hex change to src/lib/features/map/board.json; the table\'s dev server offers the reload');
+          await expect(page.getByTestId('river-course-benue')).toHaveAttribute('data-hexes', 'c2r6,c3r6,c4r6');
+          await expect(page.getByTestId('editor-status')).toHaveText('Saved 3 changes to src/lib/features/map/board.json; the table\'s dev server offers the reload');
         } }
       ]
     });

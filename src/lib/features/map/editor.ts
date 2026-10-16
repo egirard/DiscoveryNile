@@ -3,7 +3,7 @@
 // The transcription from the photograph (tools/mapfit, RQ-5) misread some hexes; the editor at /editor/ corrects them by
 // hand and sends the whole board to the capture server as a `save` command, which writes `board.json` in the source tree.
 import type { PortId, Terrain } from './manifest';
-import { parseHexId, type HexId } from './hex';
+import { directionTo, parseHexId, type HexId } from './hex';
 
 export const TERRAINS: readonly Terrain[] = ['desert', 'mountain', 'swamp', 'jungle', 'veldt', 'lake', 'jungle-swamp', 'jungle-mountain'];
 
@@ -37,10 +37,19 @@ export interface RawBoard {
 }
 
 export interface HexChange {
+  kind: 'hex';
   id: HexId;
   from: Brush;
   to: Brush;
 }
+/** A river added, removed or altered (prompt 48): what changed, in words, for the list and the log. */
+export interface RiverChange {
+  kind: 'river';
+  id: string;
+  name: string;
+  summary: string;
+}
+export type Change = HexChange | RiverChange;
 
 /** What a hex is on a board: its terrain, blank, or sea when it is not on the board. */
 export function brushAt(board: RawBoard, id: string): Brush {
@@ -82,16 +91,144 @@ export function paint(board: RawBoard, id: HexId, brush: Brush): RawBoard | stri
   return { ...board, hexes: Object.fromEntries(entries) };
 }
 
-/** Every hex that differs between the two boards, in row-major order. */
-export function changesBetween(from: RawBoard, to: RawBoard): HexChange[] {
+/** Every hex that differs between the two boards, in row-major order, then every river that differs, in the file's order. */
+export function changesBetween(from: RawBoard, to: RawBoard): Change[] {
   const ids = new Set([...Object.keys(from.hexes), ...Object.keys(to.hexes)]);
-  const out: HexChange[] = [];
+  const hexes: HexChange[] = [];
   for (const id of ids) {
     const a = brushAt(from, id), b = brushAt(to, id);
-    if (a !== b) out.push({ id: id as HexId, from: a, to: b });
+    if (a !== b) hexes.push({ kind: 'hex', id: id as HexId, from: a, to: b });
   }
   const at = (id: string) => parseHexId(id)!;
-  return out.sort((x, y) => at(x.id).row - at(y.id).row || at(x.id).col - at(y.id).col);
+  hexes.sort((x, y) => at(x.id).row - at(y.id).row || at(x.id).col - at(y.id).col);
+  const rivers: RiverChange[] = [];
+  const seen = new Set<string>();
+  for (const r of [...from.rivers, ...to.rivers]) {
+    if (seen.has(r.id)) continue;
+    seen.add(r.id);
+    const a = from.rivers.find((x) => x.id === r.id), b = to.rivers.find((x) => x.id === r.id);
+    const summary = riverDifference(a, b);
+    if (summary) rivers.push({ kind: 'river', id: r.id, name: (b ?? a)!.name, summary });
+  }
+  return [...hexes, ...rivers];
+}
+
+/** How a river differs, in words: added, removed, or each field that changed; empty when it does not. */
+export function riverDifference(a: RawRiver | undefined, b: RawRiver | undefined): string {
+  if (!a && !b) return '';
+  if (!a) return `added, ${b!.path.length} ${b!.path.length === 1 ? 'hex' : 'hexes'}`;
+  if (!b) return 'removed';
+  const parts: string[] = [];
+  if (a.name !== b.name) parts.push(`named ${b.name}`);
+  if (a.drainage !== b.drainage) parts.push(b.drainage === undefined ? 'drainage number removed' : `drainage ${b.drainage}`);
+  if (a.offMapHexes !== b.offMapHexes) parts.push(b.offMapHexes === undefined ? 'no hexes off the map' : `${b.offMapHexes} hexes off the map`);
+  if (a.joins !== b.joins) parts.push(b.joins === undefined ? 'joins no river' : `joins ${b.joins}`);
+  if (Boolean(a.continuesOffMap) !== Boolean(b.continuesOffMap)) parts.push(b.continuesOffMap ? 'continues off the map' : 'ends on the map');
+  if (a.path.join() !== b.path.join()) {
+    const added = b.path.filter((h) => !a.path.includes(h)), removed = a.path.filter((h) => !b.path.includes(h));
+    if (added.length) parts.push(`+${added.join(' ')}`);
+    if (removed.length) parts.push(`−${removed.join(' ')}`);
+    if (!added.length && !removed.length) parts.push('path reordered');
+  }
+  if (a.cataracts.join() !== b.cataracts.join()) {
+    const added = b.cataracts.filter((h) => !a.cataracts.includes(h)), removed = a.cataracts.filter((h) => !b.cataracts.includes(h));
+    if (added.length) parts.push(`cataract at ${added.join(' ')}`);
+    if (removed.length) parts.push(`no cataract at ${removed.join(' ')}`);
+  }
+  return parts.join('; ');
+}
+
+// ---- Rivers (prompt 48) ---------------------------------------------------------------------
+
+/** A river's fields in the file's order, undefined ones left out. */
+export function normaliseRiver(r: RawRiver): RawRiver {
+  return {
+    id: r.id,
+    name: r.name,
+    ...(r.drainage !== undefined ? { drainage: r.drainage } : {}),
+    ...(r.offMapHexes !== undefined ? { offMapHexes: r.offMapHexes } : {}),
+    ...(r.joins !== undefined ? { joins: r.joins } : {}),
+    ...(r.continuesOffMap ? { continuesOffMap: true } : {}),
+    path: r.path,
+    cataracts: r.cataracts
+  };
+}
+
+function withRiver(board: RawBoard, id: string, river: RawRiver): RawBoard {
+  return { ...board, rivers: board.rivers.map((r) => (r.id === id ? normaliseRiver(river) : r)) };
+}
+
+/** A new river with no hexes yet, named after its number; its id and the board holding it. */
+export function addRiver(board: RawBoard): { board: RawBoard; id: string } {
+  let n = board.rivers.length + 1;
+  while (board.rivers.some((r) => r.id === `river-${n}`)) n++;
+  const id = `river-${n}`;
+  return { board: { ...board, rivers: [...board.rivers, { id, name: `River ${n}`, path: [], cataracts: [] }] }, id };
+}
+
+/** The board without the river, or the reason: a river another joins stays. */
+export function removeRiver(board: RawBoard, id: string): RawBoard | string {
+  const river = board.rivers.find((r) => r.id === id);
+  if (!river) return `no river ${id}`;
+  const tributary = board.rivers.find((r) => r.joins === id);
+  if (tributary) return `the ${tributary.name} joins the ${river.name}: it stays`;
+  return { ...board, rivers: board.rivers.filter((r) => r.id !== id) };
+}
+
+/** The river's name, drainage number, hexes off the map, the river it joins or whether it continues off the map. */
+export function updateRiver(board: RawBoard, id: string, patch: Partial<Pick<RawRiver, 'name' | 'drainage' | 'offMapHexes' | 'joins' | 'continuesOffMap'>>): RawBoard | string {
+  const river = board.rivers.find((r) => r.id === id);
+  if (!river) return `no river ${id}`;
+  if (patch.joins !== undefined && patch.joins !== null && (patch.joins === id || !board.rivers.some((r) => r.id === patch.joins))) return `no river ${patch.joins} to join`;
+  if (patch.name !== undefined && !patch.name.trim()) return 'a river needs a name';
+  const next: RawRiver = { ...river, ...patch };
+  for (const key of ['drainage', 'offMapHexes', 'joins'] as const) if (next[key] === undefined || (next[key] as unknown) === null || (next[key] as unknown) === '') delete next[key];
+  if (!next.continuesOffMap) delete next.continuesOffMap;
+  return withRiver(board, id, next);
+}
+
+/**
+ * A tap on a hex with the river tool (prompt 48): a hex at either end of the river's path comes off it; a land hex
+ * adjacent to the inland end is added there, one adjacent to the mouth becomes the new mouth; the first hex starts an
+ * empty river. A hex in the middle of the path, a sea hex or a hex apart from the river is refused with the reason.
+ */
+export function riverTap(board: RawBoard, id: string, hex: HexId): RawBoard | string {
+  const river = board.rivers.find((r) => r.id === id);
+  if (!river) return `no river ${id}`;
+  const { path } = river;
+  const i = path.indexOf(hex);
+  if (i >= 0) {
+    if (i !== 0 && i !== path.length - 1) return `${hex} is in the middle of the ${river.name}: take the hexes off from an end`;
+    return withRiver(board, id, { ...river, path: path.filter((h) => h !== hex), cataracts: river.cataracts.filter((h) => h !== hex) });
+  }
+  if (!board.hexes[hex]) return `${hex} is sea: a river runs on land`;
+  if (path.length === 0) return withRiver(board, id, { ...river, path: [hex] });
+  if (directionTo(path[path.length - 1] as HexId, hex) !== null) return withRiver(board, id, { ...river, path: [...path, hex] });
+  if (directionTo(path[0] as HexId, hex) !== null) return withRiver(board, id, { ...river, path: [hex, ...path] });
+  return `${hex} is not next to either end of the ${river.name} (${path[0]} to ${path[path.length - 1]})`;
+}
+
+/** A cataract marked or unmarked on a hex of a river's path: the river given, else whichever river runs there. */
+export function toggleCataract(board: RawBoard, hex: HexId, riverId?: string): RawBoard | string {
+  const river = (riverId ? board.rivers.filter((r) => r.id === riverId) : board.rivers).find((r) => r.path.includes(hex));
+  if (!river) return riverId ? `${hex} is not on the ${board.rivers.find((r) => r.id === riverId)?.name ?? riverId}` : `no river runs through ${hex}`;
+  const on = river.cataracts.includes(hex);
+  const cataracts = on ? river.cataracts.filter((h) => h !== hex) : river.path.filter((h) => h === hex || river.cataracts.includes(h));
+  return withRiver(board, river.id, { ...river, cataracts });
+}
+
+/** The land hexes a tap with the river tool would add: next to the inland end, and next to the mouth. */
+export function riverCandidates(board: RawBoard, id: string): HexId[] {
+  const river = board.rivers.find((r) => r.id === id);
+  if (!river || river.path.length === 0) return [];
+  const ends = [river.path[river.path.length - 1], river.path[0]] as HexId[];
+  const out = new Set<HexId>();
+  for (const [hid, h] of Object.entries(board.hexes)) {
+    if (river.path.includes(hid)) continue;
+    if (ends.some((e) => directionTo(e, hid as HexId) !== null)) out.add(hid as HexId);
+    void h;
+  }
+  return [...out];
 }
 
 export function counts(board: RawBoard): { land: number; blank: number } {
@@ -124,9 +261,25 @@ export function validateBoard(data: unknown): string | null {
     if (!p || typeof p.name !== 'string' || typeof p.hex !== 'string') return `port ${id} needs a name and a hex`;
     if (b.hexes[p.hex]?.port !== id) return `port ${id} is not on its hex ${p.hex}`;
   }
+  const riverIds = new Set<string>();
   for (const r of b.rivers) {
     if (!r || typeof r.id !== 'string' || typeof r.name !== 'string' || !Array.isArray(r.path) || !Array.isArray(r.cataracts)) return 'a river needs an id, a name, a path and cataracts';
+    if (riverIds.has(r.id)) return `two rivers are called ${r.id}`;
+    riverIds.add(r.id);
+    if (!r.name.trim()) return `the river ${r.id} has no name`;
+    if (r.path.length === 0) return `the ${r.name} has no hexes`;
     for (const id of [...r.path, ...r.cataracts]) if (!b.hexes[id]) return `the ${r.name} runs through ${id}, which is not land`;
+    if (new Set(r.path).size !== r.path.length) return `the ${r.name} runs through a hex twice`;
+    for (let i = 1; i < r.path.length; i++) if (directionTo(r.path[i - 1] as HexId, r.path[i] as HexId) === null) return `the ${r.name} jumps from ${r.path[i - 1]} to ${r.path[i]}`;
+    for (const id of r.cataracts) if (!r.path.includes(id)) return `the ${r.name} has a cataract at ${id}, off its course`;
+    if (r.drainage !== undefined && !(Number.isInteger(r.drainage) && r.drainage > 0)) return `the ${r.name} has a bad drainage number`;
+    if (r.offMapHexes !== undefined && !(Number.isInteger(r.offMapHexes) && r.offMapHexes >= 0)) return `the ${r.name} has a bad count of hexes off the map`;
+    if (r.joins !== undefined) {
+      const parent = b.rivers.find((x) => x.id === r.joins);
+      if (!parent || parent === r) return `the ${r.name} joins ${r.joins}, which is no river`;
+      if (!parent.path.includes(r.path[0])) return `the ${r.name} joins the ${parent.name} at ${r.path[0]}, which is not on it`;
+    }
+    for (const key of Object.keys(r)) if (!['id', 'name', 'drainage', 'offMapHexes', 'joins', 'continuesOffMap', 'path', 'cataracts'].includes(key)) return `the ${r.name} has an unknown field ${key}`;
   }
   return null;
 }
@@ -141,6 +294,6 @@ export function serialiseBoard(board: RawBoard): string {
 export interface SaveCommand {
   type: 'save';
   target: 'board';
-  changes: HexChange[];
+  changes: Change[];
   data: RawBoard;
 }
