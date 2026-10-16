@@ -63,6 +63,7 @@ test.describe('006 - First player and donations', () => {
             await expect(page.getByTestId(`donations-${seat}`)).toHaveAttribute('data-count', String(e.hand.length));
             for (const id of e.hand) await expect(page.getByTestId(`donation-card-${id}-${seat}`)).toBeVisible();
             await expect(page.getByTestId(`take-cards-${seat}`)).toBeVisible();
+            await expect(page.getByTestId(`take-cards-${seat}`)).toHaveAttribute('data-icon', 'check'); // a check mark takes them (prompt 47)
           }
         } }
       ]

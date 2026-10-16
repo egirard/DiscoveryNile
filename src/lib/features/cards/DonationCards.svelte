@@ -2,7 +2,8 @@
   // The cards a seat has not yet looked at (PROMPTS.md, prompt 44), shown in full at the player's edge as the
   // disaster card is: the hand dealt at the start of the game, and later the card each turn in Europe draws or a hex
   // published earns. Each card shows its donation face large (the money, or the free ticket and its port) with the
-  // disaster it would be in Africa beneath; one control takes the cards, and acting takes them too.
+  // disaster it would be in Africa beneath; one control, a check mark, takes the cards, and acting takes them too. The
+  // panel is as wide as the cards it holds, three to a row at most (PROMPTS.md, prompt 47): one card, one column.
   import { card as lookup, type CardId } from './deck';
   import { BOARD } from '$features/map/manifest';
 
@@ -23,7 +24,7 @@
 
 <div class="donations" data-testid="donations-{seat}" data-count={ids.length} role="group" aria-label="{ids.length === 1 ? 'A donation' : `${ids.length} donations`}: {ids.map(words).join(', ')}">
   <p class="heading">{ids.length === 1 ? 'A donation' : 'Donations'}</p>
-  <ul class="cards" class:many={ids.length > 3}>
+  <ul class="cards" style="--columns:{Math.min(ids.length, 3)}">
     {#each cards as { id, c } (id)}
       {@const d = c.donation}
       <li class="card {d.kind}" data-testid="donation-card-{id}-{seat}" data-card={id} data-kind={d.kind} aria-label={words(id)}>
@@ -50,7 +51,9 @@
       </li>
     {/each}
   </ul>
-  <button class="take" data-testid="take-cards-{seat}" aria-label={ids.length === 1 ? 'Take the card' : 'Take the cards'} onclick={ontake}>{ids.length === 1 ? 'Take it' : 'Take them'}</button>
+  <button class="take" data-testid="take-cards-{seat}" data-icon="check" aria-label={ids.length === 1 ? 'Take the card' : 'Take the cards'} onclick={ontake}>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
+  </button>
 </div>
 
 <style>
@@ -75,9 +78,6 @@
     display: grid;
     grid-template-columns: repeat(var(--columns, 3), calc(var(--target) * 2.6));
     gap: calc(var(--gap) * 0.6);
-  }
-  .cards.many {
-    --columns: 3;
   }
   .card {
     position: relative;
@@ -150,15 +150,23 @@
   }
   .take {
     justify-self: end;
+    width: var(--target);
     height: var(--target);
-    padding: 0 calc(var(--gap) * 1.2);
-    border: 2px solid var(--ink);
-    border-radius: 8px;
+    padding: 0;
+    border: 3px solid var(--ink);
+    border-radius: 50%;
     background: var(--accent);
     color: var(--ink);
-    font: inherit;
-    font-size: calc(var(--target) * 0.3);
-    font-weight: 700;
+    display: grid;
+    place-items: center;
     cursor: pointer;
+  }
+  .take svg {
+    width: 60%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 </style>

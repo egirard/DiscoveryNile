@@ -85,8 +85,16 @@ test.describe('024 - Return to Europe', () => {
     await passTurn(page);
 
     await steps.step('back-in-europe', {
-      description: 'The next turn opens in Europe: a donation card is drawn and waits at the edge; one card cannot book passage, so no ship is offered yet (prompt 46); the hexes he walked stay known to him',
+      description: 'The next turn opens in Europe: a donation card is drawn and waits at the edge in a panel one card wide, a check mark to take it; one card cannot book passage, so no ship is offered yet (prompt 46); the hexes he walked stay known to him',
       verifications: [
+        { spec: 'The one card drawn waits in a panel a single card wide, with a check mark to take it rather than words (prompt 47)', check: async () => {
+          const panel = page.getByTestId('donations-bottom-1');
+          await expect(panel).toHaveAttribute('data-count', '1');
+          await expect(page.getByTestId('take-cards-bottom-1')).toHaveAttribute('data-icon', 'check');
+          await expect(page.getByTestId('take-cards-bottom-1')).toHaveAttribute('aria-label', 'Take the card');
+          const [cards, card] = await Promise.all([panel.locator('.cards').boundingBox(), panel.locator('[data-testid^="donation-card-"]').boundingBox()]);
+          expect(cards!.width).toBeLessThan(card!.width * 1.5); // one column, not three
+        } },
         { spec: 'The explorer is in Europe with one card; no ship is offered, one card being short of a passage; c25r11 (pre-printed veldt, so never marked) stays known to him', check: async () => {
           await expect(page.getByTestId('explorer-token-bottom-1')).toHaveAttribute('data-location', 'europe');
           await expect(page.getByTestId('hand-bottom-1')).toHaveAttribute('data-count', '1');
