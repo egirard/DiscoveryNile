@@ -306,6 +306,8 @@ show the full card when a new donation arrives, and show the set of cards when t
 
 please make the pop-up dialogs movable (by dragging around the title); we don't need any visual affordance for this; after the dialog closes, forget about the reposition so that the next dialog shows up in the default location
 
+`Outcome: every panel at a seat's edge (EdgePanel: the dice prompt, the camp, the outfitting chart, the disaster card, the natives' panels, the cards waiting, the notices) can be dragged by its title or any other part that is not a control, with no affordance, and is kept inside the viewport; the offset lives with the open panel, so it is forgotten when the panel closes and the next opens in its place (G-162). Scenario 023 gained camp-dragged and checks the panel is back in its place when opened again.`
+
 ## 46. 2026-10-16
 
 I'd like to see the "end turn" button only show up when the player has an option to end their turn early (IE: there is still a reasonable option that they should take, like move).  If the player has taken their action(s), then the button should either be a checkmark over the action they've selected, OR an empty checkmark icon.  So, for "landed at <port>", the button should just be a checkmark since the player can't do an undo and the player hasn't really done anything.

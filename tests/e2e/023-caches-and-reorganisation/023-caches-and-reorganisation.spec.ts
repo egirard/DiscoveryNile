@@ -57,6 +57,36 @@ test.describe('023 - Caches and reorganisation', () => {
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r11');
     await page.getByTestId('reorganise-bottom-1').click();
     await expect(page.getByTestId('reorganise-panel-bottom-1')).toBeVisible();
+    // The panel is dragged by its title (prompt 45): up and to the right, out of the way of the board's edge.
+    const campPanel = page.getByTestId('reorganise-edge-bottom-1');
+    const campHome = (await campPanel.boundingBox())!;
+    const campTitle = (await page.getByTestId('reorganise-panel-bottom-1').getByText('Camp', { exact: true }).boundingBox())!;
+    await page.mouse.move(campTitle.x + campTitle.width / 2, campTitle.y + campTitle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(campTitle.x + campTitle.width / 2 + 60, campTitle.y + campTitle.height / 2 - 140, { steps: 5 });
+    await page.mouse.up();
+    await expect(campPanel).toHaveAttribute('data-moved', 'true');
+
+    await steps.step('camp-dragged', {
+      description: 'The camp panel is dragged by its title sixty pixels right and a hundred and forty up, with no handle or other affordance: a panel at the edge can be moved out of the way while it is open',
+      verifications: [
+        { spec: 'The panel stands where it was dragged, its controls still working; nothing in the game changed', check: async () => {
+          const moved = (await campPanel.boundingBox())!;
+          expect(Math.round(moved.x - campHome.x)).toBe(60);
+          expect(Math.round(moved.y - campHome.y)).toBe(-140);
+          await expect(page.getByTestId('reorganise-step-bottom-1')).toBeVisible();
+          expect((await state(page)).caches).toEqual({});
+        } }
+      ]
+    });
+
+    // Closed and opened again, the panel is back in its place: the move is forgotten with the panel.
+    await page.getByTestId('reorganise-close-bottom-1').click();
+    await expect(page.getByTestId('reorganise-panel-bottom-1')).toHaveCount(0);
+    await page.getByTestId('reorganise-bottom-1').click();
+    await expect(page.getByTestId('reorganise-panel-bottom-1')).toBeVisible();
+    await expect(campPanel).toHaveAttribute('data-moved', 'false');
+    expect((await campPanel.boundingBox())!).toEqual(campHome);
     await page.getByTestId('reorganise-step-bottom-1').click(); // ×10
     await tap(page, 'cache-food-bottom-1', 2);
     await page.getByTestId('cache-muskets-bottom-1').click();
