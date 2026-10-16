@@ -8,7 +8,7 @@ import { directionTo, neighbours, opposite, type Direction, type HexId } from '$
 import { printedCourse, resolveWater, riverDirection, isWater, type HexKnowledge, type RiverCourse } from '$features/map/rivers';
 import { RIVERS } from '$features/map/manifest';
 import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
-import { budgetFor, canEnter, coastal, modeFor, type Mode, type MovementBudget } from './movement';
+import { budgetFor, canEnter, coastal, modeFor, overload, type Mode, type MovementBudget } from './movement';
 import { DiceNeeded, d6, type RngState } from '$lib/game/random';
 import { readOf, tagRolls } from '$lib/game/sources';
 import { isCataract } from '$features/map/manifest';
@@ -122,6 +122,11 @@ function stepPlan(state: GameState, e: ExplorerState, from: HexId, to: HexId): {
   const specimens = crew.reduce((sum, m) => sum + m.specimens.zoology + m.specimens.geology, 0);
   const laden = { ...chart, food: chart.food + specimens }; // specimens weigh a ration each (rules §9)
   const mode: Mode = state.turn!.movement?.mode ?? modeFor(laden, water);
+  // On foot the expedition carries what its bearers and animals can (prompt 43): more stays, or is cached or dismissed at the camp.
+  if (mode === 'foot') {
+    const over = overload(chart, holder.sick, specimens);
+    if (over) return `cannot move overland: ${over.load} units to carry, the bearers and animals carry ${over.carry}; cache or dismiss at the camp first`;
+  }
   const terrain = terrainOf(state, to);
   if (mode === 'canoe' && !water) return 'canoes must follow the water';
   if (terrain && !canEnter(mode, terrain, chart, to)) return `cannot enter ${terrain} ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}`;

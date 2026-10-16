@@ -332,9 +332,9 @@
 "payload": {
 "seat": "bottom-1",
 "purchases": {
-"bearers": 6,
-"askaris": 2,
-"food": 100
+"bearers": 16,
+"askaris": 9,
+"food": 40
 }
 }
 },

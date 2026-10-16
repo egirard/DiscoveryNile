@@ -12,7 +12,7 @@ const seatAndCommission = (seat: string) => [event('seat/taken', { seat, uid: `t
 // Natives dice: 1,2 (3: natives on the veldt), warriors 3,4,5 capped at distance 1 → 12. Hunting: no game.
 // Combat dice 1,1,1 twice: the natives are not hostile to either policy that faces them.
 const SCRIPT = { main: [6, 6, 6, 6, 1, 1, 1, 1, 6, 2, 1], natives: [1, 2, 3, 4, 5], hunting: [6, 6], combat: [1, 1, 1, 1, 1, 1] };
-const FOOT = { askaris: 5, bearers: 6, food: 100 };
+const FOOT = { askaris: 5, bearers: 6, food: 60 };
 
 function intoTheVeldt() {
   const base = [created('ABCDE', LAYOUT, 18, SCRIPT), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];

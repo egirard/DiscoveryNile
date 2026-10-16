@@ -10,7 +10,7 @@ const seatAndCommission = (seat: string) => [event('seat/taken', { seat, uid: `t
 // Seed 18 as in scenarios 016–019: bottom-1 holds a ticket to Mombasa; c24r12 holds a tribe. Combat dice: reaction
 // 1,1,1 (calm with policy 5); offer 3,6; prices 3,2,4,1 (rations per gift, bearer, guide, askari).
 const SCRIPT = { main: [6, 6, 6, 6, 1, 1, 1, 1, 6, 2, 1], natives: [1, 2, 3, 4, 5], hunting: [1, 1], combat: [1, 1, 1, 3, 6, 3, 2, 4, 1, 1, 1, 1, 6, 6, 6, 1, 1, 1, 1] };
-const PURCHASES = { askaris: 5, bearers: 6, food: 100, gifts: 20 };
+const PURCHASES = { askaris: 5, bearers: 6, food: 40, gifts: 20 };
 
 function meetTheChief(script: typeof SCRIPT = SCRIPT) {
   const base = [created('ABCDE', LAYOUT, 18, script), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];
@@ -45,7 +45,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     const traded = [...offered, event('natives/traded', { seat: 'bottom-1', item: 'bearers', count: 1, direction: 'buy' }), event('natives/traded', { seat: 'bottom-1', item: 'food', count: 2, direction: 'sell' })];
     const t = reduce(traded);
     expect(t.diagnostics).toEqual([]);
-    expect(t.explorers[0].chart).toMatchObject({ bearers: 7, gifts: 18, food: 94 });
+    expect(t.explorers[0].chart).toMatchObject({ bearers: 7, gifts: 18, food: 34 });
     // One line for the trading (prompt 41), not one a tap.
     expect(t.turn!.log.at(-1)!.outcome).toBe('bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts');
     const reason = (payload: Record<string, unknown>) => reduce([...traded, event('natives/traded', { seat: 'bottom-1', ...payload })]).diagnostics.at(-1)?.reason;

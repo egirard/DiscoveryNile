@@ -62,7 +62,7 @@ test.describe('018 - Defeat, escape and victory', () => {
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
-    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 100 });
+    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 60 });
     await page.getByTestId('move-target-c24r12').click();
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await page.getByTestId('policy-3-bottom-1').click();
@@ -173,7 +173,7 @@ test.describe('018 - Defeat, escape and victory', () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('loot-note-bottom-1').last()).toHaveText('looted 10 rations, 2 gifts');
           });
-          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '110');
+          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '70');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '2');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '10');
           await expect(page.getByTestId('spoils-panel-bottom-1')).toHaveCount(0);

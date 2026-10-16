@@ -44,8 +44,10 @@ test.describe('028 - Epic transits', () => {
     );
 
     // Seed 43: bottom-1 lands at Mombasa and walks to Khartoum in twenty rounds. The trek was played in advance with
-    // natives, hunting, sickness and oasis dice scripted (sixes find nobody and feed everyone; ones mean recovery) and
-    // is replayed from trek.json through the table's event log, up to the last step onto Khartoum.
+    // natives, hunting, sickness and oasis dice scripted (sixes find nobody and feed the hunters' share; ones mean
+    // recovery) and is replayed from trek.json through the table's event log, up to the last step onto Khartoum. Since
+    // prompt 43 an expedition carries overland only what its bearers can, so the trek sets out with sixteen bearers and
+    // nine askaris under forty rations and the water for the desert, and arrives thinned by thirst and hunger.
     const dice = Object.entries(trek.dice).map(([stream, values]) => `${stream === 'main' ? 'dice' : `dice-${stream}`}=${values.join(',')}`).join('&');
     await page.goto(`/table/?new=1&gameId=ABCDE&seed=${trek.seed}&${dice}`);
     await commission(page, 'bottom-1');

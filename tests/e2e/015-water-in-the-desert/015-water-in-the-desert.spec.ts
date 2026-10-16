@@ -54,7 +54,7 @@ test.describe('015 - Water in the desert', () => {
     await passTurn(page); // round 2: bottom-1 lands at Khartoum and that turn is skipped
     await passTurn(page);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c20r1');
-    await outfit(page, 'bottom-1', { bearers: 10, askaris: 2, camels: 3, food: 40 });
+    await outfit(page, 'bottom-1', { bearers: 10, askaris: 2, camels: 3, food: 30 });
     // Water is taken on the camp panel, opened from the rail (prompt 34).
     await page.getByTestId('reorganise-bottom-1').click();
     await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '0');
@@ -70,11 +70,11 @@ test.describe('015 - Water in the desert', () => {
           await expect(page.getByTestId('take-water-bottom-1')).toBeVisible();
           await expect(page.getByTestId('pour-water-bottom-1')).toBeVisible();
           await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-people', '13');
-          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-load', '160'); // 40 rations and 30 water at four each
+          await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-load', '150'); // 30 rations and 30 water at four each: all the caravan carries (prompt 43)
           await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-carry', '150'); // nine bearers at 10, the tenth leading the three camels at 20 each
-          await expect(page.getByTestId('mode-foot-bottom-1')).toHaveAttribute('data-ok', 'false');
+          await expect(page.getByTestId('mode-foot-bottom-1')).toHaveAttribute('data-ok', 'true'); // the whole load carried: the caravan may set out (prompt 43)
           const s = await state(page);
-          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ water: 30, food: 40, bearers: 10, askaris: 2, camels: 3 });
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ water: 30, food: 30, bearers: 10, askaris: 2, camels: 3 });
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -95,9 +95,9 @@ test.describe('015 - Water in the desert', () => {
         { spec: 'The meal note reads the evening\'s food and water; the chart shows 27 food and 5 water', check: async () => {
           await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
           await expect(page.getByTestId('have-water-bottom-1')).toHaveAttribute('data-count', '5');
-          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '27');
+          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '17');
           const s = await state(page);
-          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ water: 5, food: 27 });
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ water: 5, food: 17 });
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -115,10 +115,10 @@ test.describe('015 - Water in the desert', () => {
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '2');
           await expect(page.getByTestId('have-camels-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('have-water-bottom-1')).toHaveCount(0);
-          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '44');
+          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '34');
           const s = await state(page);
           const e = s.explorers.find((x) => x.seat === 'bottom-1')!;
-          expect(e.chart).toMatchObject({ bearers: 2, askaris: 2, camels: 0, water: 0, food: 44 });
+          expect(e.chart).toMatchObject({ bearers: 2, askaris: 2, camels: 0, water: 0, food: 34 });
           expect(e.sick.explorer).toBe(false);
           expect(s.diagnostics).toEqual([]);
         } }

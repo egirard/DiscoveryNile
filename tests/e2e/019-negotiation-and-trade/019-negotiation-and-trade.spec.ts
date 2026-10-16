@@ -55,7 +55,7 @@ test.describe('019 - Negotiation and trade', () => {
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
-    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 100, gifts: 20 });
+    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 40, gifts: 20 });
     await page.getByTestId('move-target-c24r12').click();
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await page.getByTestId('policy-5-bottom-1').click();
@@ -102,12 +102,12 @@ test.describe('019 - Negotiation and trade', () => {
     await page.getByTestId('trade-sell-food-bottom-1').click();
 
     await steps.step('traded', {
-      description: 'A bearer is hired for two gifts and six rations are sold for two gifts in two taps: the chart shows 7 bearers, 94 rations and 18 gifts, the three trades one line at the rail, and the panel\'s movement notes count the new bearer',
+      description: 'A bearer is hired for two gifts and six rations are sold for two gifts in two taps: the chart shows 7 bearers, 34 rations and 18 gifts, the three trades one line at the rail, and the panel\'s movement notes count the new bearer',
       verifications: [
-        { spec: 'The chart and the panel agree on 7 bearers, 94 food and 18 gifts; the movement notes count one more person', check: async () => {
+        { spec: 'The chart and the panel agree on 7 bearers, 34 food and 18 gifts; the movement notes count one more person', check: async () => {
           await expect(page.getByTestId('trade-capacity-bottom-1')).toHaveAttribute('data-people', String(peopleBefore + 1));
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
-          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '94');
+          await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '34');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');
           await expect(page.getByTestId('trade-have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
           await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts'); // one line for the trading (prompt 41)

@@ -1,6 +1,7 @@
 // Movement rates and passability by mode of travel (rules §7.1), as pure functions.
 import type { Chart } from '$features/expedition/prices';
-import { capacity, load, mountedCarry } from '$features/expedition/prices';
+import type { Sickness } from '$lib/game/state';
+import { capacity, load, mountedCarry, overlandCarry } from '$features/expedition/prices';
 import { isLand, type Terrain } from '$features/map/manifest';
 import { neighbours, type HexId } from '$features/map/hex';
 import { hasPart } from '$features/map/generate';
@@ -71,6 +72,21 @@ export function canEnter(mode: Mode, terrain: Terrain | null, chart: Chart, to: 
  * everyone and the move is on water; mounts when everyone rides and the riders' and led animals'
  * loads cover the supplies (rules §5: a ridden animal carries 5, a led one 20); otherwise on foot.
  */
+/**
+ * Overland the expedition carries what its bearers and animals can carry (rules §4; PROMPTS.md, prompt 43): the load
+ * (specimens a ration each) against the capacity, less the sick, who are carried by two bearers carrying nothing else
+ * or by an animal in place of its load, twenty units either way (RQ-18); a sick bearer carries nothing. Null when the
+ * load fits; else the load and what is carried, for the reason and the rail's mark.
+ */
+export function overload(chart: Chart, sick: Sickness, extraLoad = 0): { load: number; carry: number } | null {
+  const able = { ...chart, bearers: Math.max(0, chart.bearers - sick.bearers) };
+  const carry = overlandCarry(able);
+  const sickMen = sick.guides + sick.bearers + sick.askaris + (sick.explorer ? 1 : 0);
+  const room = carry === null ? null : carry - 20 * sickMen;
+  const weight = load(chart) + extraLoad;
+  return room !== null && weight <= room ? null : { load: weight, carry: Math.max(0, room ?? 0) };
+}
+
 export function modeFor(chart: Chart, onWater: boolean): Mode {
   const cap = capacity(chart);
   if (chart.canoes > 0 && cap.canoeSeats >= cap.men && onWater) return 'canoe';

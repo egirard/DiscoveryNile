@@ -1,9 +1,11 @@
 <script lang="ts">
-  // The outfitted expedition at the rail: an icon and a count per item that is present.
+  // The outfitted expedition at the rail: an icon and a count per item that is present, and a mark when the load is
+  // more than the bearers and animals carry overland (PROMPTS.md, prompt 43), with the camp the way out.
   import Icon from '$lib/ui/Icon.svelte';
   import { ITEMS, type Chart } from './prices';
-  import type { Sickness } from '$lib/game/state';
+  import { NO_SICKNESS, type Sickness } from '$lib/game/state';
   import { sickCarried } from '$features/rations/rations';
+  import { overload } from '$features/exploration/movement';
 
   interface Props {
     seat: string;
@@ -14,6 +16,9 @@
   let { seat, chart, sick, specimens }: Props = $props();
   const present = $derived([...ITEMS, 'water' as const].filter((i) => chart[i] > 0));
   const sickCount = $derived(sick ? sick.guides + sick.bearers + sick.askaris + sick.animals + (sick.explorer ? 1 : 0) : 0);
+  /** More to carry than the bearers and animals can, overland (prompt 43); canoes on the water carry anything. */
+  const halted = $derived(sick ? sickCarried(chart, sick).halted : false);
+  const over = $derived(chart.canoes > 0 || halted ? null : overload(chart, sick ?? NO_SICKNESS, specimens ? specimens.zoology + specimens.geology : 0));
 </script>
 
 <span class="summary" data-testid="chart-summary-{seat}" aria-label="Expedition: {present.map((i) => `${chart[i]} ${i}`).join(', ')}">
@@ -27,9 +32,14 @@
       {/if}
     {/each}
   {/if}
+  {#if over}
+    <span class="item halt" data-testid="overloaded-{seat}" data-load={over.load} data-carry={over.carry} aria-label="Cannot move overland: {over.load} units to carry, the bearers and animals carry {over.carry}; cache or dismiss at the camp">
+      <Icon name="foot" size="1.2em" />✗
+    </span>
+  {/if}
   {#if sickCount}
     <span class="item sick" data-testid="sick-{seat}" data-count={sickCount} data-explorer={sick!.explorer} aria-label="{sickCount} sick"><Icon name="medicine" size="1.2em" />{sickCount}</span>
-    {#if sickCarried(chart, sick!).halted}
+    {#if halted}
       <span class="item halt" data-testid="sick-halt-{seat}" aria-label="The sick cannot all be carried: the expedition cannot move">
         <svg viewBox="0 0 24 24" width="1.2em" height="1.2em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M5 5v14M19 5v14M9 12h6" /><path d="M12 9v6" /></svg>
       </span>

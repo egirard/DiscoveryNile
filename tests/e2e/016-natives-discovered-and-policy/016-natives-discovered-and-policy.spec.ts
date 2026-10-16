@@ -56,7 +56,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
-    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 100 });
+    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 60 });
     await page.getByTestId('move-target-c24r12').click();
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
 

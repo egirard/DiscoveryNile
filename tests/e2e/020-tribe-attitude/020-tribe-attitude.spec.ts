@@ -53,7 +53,7 @@ test.describe('020 - Tribe attitude', () => {
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
-    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 100 });
+    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 60 });
     await page.getByTestId('move-target-c24r12').click();
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await expect(page.getByTestId('tribe-attitude-bottom-1')).toHaveCount(0); // a new tribe: nothing yet

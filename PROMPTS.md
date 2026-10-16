@@ -283,3 +283,15 @@ the trade dialog should show the movement capabilities as per the outfitting scr
 multiple trade transactions should collapse to a single log line
 
 `Outcome: every exchange with a chief in a turn is one line of the log (G-159), summed per direction and item and written again as each tap adds to it: "bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts"; the permission line stays its own and anything logged in between starts a new line. The tally rides on the record (RollRecord.trades, features/natives/trades.ts). Scenario 019's traded step reads it.`
+
+## 42. 2026-10-16
+
+you should be able to cache excess food so you can move, then do the move.  when I start over-loaded, movement is impossible for the turn.... is that according to the rules?
+
+`Outcome: assessment, no change. The 1978 rules say what each bearer and animal carries and that an expedition may be reorganised (cache, dismiss, turn loose) on any turn; their only "speed limit" drops an expedition short of canoes or mounts to the on-foot rate. They never say an overloaded expedition cannot move. The table does not stop it either: the reducer never refuses a step for the load (probed: 105 units on bearers carrying 30 still has four move targets and the move goes through), and caching food on the camp panel then moving in the same turn already works; the foot pill's ✗ in the movement notes is a reading, not a rule. Asked the user what blocked the move in their game (the disaster card unfaced, the move already made, sick men, a port's landing turn), since the dev capture holds no such game.`
+
+## 43. 2026-10-16
+
+how hard is it to carry a sick person?  Also, an expedition can NOT move overland with more gear than you can carry.
+
+`Outcome: the load overland is enforced (G-160, RQ-18): on foot the expedition carries what its bearers and animals can (ten a bearer, twenty a led animal, five a ridden one, nothing for a bearer leading animals or shouldering a canoe); a sick man carried costs twenty of it and a sick bearer carries nothing; with more to carry the reducer refuses the step ("cannot move overland: 105 units to carry, the bearers and animals carry 30; cache or dismiss at the camp first"), the board offers no step and the rail marks the load with a crossed foot until the camp has lightened it, the same turn. By canoe on the water nothing is weighed; mounted the load already had to fit. New scenario 038 (overloaded → lightened → moved). Eight scenarios and five unit fixtures had been playing overloaded expeditions (six bearers under a hundred rations): they now buy what their bearers carry, the 028 trek sets out with sixteen bearers and nine askaris under forty rations and arrives thinned by thirst and hunger, and 015's caravan carries exactly its 150 units; every changed baseline was diffed against its committed version (the rail's food counts, the trade and camp panels' notes, 009's inland step gone for a canoe expedition whose bearers all shoulder canoes).`

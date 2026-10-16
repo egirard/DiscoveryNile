@@ -27,7 +27,7 @@ function killedAtC24r12() {
   events = [...base, event('voyage/booked', { seat: 'bottom-1', port: 'mombasa', ticketCardId: mombasaTicket }), event('turn/ended', { seat: 'bottom-1' })];
   events = [...events, ...pass('top-1', reduce(events))];
   events = [...events, ...pass('top-1', reduce(events))];
-  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 100 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] }), event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('natives/spoils', { seat: 'bottom-1', choice: 'keep' }), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 10 }), event('turn/ended', { seat: 'bottom-1' })];
+  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 60 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] }), event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('natives/spoils', { seat: 'bottom-1', choice: 'keep' }), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 10 }), event('turn/ended', { seat: 'bottom-1' })];
   events = [...events, ...pass('top-1', reduce(events))];
   const before = reduce(events);
   const killed = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 4 })]);

@@ -53,7 +53,7 @@ test.describe('026 - Death and retirement', () => {
     await passTurn(page);
     await passTurn(page); // round 2: bottom-1 lands at Mombasa and that turn is skipped
     await passTurn(page);
-    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 100 });
+    await outfit(page, 'bottom-1', { askaris: 5, bearers: 6, food: 60 });
     await page.getByTestId('move-target-c24r12').click();
     await page.getByTestId('policy-3-bottom-1').click();
     await page.getByTestId('spoils-keep-bottom-1').click();

@@ -25,7 +25,7 @@ function facingTheTribe(combat = COMBAT) {
   let events = [...base, event('voyage/booked', { seat: 'bottom-1', port: 'mombasa', ticketCardId: ticket }), event('turn/ended', { seat: 'bottom-1' })];
   events = [...events, ...pass('top-1', reduce(events))];
   events = [...events, ...pass('top-1', reduce(events))];
-  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 100 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] })];
+  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 60 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] })];
   return { events, pass };
 }
 
@@ -44,10 +44,10 @@ describe('victory: prisoners, the village and the loot (rules §8.4)', () => {
     expect(looted.turn!.phase).toBe('act');
     expect(looted.turn!.log.at(-1)).toMatchObject({ kind: 'loot', outcome: 'looted 20 rations, 2 gifts' });
     expect(looted.turn!.log.at(-1)!.rolls).toHaveLength(12);
-    expect(looted.explorers[0].chart).toMatchObject({ bearers: 10, food: 120, gifts: 2 });
+    expect(looted.explorers[0].chart).toMatchObject({ bearers: 10, food: 80, gifts: 2 });
     expect(looted.tribes[1].pending).toBeNull();
     const released = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('natives/spoils', { seat: 'bottom-1', choice: 'release' })]);
-    expect(released.explorers[0].chart).toMatchObject({ bearers: 6, food: 100 });
+    expect(released.explorers[0].chart).toMatchObject({ bearers: 6, food: 60 });
     expect(released.tribes[1]).toMatchObject({ warriors: 6, attitude: 0, regard: { 'bottom-1': 3 }, pending: null });
   });
   it('a village not found is searched again next turn while the explorer stays', () => {

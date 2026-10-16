@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
-import { budgetFor, canEnter, canoeRate, coastal, modeFor, passable } from './movement';
+import { budgetFor, canEnter, canoeRate, coastal, modeFor, overload, passable } from './movement';
+import { NO_SICKNESS } from '$lib/game/state';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
 
@@ -62,5 +63,27 @@ describe('the ocean shore (RQ-17, prompt 32)', () => {
     expect(canEnter('canoe', 'jungle-swamp', chart, 'c12r12')).toBe(false); // an inland jungle-swamp
     expect(canEnter('foot', 'jungle-swamp', chart, 'c20r25')).toBe(false); // men on foot still cannot
     expect(canEnter('canoe', 'veldt', chart, 'c21r24')).toBe(true);
+  });
+});
+
+describe('the load overland (rules §4; prompt 43)', () => {
+  it('is carried by the bearers and animals, or the expedition cannot move overland', () => {
+    expect(overload(chart({ bearers: 3, askaris: 5, food: 100, muskets: 5 }), NO_SICKNESS)).toEqual({ load: 105, carry: 30 });
+    expect(overload(chart({ bearers: 3, askaris: 5, food: 25, muskets: 5 }), NO_SICKNESS)).toBeNull();
+    // Specimens weigh a ration each (rules §9).
+    expect(overload(chart({ bearers: 3, food: 30 }), NO_SICKNESS, 1)).toEqual({ load: 31, carry: 30 });
+    // A canoe takes eight bearers who carry nothing else; fewer bearers than canoes need cannot move overland at all.
+    expect(overload(chart({ bearers: 10, canoes: 1, food: 20 }), NO_SICKNESS)).toBeNull();
+    expect(overload(chart({ bearers: 7, canoes: 1, food: 0 }), NO_SICKNESS)).toEqual({ load: 0, carry: 0 });
+  });
+  it('counts a sick man as twenty units carried, and a sick bearer as carrying nothing (RQ-18)', () => {
+    const c = chart({ bearers: 5, food: 50 });
+    expect(overload(c, NO_SICKNESS)).toBeNull();
+    expect(overload(c, { ...NO_SICKNESS, askaris: 1 })).toEqual({ load: 50, carry: 30 });
+    expect(overload(c, { ...NO_SICKNESS, bearers: 1 })).toEqual({ load: 50, carry: 20 });
+    expect(overload(chart({ bearers: 5, food: 30 }), { ...NO_SICKNESS, explorer: true })).toBeNull();
+    // A led camel carries a sick man in place of its load: one bearer leads it, the other carries ten.
+    expect(overload(chart({ bearers: 2, camels: 1, food: 30 }), NO_SICKNESS)).toBeNull(); // 10 + 20
+    expect(overload(chart({ bearers: 2, camels: 1, food: 30 }), { ...NO_SICKNESS, guides: 1 })).toEqual({ load: 30, carry: 10 });
   });
 });

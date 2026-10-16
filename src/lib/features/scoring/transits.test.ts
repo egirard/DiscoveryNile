@@ -33,7 +33,7 @@ function atKhartoumsGate(): { s: GameState; route: HexId[]; gate: HexId } {
   const s: GameState = {
     ...s0,
     map: { ...s0.map, ...Object.fromEntries(route.map((h) => [h, mapped()])) },
-    explorers: s0.explorers.map((e) => (e.seat === 'bottom-1' ? { ...e, location: { kind: 'hex' as const, hex: gate }, known: ['c25r12', ...route, gate], chart: { ...e.chart!, water: 20 } } : e)),
+    explorers: s0.explorers.map((e) => (e.seat === 'bottom-1' ? { ...e, location: { kind: 'hex' as const, hex: gate }, known: ['c25r12', ...route, gate], chart: { ...e.chart!, water: 7 } } : e)),
     turn: { ...s0.turn!, round: 9, moved: false, movement: null, log: [] }
   };
   return { s, route, gate };

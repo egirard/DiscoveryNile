@@ -12,7 +12,7 @@ const seatAndCommission = (seat: string) => [event('seat/taken', { seat, uid: `t
 // Seed 2 (shared with scenario 015): bottom-1 pays passage to Khartoum and keeps $750; the first two disaster
 // cards drawn in the desert are for the mountain and the jungle. Hunting dice scripted 1,1: no game.
 const SCRIPT = { main: [6, 6, 6, 6, 1, 1, 1, 1], hunting: [1, 1] };
-const CARAVAN = { bearers: 10, askaris: 2, camels: 3, food: 40 };
+const CARAVAN = { bearers: 10, askaris: 2, camels: 3, food: 30 }; // 30 rations and 30 water at four each: what the nine free bearers and three led camels carry (prompt 43)
 
 function atKhartoum() {
   const base = [created('ABCDE', LAYOUT, 2, SCRIPT), ...seatAndCommission('bottom-1'), ...seatAndCommission('top-1'), event('game/started', {})];
@@ -47,12 +47,12 @@ describe('water/taken and the desert camp', () => {
     expect(dry.diagnostics.at(-1)?.reason).toBe('there is no water here');
     const r3 = reduce([...toDesert, event('turn/ended', { seat: 'bottom-1' })]);
     const e3 = r3.explorers[0];
-    expect(e3.chart).toMatchObject({ food: 27, water: 5, bearers: 10, camels: 3 });
+    expect(e3.chart).toMatchObject({ food: 17, water: 5, bearers: 10, camels: 3 });
     expect(e3.lastMeal!.outcome).toBe('no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
     const ev4 = [...toDesert, event('turn/ended', { seat: 'bottom-1' })];
     const r4 = reduce([...ev4, ...pass('top-1', r3), event('turn/ended', { seat: 'bottom-1' })]);
     const e4 = r4.explorers[0];
-    expect(e4.chart).toMatchObject({ bearers: 2, askaris: 2, camels: 0, water: 0, food: 44 });
+    expect(e4.chart).toMatchObject({ bearers: 2, askaris: 2, camels: 0, water: 0, food: 34 });
     expect(e4.lastMeal!.outcome).toBe('no game, 13 men ate (13 from the stores); drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
     expect(e4.sick.explorer).toBe(false);
   });

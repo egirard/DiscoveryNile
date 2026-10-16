@@ -24,7 +24,7 @@ function atTheTribe(script = SCRIPT, specialties = ['zoology', 'evangelism']) {
   let events = [...base, event('voyage/booked', { seat: 'bottom-1', port: 'mombasa', ticketCardId: ticket }), event('turn/ended', { seat: 'bottom-1' })];
   events = [...events, ...pass('top-1', reduce(events))];
   events = [...events, ...pass('top-1', reduce(events))];
-  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 100, gifts: 20 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] }), event('natives/policy', { seat: 'bottom-1', policy: 5 }), event('natives/offered', { seat: 'bottom-1', gifts: 2 })];
+  events = [...events, event('expedition/outfitted', { seat: 'bottom-1', purchases: { askaris: 5, bearers: 6, food: 40, gifts: 20 } }), event('expedition/moved', { seat: 'bottom-1', path: ['c24r12'] }), event('natives/policy', { seat: 'bottom-1', policy: 5 }), event('natives/offered', { seat: 'bottom-1', gifts: 2 })];
   return { events, pass };
 }
 
