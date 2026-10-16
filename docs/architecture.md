@@ -70,6 +70,7 @@ The following is the shape every Tabletop project converges on. A project does n
 │     /            lobby: seats, QR codes, start                                   │
 │     /table       the shared board (the main screen)                              │
 │     /hand        a phone's private view for one seat                             │
+│     /editor      the map editor, a developer's tool (docs/diagnostics.md)        │
 │                                                                                  │
 │   UI (Svelte components, per feature)                                            │
 │        │ dispatch(intent)                          ▲ derived views per seat      │
