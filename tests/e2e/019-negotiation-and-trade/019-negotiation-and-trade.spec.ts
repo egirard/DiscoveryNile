@@ -102,7 +102,7 @@ test.describe('019 - Negotiation and trade', () => {
     await page.getByTestId('trade-sell-food-bottom-1').click();
 
     await steps.step('traded', {
-      description: 'A bearer is hired for two gifts and six rations are sold for two gifts: the chart shows 7 bearers, 94 rations and 18 gifts, each trade noted at the rail, and the panel\'s movement notes count the new bearer',
+      description: 'A bearer is hired for two gifts and six rations are sold for two gifts in two taps: the chart shows 7 bearers, 94 rations and 18 gifts, the three trades one line at the rail, and the panel\'s movement notes count the new bearer',
       verifications: [
         { spec: 'The chart and the panel agree on 7 bearers, 94 food and 18 gifts; the movement notes count one more person', check: async () => {
           await expect(page.getByTestId('trade-capacity-bottom-1')).toHaveAttribute('data-people', String(peopleBefore + 1));
@@ -110,9 +110,9 @@ test.describe('019 - Negotiation and trade', () => {
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '94');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');
           await expect(page.getByTestId('trade-have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
-          await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('sold 3 rations for 1 gift');
+          await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts'); // one line for the trading (prompt 41)
           const s = await state(page);
-          expect(s.turn!.log.filter((l) => l.kind === 'trade').map((l) => l.outcome)).toEqual(['the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1', 'bought 1 bearer for 2 gifts', 'sold 3 rations for 1 gift', 'sold 3 rations for 1 gift']);
+          expect(s.turn!.log.filter((l) => l.kind === 'trade').map((l) => l.outcome)).toEqual(['the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1', 'bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts']);
           expect(s.diagnostics).toEqual([]);
         } }
       ]

@@ -46,7 +46,8 @@ describe('negotiation and trade (rules §8.5)', () => {
     const t = reduce(traded);
     expect(t.diagnostics).toEqual([]);
     expect(t.explorers[0].chart).toMatchObject({ bearers: 7, gifts: 18, food: 94 });
-    expect(t.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['bought 1 bearer for 2 gifts', 'sold 6 rations for 2 gifts']);
+    // One line for the trading (prompt 41), not one a tap.
+    expect(t.turn!.log.at(-1)!.outcome).toBe('bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts');
     const reason = (payload: Record<string, unknown>) => reduce([...traded, event('natives/traded', { seat: 'bottom-1', ...payload })]).diagnostics.at(-1)?.reason;
     expect(reason({ item: 'askaris', count: 1, direction: 'buy' })).toBe('an askari needs a musket; only 0');
     expect(reason({ item: 'camels', count: 1, direction: 'buy' })).toBe('that is not for sale here');

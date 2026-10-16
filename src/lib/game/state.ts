@@ -171,6 +171,8 @@ export interface RollRecord {
   contenders?: { seat: SeatId; values: number[]; total: number }[];
   /** The camp's line (prompt 39): everything reorganised this turn at this place, summed per action and item, so the line is written again as it grows. */
   camp?: { action: 'cache' | 'take' | 'dismiss' | 'release' | 'eat'; item: Item; count: number }[];
+  /** The trading's line (prompt 41): every exchange with the chief this turn, summed per direction and item (`count` is rations for food). */
+  trades?: { direction: 'buy' | 'sell'; item: Item; count: number; gifts: number; muskets?: number }[];
 }
 
 /**

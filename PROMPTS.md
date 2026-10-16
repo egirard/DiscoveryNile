@@ -281,3 +281,5 @@ the trade dialog should show the movement capabilities as per the outfitting scr
 ## 41. 2026-10-16
 
 multiple trade transactions should collapse to a single log line
+
+`Outcome: every exchange with a chief in a turn is one line of the log (G-159), summed per direction and item and written again as each tap adds to it: "bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts"; the permission line stays its own and anything logged in between starts a new line. The tally rides on the record (RollRecord.trades, features/natives/trades.ts). Scenario 019's traded step reads it.`

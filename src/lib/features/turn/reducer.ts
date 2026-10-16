@@ -19,6 +19,7 @@ import type { Chart, Item } from '$features/expedition/prices';
 import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
 import { logCamp, type CampAction } from '$features/expedition/camp';
+import { logTrade, type Trade } from '$features/natives/trades';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
 import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
@@ -691,14 +692,14 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const chart = { ...holder.chart! };
       const it = item as Item;
       const price = prices[it]!;
-      let outcome: string;
+      let trade: Trade;
       if (direction === 'buy') {
         if (it === 'food') {
           // Rations: `price` per gift; `count` is gifts spent.
           if (chart.gifts < count) return `only ${chart.gifts} gifts`;
           chart.gifts -= count;
           chart.food += price * count;
-          outcome = `bought ${price * count} rations for ${count} gift${count === 1 ? '' : 's'}`;
+          trade = { direction: 'buy', item: it, count: price * count, gifts: count };
         } else {
           const cost = price * count;
           if (chart.gifts < cost) return `${count} ${it} cost ${cost} gifts; only ${chart.gifts}`;
@@ -706,7 +707,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
           chart.gifts -= cost;
           chart[it] += count;
           if (it === 'askaris') chart.muskets -= count;
-          outcome = `bought ${count} ${count === 1 ? it.slice(0, -1) : it} for ${cost} gift${cost === 1 ? '' : 's'}${it === 'askaris' ? ` and ${count} musket${count === 1 ? '' : 's'}` : ''}`;
+          trade = { direction: 'buy', item: it, count, gifts: cost, ...(it === 'askaris' ? { muskets: count } : {}) };
         }
       } else {
         if (!SELLABLE.includes(it)) return `${it} cannot be sold`;
@@ -716,16 +717,16 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
           if (chart.food < rations) return `${count} gifts need ${rations} rations; only ${chart.food}`;
           chart.food -= rations;
           chart.gifts += count;
-          outcome = `sold ${rations} rations for ${count} gift${count === 1 ? '' : 's'}`;
+          trade = { direction: 'sell', item: it, count: rations, gifts: count };
         } else {
           if (chart[it] < count) return `only ${chart[it]} ${it}`;
           chart[it] -= count;
           chart.gifts += price * count;
-          outcome = `sold ${count} ${count === 1 ? it.slice(0, -1) : it} for ${price * count} gifts`;
+          trade = { direction: 'sell', item: it, count, gifts: price * count };
         }
       }
-      const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: [], outcome };
-      return { ...replaceExplorer(state, { ...holder, chart }), turn: { ...state.turn, log: [...state.turn.log, record] } };
+      // One line for the trading this turn (prompt 41), added to as each tap comes.
+      return { ...replaceExplorer(state, { ...holder, chart }), turn: { ...state.turn, log: logTrade(state.turn.log, explorer.seat, hex, trade) } };
     }
     case 'natives/done': {
       const { seat } = event.payload as { seat?: string };
