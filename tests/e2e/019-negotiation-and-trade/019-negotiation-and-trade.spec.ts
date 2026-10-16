@@ -65,8 +65,9 @@ test.describe('019 - Negotiation and trade', () => {
     await expect(page.getByTestId('offer-count-bottom-1')).toHaveAttribute('data-count', '2');
     await page.getByTestId('offer-confirm-bottom-1').click();
 
+    let peopleBefore = 0;
     await steps.step('chief-satisfied', {
-      description: 'The reaction is calm, so the chief receives the explorer. Two gifts are offered; the dice show 3 and 6, and 6 × 2 reaches the twelve warriors: the chief is satisfied and permits trade. The trade panel shows this turn\'s prices',
+      description: 'The reaction is calm, so the chief receives the explorer. Two gifts are offered; the dice show 3 and 6, and 6 × 2 reaches the twelve warriors: the chief is satisfied and permits trade. The trade panel shows this turn\'s prices and, as the outfitting screen does, how the expedition as it stands can move',
       verifications: [
         { spec: 'The rail tells the offer and the permission with the prices', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
@@ -85,6 +86,11 @@ test.describe('019 - Negotiation and trade', () => {
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');
           const s = await state(page);
           expect(s.turn).toMatchObject({ phase: 'trade', trade: { tribe: 1, prices: { food: 3, bearers: 2, guides: 4, askaris: 1 } } });
+          // The movement notes on the panel (prompt 40): the people and the load as the chart stands, on foot.
+          const chart = s.explorers.find((e) => e.seat === 'bottom-1')!.chart!;
+          peopleBefore = chart.askaris + chart.bearers + chart.guides + 1;
+          await expect(page.getByTestId('trade-capacity-bottom-1')).toHaveAttribute('data-people', String(peopleBefore));
+          await expect(page.getByTestId('trade-panel-bottom-1').getByTestId('mode-foot-bottom-1')).toBeVisible();
           expect(s.tribes[1].negotiatedBy).toEqual(['bottom-1']);
           expect(s.diagnostics).toEqual([]);
         } }
@@ -96,9 +102,10 @@ test.describe('019 - Negotiation and trade', () => {
     await page.getByTestId('trade-sell-food-bottom-1').click();
 
     await steps.step('traded', {
-      description: 'A bearer is hired for two gifts and six rations are sold for two gifts: the chart shows 7 bearers, 94 rations and 18 gifts, each trade noted at the rail',
+      description: 'A bearer is hired for two gifts and six rations are sold for two gifts: the chart shows 7 bearers, 94 rations and 18 gifts, each trade noted at the rail, and the panel\'s movement notes count the new bearer',
       verifications: [
-        { spec: 'The chart and the panel agree on 7 bearers, 94 food and 18 gifts', check: async () => {
+        { spec: 'The chart and the panel agree on 7 bearers, 94 food and 18 gifts; the movement notes count one more person', check: async () => {
+          await expect(page.getByTestId('trade-capacity-bottom-1')).toHaveAttribute('data-people', String(peopleBefore + 1));
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '94');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');

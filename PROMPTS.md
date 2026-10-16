@@ -275,3 +275,9 @@ cache actions should be logged in a single line, not 12 individual "1 canoes cac
 ## 40. 2026-10-16
 
 the trade dialog should show the movement capabilities as per the outfitting screen
+
+`Outcome: the trade panel shows the movement notes of the outfitting screen and the camp under the gifts (G-158): the people, the load against what is carried, and a pill per mode, counting each purchase as it is made. Scenarios 019 and 022 read them.`
+
+## 41. 2026-10-16
+
+multiple trade transactions should collapse to a single log line

@@ -65,11 +65,12 @@ test.describe('022 - Specialties in the field', () => {
     await expect(page.getByTestId('trade-panel-bottom-1')).toBeVisible();
 
     await steps.step('permission', {
-      description: 'The chief is satisfied with two gifts and permits trade. The trade panel also offers the missionary\'s sermon, and trading cannot end until he has preached',
+      description: 'The chief is satisfied with two gifts and permits trade. The trade panel shows how the expedition can move, as the outfitting screen does, and also offers the missionary\'s sermon; trading cannot end until he has preached',
       verifications: [
-        { spec: 'The preach control is offered and the done control is held back', check: async () => {
+        { spec: 'The preach control is offered and the done control is held back; the movement notes are on the panel', check: async () => {
           await expect(page.getByTestId('specialty-evangelism-bottom-1')).toBeEnabled();
           await expect(page.getByTestId('trade-done-bottom-1')).toBeDisabled();
+          await expect(page.getByTestId('trade-capacity-bottom-1')).toHaveAttribute('data-people', /^\d+$/);
           const s = await state(page);
           expect(s.turn!.phase).toBe('trade');
           expect(s.tribes[1].preachedBy).toEqual([]);

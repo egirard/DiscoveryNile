@@ -1,6 +1,9 @@
 <script lang="ts">
-  // Trading with a satisfied chief (rules §8.5): the prices rolled this turn, buy with gifts, sell for gifts.
+  // Trading with a satisfied chief (rules §8.5): the prices rolled this turn, buy with gifts, sell for gifts; and how
+  // the expedition as it stands could move (PROMPTS.md, prompt 40), as the outfitting screen and the camp show it, so a
+  // purchase is weighed against what the bearers can carry.
   import Icon from '$lib/ui/Icon.svelte';
+  import MovementNotes from '$features/expedition/MovementNotes.svelte';
   import type { Chart, Item } from '$features/expedition/prices';
   import { SELLABLE } from './negotiation';
   interface Props {
@@ -22,6 +25,7 @@
 
 <div class="trade" data-testid="trade-panel-{seat}" role="group" aria-label="Trade with the tribe: gifts {chart.gifts}">
   <p class="heading"><Icon name="gifts" size="1em" /> {chart.gifts} gifts</p>
+  <MovementNotes {chart} {seat} testid="trade-capacity" />
   {#each rows as [item, price] (item)}
     <div class="row" data-testid="trade-row-{item}-{seat}">
       <span class="icon" aria-label={item}><Icon name={item} /></span>
