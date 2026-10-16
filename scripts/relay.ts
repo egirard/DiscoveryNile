@@ -18,9 +18,12 @@ let nextViewer = 1;
 const send = (ws: ServerWebSocket<Client> | null, m: unknown) => ws?.send(JSON.stringify(m));
 
 const port = Number(process.env.RELAY_PORT ?? 3001);
+// The IPv4 wildcard, not Bun's IPv6 default: WSL2 forwards only IPv4 sockets to a browser on the Windows side (prompt 50).
+const hostname = process.env.RELAY_HOST ?? '0.0.0.0';
 
 Bun.serve<Client>({
   port,
+  hostname,
   fetch(req, server) {
     const url = new URL(req.url);
     if (url.pathname === '/health') return new Response('ok');
@@ -74,4 +77,4 @@ Bun.serve<Client>({
   }
 });
 
-console.log(`relay listening on ws://127.0.0.1:${port}`);
+console.log(`relay listening on ws://${hostname}:${port}`);

@@ -331,3 +331,9 @@ the map editor needs to edit rivers as well.
 we need to be able to edit the direction that the river leaves a hex.  Let's make the edit process something like: click on a hex and it gets highlighted and shown in the single hex editor (a new section in the right hand panel), where there are six lines heading in the six directions, either blue for a river or empty for none.  Edits in the single hex editor appear "live" on the map.
 
 `Outcome: the single hex editor (G-168): the hex tapped on the map is highlighted and shown under "Hex" with six spokes numbered as the dice give the directions, blue where a river leaves it; a tap on a spoke adds or clears that river edge and the map follows at once. Rivers being courses, the tap is a course edit: a cleared spoke takes the end hex off its river (a course running on through both hexes, or a tributary's junction, is refused with the reason); an added spoke extends the river whose course ends at either hex, else starts a tributary from a hex on a course, else a new river with its mouth at the hex tapped. Scenario 040 gained spoke-added → spoke-cleared.`
+
+## 50. 2026-10-16
+
+Not saved: Failed to fetch
+
+`Outcome: the browser could not reach the capture server at all, nor the relay: both Bun servers listened on the IPv6 wildcard only, and Windows' localhost forwarding into WSL2 relays only IPv4 sockets (Vite's 127.0.0.1 socket is relayed, which is why the table itself loads). Nothing had ever been captured from the user's table. Both servers now bind 0.0.0.0 (DIAG_HOST / RELAY_HOST override); the capture server and the relay were restarted; docs/diagnostics.md and docs/development.md name the pitfall. Reload the editor (and the table) and Save should go through; the status line's capture dot should turn up.`

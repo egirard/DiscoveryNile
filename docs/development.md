@@ -144,3 +144,4 @@ The agent runner is prepared by `.github/workflows/agent-setup-steps.yml` (renam
 | Screenshots differ from CI | See "Determinism" in [e2e-test-guidelines.md](e2e-test-guidelines.md); fonts and GPU flags are pinned, never loosen tolerance |
 | The dicecam says "No camera" in a scenario | Chromium's fake camera plays `tests/e2e/fixtures/dicecam-tray.y4m` ([dicecam.md](dicecam.md)); the path given to `--use-file-for-fake-video-capture` must be absolute and plain (no `..`), or Chromium silently offers no device |
 | Firebase emulator will not start | `jdk` must be in the flake; check ports 8186 and 9200 |
+| On WSL2 the table reaches the dev server but not the relay or the capture server (status dot down, "Failed to fetch", phones cannot join) | Windows forwards only IPv4 sockets into WSL2; the relay and the capture server bind the IPv4 wildcard (`RELAY_HOST`, `DIAG_HOST`, default `0.0.0.0`). `ss -ltn -4` must list 3001 and 3002 |

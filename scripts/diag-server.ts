@@ -21,6 +21,12 @@ import { join, normalize } from 'node:path';
 import { serialiseBoard, validateBoard, type SaveCommand } from '../src/lib/features/map/editor';
 
 const port = Number(process.env.DIAG_PORT ?? 3002);
+/**
+ * The address to listen on. Bun's default is the IPv6 wildcard, which WSL2's localhost forwarding does not relay to a
+ * browser on the Windows side (Vite's IPv4 loopback socket is relayed), so a table opened from Windows never reached
+ * this server (PROMPTS.md, prompt 50: "Failed to fetch"). The IPv4 wildcard is forwarded and reaches the LAN too.
+ */
+const hostname = process.env.DIAG_HOST ?? '0.0.0.0';
 const root = process.env.DIAG_DIR ?? join(process.cwd(), 'diagnostics');
 /** Where a `save` command writes: the checkout the server runs in, or DIAG_SAVE_ROOT. */
 const saveRoot = process.env.DIAG_SAVE_ROOT ?? process.cwd();
@@ -89,6 +95,7 @@ function broadcast(session: string, command: unknown): number {
 
 Bun.serve({
   port,
+  hostname,
   async fetch(req) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return respond(null, 204);
@@ -146,4 +153,4 @@ Bun.serve({
   }
 });
 
-console.log(`diagnostics server on http://127.0.0.1:${port}, writing to ${root}`);
+console.log(`diagnostics server on http://${hostname}:${port}, writing to ${root}`);
