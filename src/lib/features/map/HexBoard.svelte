@@ -4,7 +4,7 @@
   // than it is wide and hexes must stay touch-sized. Symbols and labels are kept upright for the
   // bottom seat; every seat reads the same omnidirectional iconography.
   import { BOARD, LAND_HEXES, PORTS, RIVERS, hexAt, riverMouths, type BoardHex, type PortId, type River } from './manifest';
-  import { DIRECTIONS, hexPoints, toPixel, type HexId } from './hex';
+  import { DIRECTIONS, hexPoints, neighbour, parseHexId, toPixel, type HexId } from './hex';
 
   import { colourFor } from '$features/explorers/colours';
   import type { MappedHex, Cache } from '$lib/game/state';
@@ -82,14 +82,26 @@
   /** Where direction `d` leaves a pointy-top hex: east is 2, so the angle is (d − 2) × 60° clockwise from east. */
   const bearing = (d: number) => ((d - 2) * Math.PI) / 3;
 
+  /** The way a river leaves its mouth hex for the sea: the direction it names, else straight on from its second hex. */
+  function seaward(r: River, pts: { x: number; y: number }[]): { dx: number; dy: number } | null {
+    if (r.joins) return null;
+    const m = pts[0];
+    if (r.mouth !== undefined) {
+      const sea = toPixel(parseHexId(neighbour(r.path[0], r.mouth))!, radius);
+      return { dx: sea.x - extents.minX * radius - m.x, dy: sea.y - extents.minY * radius - m.y };
+    }
+    if (pts.length < 2) return null;
+    return { dx: m.x - pts[1].x, dy: m.y - pts[1].y };
+  }
+
   /** A river as a polyline through hex centres, extended past a mouth (or the board edge) into the sea. */
   function riverPoints(r: River): string {
     const pts = r.path.map((id) => centre(id));
-    if (!r.joins && pts.length > 1) {
-      const [m, n] = pts;
-      const dx = m.x - n.x, dy = m.y - n.y;
-      const len = Math.hypot(dx, dy) || 1;
-      pts.unshift({ x: m.x + (dx / len) * radius * 0.95, y: m.y + (dy / len) * radius * 0.95 });
+    const out = seaward(r, pts);
+    if (out) {
+      const m = pts[0];
+      const len = Math.hypot(out.dx, out.dy) || 1;
+      pts.unshift({ x: m.x + (out.dx / len) * radius * 0.95, y: m.y + (out.dy / len) * radius * 0.95 });
     }
     if (r.continuesOffMap && pts.length > 1) {
       const e = pts[pts.length - 1], p = pts[pts.length - 2];
@@ -103,8 +115,8 @@
   /** Where the drainage number sits: just seaward of the mouth. */
   function mouthLabel(r: River) {
     const m = centre(r.path[0]);
-    const n = centre(r.path[1]);
-    const dx = m.x - n.x, dy = m.y - n.y;
+    const out = seaward(r, r.path.map((id) => centre(id))) ?? { dx: 0, dy: -1 };
+    const dx = out.dx, dy = out.dy;
     const len = Math.hypot(dx, dy) || 1;
     return { x: m.x + (dx / len) * radius * 1.15 + (dy / len) * radius * 0.9, y: m.y + (dy / len) * radius * 1.15 - (dx / len) * radius * 0.9 };
   }

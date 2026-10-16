@@ -2,7 +2,7 @@
 // of entry and the pre-printed rivers. Transcribed from the board photograph in the pinned rules
 // reference (docs/rules-reference.md); `board.json` is generated, see docs/rules.md RQ-5.
 import board from './board.json';
-import type { HexId } from './hex';
+import type { Direction, HexId } from './hex';
 
 export type Terrain = 'desert' | 'mountain' | 'swamp' | 'jungle' | 'veldt' | 'lake' | 'jungle-swamp' | 'jungle-mountain';
 
@@ -35,6 +35,8 @@ export interface River {
   /** Tributary: the river it joins; the first hex of `path` is the junction hex on that river. */
   joins?: string;
   continuesOffMap?: boolean;
+  /** The direction the river leaves its first hex into the sea, when not straight on from its second hex (the map editor, prompt 51). */
+  mouth?: Direction;
   /** From the mouth (or junction) inland. */
   path: HexId[];
   cataracts: HexId[];
@@ -74,7 +76,7 @@ export function blankHexes(): BoardHex[] {
 
 // ---- Rivers -------------------------------------------------------------------------------
 
-import { directionTo, type Direction } from './hex';
+import { directionTo } from './hex';
 
 export interface RiverEdge {
   river: string;

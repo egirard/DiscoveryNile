@@ -8,11 +8,13 @@
   // tap or takes an end hex off, the cataract tool marks a hex of a course, and the river's name, drainage number, hexes
   // off the map, the river it joins and whether it continues off the map are fields beside the list. The single hex
   // editor (prompt 49) shows the hex tapped with six spokes, blue where a river leaves it; a tap on a spoke adds or
-  // clears that river edge as an edit of the courses, and the map follows at once.
+  // clears that river edge as an edit of the courses, and the map follows at once. A spoke toward the sea makes the hex
+  // the river's mouth, flowing out that way (prompt 51); the hex's terrain is shown there with the game's own symbols
+  // and changed with a tap on one of them.
   import { onMount } from 'svelte';
   import rawBoard from '$features/map/board.json';
-  import { BRUSHES, DIRECTION_NAMES, DIRECTIONS, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverSpokes, riverTap, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
-  import { hexId, hexPoints, parseHexId, toPixel, type HexId } from '$features/map/hex';
+  import { BRUSHES, DIRECTION_NAMES, DIRECTIONS, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverSpokes, riverTap, seaward, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
+  import { hexId, hexPoints, neighbour, parseHexId, toPixel, type HexId } from '$features/map/hex';
   import { serverUrlFrom } from '$lib/diagnostics/diag';
 
   const SESSION = 'map-editor';
@@ -74,8 +76,18 @@
     desert: [], veldt: ['veldt'], swamp: ['swamp'], mountain: ['mountain'], jungle: ['jungle'], lake: [],
     'jungle-swamp': ['jungle', 'swamp'], 'jungle-mountain': ['jungle', 'mountain']
   };
-  function riverPoints(path: string[]): string {
-    return path.map((id) => { const at = parseHexId(id)!; const c = centre(at.col, at.row); return `${c.x.toFixed(1)},${c.y.toFixed(1)}`; }).join(' ');
+  /** A river through its hex centres, reaching into the sea at its mouth the way it leaves (named, or straight on). */
+  function riverPoints(r: RawRiver): string {
+    const at = (id: string) => { const o = parseHexId(id)!; return centre(o.col, o.row); };
+    const pts = r.path.map(at);
+    const out = seaward(working, r);
+    if (out !== null && pts.length) {
+      const sea = at(neighbour(r.path[0] as HexId, out));
+      const m = pts[0];
+      const dx = sea.x - m.x, dy = sea.y - m.y, len = Math.hypot(dx, dy) || 1;
+      pts.unshift({ x: m.x + (dx / len) * radius * 0.95, y: m.y + (dy / len) * radius * 0.95 });
+    }
+    return pts.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
   }
   const changed = $derived(new Set(changes.filter((c) => c.kind === 'hex').map((c) => c.id)));
 
@@ -171,16 +183,26 @@
 
 <svelte:head><title>Map editor</title></svelte:head>
 
+{#snippet swatch(kind: Brush)}
+  <!-- A hex in the game's own iconography (HexBoard's symbols), for the brushes and the hex editor. -->
+  <svg class="swatch" viewBox="-1.15 -1.15 2.3 2.3" aria-hidden="true">
+    <polygon class="hex {kind}" points={hexPoints(0, 0, 1)} />
+    {#each symbolFor[kind] ?? [] as sym (sym)}<use href="#ed-{sym}" />{/each}
+  </svg>
+{/snippet}
+
 <main class="editor" data-e2e-layout data-testid="map-editor" style="--target:44px; --gap:8px">
+  <svg class="defs" width="0" height="0" aria-hidden="true">
+    <defs>
+      <g id="ed-mountain" class="sym mountain"><path d="M-0.5 0.36 L0 -0.42 L0.5 0.36" /></g>
+      <g id="ed-veldt" class="sym veldt"><path d="M-0.5 -0.32 L-0.26 0.36 L0 -0.12 L0.26 0.36 L0.5 -0.32" /></g>
+      <g id="ed-swamp" class="sym swamp"><path d="M-0.42 0.38 H0.42 M0 0.38 V-0.42 M-0.24 0.38 L-0.3 -0.22 M0.24 0.38 L0.3 -0.22" /></g>
+      <g id="ed-jungle" class="sym jungle"><polygon points={hexPoints(0, 0, 0.74)} /></g>
+    </defs>
+  </svg>
   <div class="pane" data-testid="editor-pane" bind:clientWidth={paneW} bind:clientHeight={paneH}>
     {#if paneW > 0}
       <svg data-testid="editor-grid" width={svgW} height={svgH} viewBox="0 0 {svgW} {svgH}" role="img" aria-label="The board, every hex of its grid, north up" style="--r:{radius}px">
-        <defs>
-          <g id="ed-mountain" class="sym mountain"><path d="M-0.5 0.36 L0 -0.42 L0.5 0.36" /></g>
-          <g id="ed-veldt" class="sym veldt"><path d="M-0.5 -0.32 L-0.26 0.36 L0 -0.12 L0.26 0.36 L0.5 -0.32" /></g>
-          <g id="ed-swamp" class="sym swamp"><path d="M-0.42 0.38 H0.42 M0 0.38 V-0.42 M-0.24 0.38 L-0.3 -0.22 M0.24 0.38 L0.3 -0.22" /></g>
-          <g id="ed-jungle" class="sym jungle"><polygon points={hexPoints(0, 0, 0.74)} /></g>
-        </defs>
         {#each grid as g (g.id)}
           {@const c = centre(g.col, g.row)}
           {@const h = working.hexes[g.id]}
@@ -212,7 +234,7 @@
         {/each}
         {#each working.rivers as r (r.id)}
           {#if r.path.length}
-            <polyline class="river" class:chosen={r.id === riverId} data-testid="river-course-{r.id}" data-hexes={r.path.join(',')} points={riverPoints(r.path)} aria-label="River {r.name}" />
+            <polyline class="river" class:chosen={r.id === riverId} data-testid="river-course-{r.id}" data-hexes={r.path.join(',')} data-mouth={seaward(working, r) ?? undefined} points={riverPoints(r)} aria-label="River {r.name}" />
           {/if}
         {/each}
         {#each working.rivers as r (r.id)}
@@ -271,8 +293,8 @@
     <h2>Brush</h2>
     <div class="brushes" role="group" aria-label="Brush: tap a hex to paint it">
       {#each BRUSHES as b (b)}
-        <button class="brush {b}" data-testid="brush-{b}" aria-pressed={tool === b} aria-label="{words(b)}{tool === b ? ' (chosen)' : ''}" onclick={() => (tool = tool === b ? null : b)}>
-          <span class="swatch {b}"></span>{words(b)}
+        <button class="brush" data-testid="brush-{b}" aria-pressed={tool === b} aria-label="Brush: {words(b)}{tool === b ? ' (chosen)' : ''}" title={words(b)} onclick={() => (tool = tool === b ? null : b)}>
+          {@render swatch(b)}
         </button>
       {/each}
     </div>
@@ -305,7 +327,7 @@
     {/if}
     <h2>Hex</h2>
     <div class="hex-editor" data-testid="hex-editor" data-hex={selected ?? 'none'} data-spokes={spokes.map((s) => s.direction).join(',')}>
-      <svg class="one-hex" viewBox="-92 -92 184 184" width="160" height="160" role="group" aria-label={selected ? `${selected}: the directions a river leaves it in; tap a spoke to add or clear a river there` : 'No hex chosen'}>
+      <svg class="one-hex" viewBox="-92 -92 184 184" width="140" height="140" role="group" aria-label={selected ? `${selected}: the directions a river leaves it in; tap a spoke to add or clear a river there` : 'No hex chosen'}>
         {#if selected}
           <polygon class="hex {brushAt(working, selected)}" points={hexPoints(0, 0, HEX_R)} />
           {#each DIRECTIONS as d (d)}
@@ -317,26 +339,34 @@
               tabindex="0"
               data-testid="spoke-{d}"
               data-river={on?.river.id}
+              data-sea={on?.sea ? 'true' : undefined}
               aria-pressed={Boolean(on)}
-              aria-label="{DIRECTION_NAMES[d]} ({d}): {on ? `the ${on.river.name} leaves here; tap to clear it` : 'no river; tap to lead one here'}"
+              aria-label="{DIRECTION_NAMES[d]} ({d}): {on?.sea ? `the ${on.river.name} flows out to sea here` : on ? `the ${on.river.name} leaves here; tap to clear it` : selected && !working.hexes[neighbour(selected, d)] ? 'the sea; tap to make this hex the mouth of its river' : 'no river; tap to lead one here'}"
               points={wedge(d)}
               onclick={() => spoke(d)}
               onkeydown={(e) => e.key === 'Enter' && spoke(d)}
             />
-            <line class="spoke" class:river={on} x1="0" y1="0" x2={(Math.cos(bearing(d)) * HEX_R * 0.87).toFixed(1)} y2={(Math.sin(bearing(d)) * HEX_R * 0.87).toFixed(1)} />
+            <line class="spoke" class:river={on} class:sea={on?.sea} x1="0" y1="0" x2={(Math.cos(bearing(d)) * HEX_R * 0.87).toFixed(1)} y2={(Math.sin(bearing(d)) * HEX_R * 0.87).toFixed(1)} />
             <text class="dir" x={(Math.cos(bearing(d)) * HEX_R * 1.15).toFixed(1)} y={(Math.sin(bearing(d)) * HEX_R * 1.15).toFixed(1)}>{d}</text>
           {/each}
           {#if cataractHere}<g class="cataract" transform="scale({HEX_R * 0.5})"><circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" /></g>{/if}
         {/if}
       </svg>
-      <p class="hex-info" data-testid="selected-hex" data-hex={selected ?? 'none'} data-terrain={selected ? brushAt(working, selected) : 'none'}>
-        {#if selected}
-          <strong>{selected}</strong> {brushAt(working, selected)}{#if selectedHex?.port}, port of {working.ports[selectedHex.port].name}{/if}{#if changed.has(selected)}{' '}(was {brushAt(saved, selected)}){/if}
-          {#if riversThrough.length}<br /><span class="dim">{riversThrough.map((r) => r.name).join(', ')}{cataractHere ? '; cataract' : ''}</span>{/if}
-          <br /><span class="dim">Spokes: blue where a river leaves; tap one to add or clear</span>
-        {:else}Tap a hex on the map{/if}
-      </p>
+      {#if selected}
+        <div class="terrains" role="group" aria-label="The terrain of {selected}: tap one to change it">
+          {#each BRUSHES as b (b)}
+            <button class="terrain" data-testid="hex-terrain-{b}" aria-pressed={brushAt(working, selected) === b} aria-label="{words(b)}{brushAt(working, selected) === b ? ' (this hex)' : ''}" title={words(b)} onclick={() => apply(paint(working, selected!, b))}>
+              {@render swatch(b)}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </div>
+    <p class="hex-info" data-testid="selected-hex" data-hex={selected ?? 'none'} data-terrain={selected ? brushAt(working, selected) : 'none'}>
+      {#if selected}
+        <strong>{selected}</strong> {brushAt(working, selected)}{#if selectedHex?.port}, port of {working.ports[selectedHex.port].name}{/if}{#if changed.has(selected)}{' '}(was {brushAt(saved, selected)}){/if}{#if riversThrough.length}; {riversThrough.map((r) => r.name).join(', ')}{cataractHere ? '; cataract' : ''}{/if}
+      {:else}Tap a hex on the map: its terrain and the spokes a river leaves it by, blue where one does{/if}
+    </p>
     <h2>Changes</h2>
     <ul class="changes" data-testid="editor-changes" data-count={changes.length}>
       {#each changes as ch (ch.kind + ch.id)}
@@ -546,49 +576,41 @@
     display: flex;
     gap: 6px;
   }
-  .brushes {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
+  .defs {
+    position: absolute;
   }
-  .brush {
+  .brushes,
+  .terrains {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 8px;
-    text-align: left;
-    font-size: 0.75rem;
-    line-height: 1.1;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .brush,
+  .terrain {
+    width: var(--target);
+    height: var(--target);
+    padding: 4px;
+    display: grid;
+    place-items: center;
   }
   .swatch {
-    width: 18px;
-    height: 18px;
-    border-radius: 4px;
-    border: 1px solid #1c2a2e;
-    background: #efe6cc;
+    width: 100%;
+    height: 100%;
+    display: block;
+    overflow: visible;
+  }
+  .swatch .hex {
+    stroke-width: 0.08;
+  }
+  .swatch .hex.sea {
+    stroke: #e8d8b0;
+  }
+  .swatch .sym {
+    stroke-width: 0.16;
+  }
+  .terrains {
+    width: 188px;
     flex: none;
-  }
-  .swatch.desert {
-    background: #a8614a;
-  }
-  .swatch.lake {
-    background: #3f86c9;
-  }
-  .swatch.sea {
-    background: #27393f;
-    border-color: #e8d8b0;
-  }
-  .swatch.veldt,
-  .swatch.swamp,
-  .swatch.jungle,
-  .swatch.mountain,
-  .swatch.jungle-swamp,
-  .swatch.jungle-mountain {
-    background: linear-gradient(135deg, #efe6cc 50%, #3f8a3f 50%);
-  }
-  .swatch.mountain,
-  .swatch.jungle-mountain {
-    background: linear-gradient(135deg, #efe6cc 50%, #6b3a2c 50%);
   }
   .tools {
     display: flex;
@@ -638,6 +660,9 @@
     display: flex;
     gap: 8px;
     align-items: center;
+  }
+  .spoke.sea {
+    stroke: #8fc4ff;
   }
   .one-hex {
     flex: none;
@@ -690,7 +715,7 @@
     display: grid;
     gap: 4px;
     font-size: 0.85rem;
-    max-height: 18vh;
+    max-height: 15vh;
     overflow: auto;
   }
   .changes li {

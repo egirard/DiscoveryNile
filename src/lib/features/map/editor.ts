@@ -24,6 +24,8 @@ export interface RawRiver {
   offMapHexes?: number;
   joins?: string;
   continuesOffMap?: boolean;
+  /** The direction the river leaves its first hex into the sea, when not straight on from its second hex (prompt 51). */
+  mouth?: Direction;
   path: string[];
   cataracts: string[];
 }
@@ -124,6 +126,7 @@ export function riverDifference(a: RawRiver | undefined, b: RawRiver | undefined
   if (a.offMapHexes !== b.offMapHexes) parts.push(b.offMapHexes === undefined ? 'no hexes off the map' : `${b.offMapHexes} hexes off the map`);
   if (a.joins !== b.joins) parts.push(b.joins === undefined ? 'joins no river' : `joins ${b.joins}`);
   if (Boolean(a.continuesOffMap) !== Boolean(b.continuesOffMap)) parts.push(b.continuesOffMap ? 'continues off the map' : 'ends on the map');
+  if (a.mouth !== b.mouth) parts.push(b.mouth === undefined ? 'mouth straight on' : `mouth to the ${DIRECTION_NAMES[b.mouth]}`);
   if (a.path.join() !== b.path.join()) {
     const added = b.path.filter((h) => !a.path.includes(h)), removed = a.path.filter((h) => !b.path.includes(h));
     if (added.length) parts.push(`+${added.join(' ')}`);
@@ -149,9 +152,22 @@ export function normaliseRiver(r: RawRiver): RawRiver {
     ...(r.offMapHexes !== undefined ? { offMapHexes: r.offMapHexes } : {}),
     ...(r.joins !== undefined ? { joins: r.joins } : {}),
     ...(r.continuesOffMap ? { continuesOffMap: true } : {}),
+    ...(r.mouth !== undefined ? { mouth: r.mouth } : {}),
     path: r.path,
     cataracts: r.cataracts
   };
+}
+
+/**
+ * The direction a river leaves its mouth hex for the sea (prompt 51): the one it names, else straight on from its
+ * second hex when the hex there is sea; null for a tributary or a river whose course does not reach the sea.
+ */
+export function seaward(board: RawBoard, r: RawRiver): Direction | null {
+  if (r.joins || r.path.length === 0) return null;
+  if (r.mouth !== undefined) return r.mouth;
+  if (r.path.length < 2) return null;
+  const d = directionTo(r.path[1] as HexId, r.path[0] as HexId);
+  return d !== null && !board.hexes[neighbour(r.path[0] as HexId, d)] ? d : null;
 }
 
 function withRiver(board: RawBoard, id: string, river: RawRiver): RawBoard {
@@ -274,12 +290,17 @@ export function validateBoard(data: unknown): string | null {
     for (const id of r.cataracts) if (!r.path.includes(id)) return `the ${r.name} has a cataract at ${id}, off its course`;
     if (r.drainage !== undefined && !(Number.isInteger(r.drainage) && r.drainage > 0)) return `the ${r.name} has a bad drainage number`;
     if (r.offMapHexes !== undefined && !(Number.isInteger(r.offMapHexes) && r.offMapHexes >= 0)) return `the ${r.name} has a bad count of hexes off the map`;
+    if (r.mouth !== undefined) {
+      if (!DIRECTIONS.includes(r.mouth)) return `the ${r.name} has a bad mouth direction`;
+      if (r.joins !== undefined) return `the ${r.name} joins a river and cannot have a mouth to the sea`;
+      if (b.hexes[neighbour(r.path[0] as HexId, r.mouth)]) return `the ${r.name}'s mouth points at land`;
+    }
     if (r.joins !== undefined) {
       const parent = b.rivers.find((x) => x.id === r.joins);
       if (!parent || parent === r) return `the ${r.name} joins ${r.joins}, which is no river`;
       if (!parent.path.includes(r.path[0])) return `the ${r.name} joins the ${parent.name} at ${r.path[0]}, which is not on it`;
     }
-    for (const key of Object.keys(r)) if (!['id', 'name', 'drainage', 'offMapHexes', 'joins', 'continuesOffMap', 'path', 'cataracts'].includes(key)) return `the ${r.name} has an unknown field ${key}`;
+    for (const key of Object.keys(r)) if (!['id', 'name', 'drainage', 'offMapHexes', 'joins', 'continuesOffMap', 'mouth', 'path', 'cataracts'].includes(key)) return `the ${r.name} has an unknown field ${key}`;
   }
   return null;
 }
@@ -301,8 +322,8 @@ export interface SaveCommand {
 // ---- The single hex editor (prompt 49) ------------------------------------------------------
 
 /** The rivers through a hex and the directions they leave it in, from the courses: a spoke per neighbouring course hex. */
-export function riverSpokes(board: RawBoard, hex: HexId): { direction: Direction; river: RawRiver }[] {
-  const out: { direction: Direction; river: RawRiver }[] = [];
+export function riverSpokes(board: RawBoard, hex: HexId): { direction: Direction; river: RawRiver; sea?: boolean }[] {
+  const out: { direction: Direction; river: RawRiver; sea?: boolean }[] = [];
   for (const r of board.rivers) {
     const i = r.path.indexOf(hex);
     if (i < 0) continue;
@@ -310,6 +331,10 @@ export function riverSpokes(board: RawBoard, hex: HexId): { direction: Direction
       if (!other) continue;
       const d = directionTo(hex, other as HexId);
       if (d !== null && !out.some((o) => o.direction === d)) out.push({ direction: d, river: r });
+    }
+    if (i === 0) {
+      const d = seaward(board, r);
+      if (d !== null && !out.some((o) => o.direction === d)) out.push({ direction: d, river: r, sea: true });
     }
   }
   return out.sort((a, b) => a.direction - b.direction);
@@ -334,7 +359,7 @@ export function toggleRiverSpoke(board: RawBoard, hex: HexId, direction: Directi
     if (orphan) return `the ${orphan.name} joins the ${r.name} at ${drop}: move the junction first`;
     return withRiver(board, r.id, { ...r, path: r.path.filter((h) => h !== drop), cataracts: r.cataracts.filter((h) => h !== drop) });
   }
-  if (!board.hexes[n]) return `${n} is sea: a river runs on land`;
+  if (!board.hexes[n]) return mouthToward(board, hex, direction);
   const endingHere = board.rivers.find((r) => isEnd(r, hex) && !r.path.includes(n));
   if (endingHere) return riverTap(board, endingHere.id, n);
   const endingThere = board.rivers.find((r) => isEnd(r, n) && !r.path.includes(hex));
@@ -344,6 +369,39 @@ export function toggleRiverSpoke(board: RawBoard, hex: HexId, direction: Directi
   const { board: added, id } = addRiver(board);
   const river = added.rivers.find((r) => r.id === id)!;
   return withRiver(added, id, { ...river, ...(through ? { joins: through.id } : {}), path: [hex, n] });
+}
+
+/**
+ * A spoke toward the sea (prompt 51): the river reaches the sea from this hex in that direction. The hex becomes the mouth
+ * of the river that ends here (its course turned round if this was the inland end, a junction given up), with the
+ * direction named unless it is straight on; the same spoke again, when named, lets the mouth go straight on; a hex with
+ * no river starts one, its mouth here. A hex in the middle of a course is refused: a river reaches the sea from its mouth.
+ */
+function mouthToward(board: RawBoard, hex: HexId, direction: Direction): RawBoard | string {
+  const through = board.rivers.filter((r) => r.path.includes(hex));
+  const river = through.find((r) => isEnd(r, hex)) ?? through[0];
+  if (river && !isEnd(river, hex)) return `${hex} is in the middle of the ${river.name}: a river reaches the sea from its mouth, the first hex of its course`;
+  if (!river) {
+    const { board: added, id } = addRiver(board);
+    const fresh = added.rivers.find((r) => r.id === id)!;
+    return withRiver(added, id, { ...fresh, mouth: direction, path: [hex] });
+  }
+  const path = river.path[0] === hex ? river.path : [...river.path].reverse();
+  const turned: RawRiver = { ...river, path };
+  delete turned.joins;
+  const straight = seaward(board, { ...turned, mouth: undefined });
+  const current = seaward(board, river.path[0] === hex ? river : turned);
+  if (current === direction && river.mouth !== undefined && river.path[0] === hex) {
+    // The named mouth tapped again: it goes straight on, if the sea is there.
+    const plain = { ...turned };
+    delete plain.mouth;
+    if (straight === null) return `the ${river.name} reaches the sea here to the ${DIRECTION_NAMES[direction]}; tap another seaward spoke to turn its mouth`;
+    return withRiver(board, river.id, plain);
+  }
+  if (current === direction) return `the ${river.name} reaches the sea here to the ${DIRECTION_NAMES[direction]}; tap another seaward spoke to turn its mouth`;
+  if (straight === direction) delete turned.mouth;
+  else turned.mouth = direction;
+  return withRiver(board, river.id, turned);
 }
 
 export const DIRECTION_NAMES: Record<Direction, string> = { 1: 'north-east', 2: 'east', 3: 'south-east', 4: 'south-west', 5: 'west', 6: 'north-west' };

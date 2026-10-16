@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { directionTo } from './hex';
 import board from './board.json';
 import raw from './board.json?raw';
-import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverSpokes, riverTap, serialiseBoard, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type RawBoard } from './editor';
+import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverSpokes, riverTap, seaward, serialiseBoard, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type RawBoard } from './editor';
 
 const BOARD = board as RawBoard;
 
@@ -132,7 +132,8 @@ describe('the single hex editor (prompt 49)', () => {
     expect(spokes(BOARD, 'c2r6')).toEqual(['1:niger', '2:benue', '3:niger']); // the Niger's junction with the Benue
     expect(spokes(BOARD, 'c3r6')).toEqual(['5:benue']); // the Benue's inland end
     expect(spokes(BOARD, 'c12r12')).toEqual([]);
-    expect(spokes(BOARD, 'c20r1').sort()).toEqual([`${directionTo('c20r1', 'c20r2')}:white-nile`, `${directionTo('c20r1', 'c21r2')}:blue-nile`].sort()); // Khartoum: both Niles leave
+    // Khartoum: both Niles leave, and the White Nile runs straight on off the board's edge (a seaward spoke, prompt 51).
+    expect(spokes(BOARD, 'c20r1')).toEqual(['1:white-nile', `${directionTo('c20r1', 'c21r2')}:blue-nile`, `${directionTo('c20r1', 'c20r2')}:white-nile`].sort());
   });
   it('adds a spoke by extending the river that ends here, and clears one by taking the end hex off', () => {
     const longer = toggleRiverSpoke(BOARD, 'c3r6', 2) as RawBoard; // east of the Benue's end: c4r6
@@ -151,7 +152,8 @@ describe('the single hex editor (prompt 49)', () => {
     expect(toggleRiverSpoke(BOARD, 'c20r1', directionTo('c20r1', 'c20r2')!)).toBe('the Blue Nile joins the White Nile at c20r1: move the junction first');
     // A spoke toward a blank land hex beside the Benue's end extends it; one toward the sea is refused.
     expect(river(toggleRiverSpoke(BOARD, 'c3r6', directionTo('c3r6', 'c3r5')!) as RawBoard, 'benue').path).toEqual(['c2r6', 'c3r6', 'c3r5']);
-    expect(toggleRiverSpoke(BOARD, 'c2r8', directionTo('c2r8', 'c1r8')!)).toBe('c1r8 is sea: a river runs on land');
+    // A spoke toward the sea from the Niger's second hex: a river reaches the sea from its mouth only.
+    expect(toggleRiverSpoke(BOARD, 'c2r7', directionTo('c2r7', 'c1r7')!)).toBe('c2r7 is in the middle of the Niger: a river reaches the sea from its mouth, the first hex of its course');
   });
   it('starts a tributary from a hex in the middle of a course, and a new river from a hex without one', () => {
     const tributary = toggleRiverSpoke(BOARD, 'c2r7', 2) as RawBoard; // east of the Niger's second hex: c3r7, jungle
@@ -165,5 +167,52 @@ describe('the single hex editor (prompt 49)', () => {
     // Two rivers that do not meet: the Niger's junction hex toward the Ogooue? Both carry rivers already.
     const twoRivers = toggleRiverSpoke(toggleRiverSpoke(BOARD, 'c12r12', 2) as RawBoard, 'c12r14', 6) as RawBoard; // a second new river below
     expect(twoRivers.rivers).toHaveLength(14);
+  });
+});
+
+describe('the mouth of a river (prompt 51)', () => {
+  const river = (b: RawBoard, id: string) => b.rivers.find((r) => r.id === id)!;
+  it('reads the seaward spoke at the mouth: named, or straight on when the sea is there', () => {
+    // The Niger leaves Brass (c2r8) straight on from c2r7; the Limpopo's course points inland from its mouth, so no spoke.
+    const straight = directionTo('c2r7', 'c2r8')!;
+    expect(seaward(BOARD, river(BOARD, 'niger'))).toBe(straight);
+    expect(riverSpokes(BOARD, 'c2r8')).toEqual([{ direction: directionTo('c2r8', 'c2r7'), river: river(BOARD, 'niger') }, { direction: straight, river: river(BOARD, 'niger'), sea: true }].sort((a, b) => a.direction! - b.direction!));
+    expect(seaward(BOARD, river(BOARD, 'limpopo'))).toBeNull();
+    expect(seaward(BOARD, river(BOARD, 'benue'))).toBeNull(); // a tributary
+  });
+  it('turns a river\'s mouth with a tap toward the sea, and lets it go straight on again', () => {
+    // Lourenço Marques (c18r31) is the Limpopo's mouth; the sea lies to its east and south-east.
+    const east = toggleRiverSpoke(BOARD, 'c18r31', 2) as RawBoard;
+    expect(river(east, 'limpopo')).toEqual({ id: 'limpopo', name: 'Limpopo', drainage: 13, mouth: 2, path: ['c18r31', 'c19r30'], cataracts: [] });
+    expect(Object.keys(river(east, 'limpopo'))).toEqual(['id', 'name', 'drainage', 'mouth', 'path', 'cataracts']);
+    expect(changesBetween(BOARD, east)).toEqual([{ kind: 'river', id: 'limpopo', name: 'Limpopo', summary: 'mouth to the east' }]);
+    expect(riverSpokes(east, 'c18r31').map((s) => `${s.direction}${s.sea ? '~' : ''}`)).toEqual(['2~', String(directionTo('c18r31', 'c19r30'))].sort());
+    expect(validateBoard(east)).toBeNull();
+    // The same spoke again: straight on, but the sea is not there, so the mouth stays and the reason says so.
+    expect(toggleRiverSpoke(east, 'c18r31', 2)).toBe('the Limpopo reaches the sea here to the east; tap another seaward spoke to turn its mouth');
+    // Another seaward spoke turns it.
+    expect(river(toggleRiverSpoke(east, 'c18r31', 3) as RawBoard, 'limpopo').mouth).toBe(3);
+    // At Brass the Niger goes straight on into the sea already: the spoke there is refused as it stands, and a named mouth tapped again goes straight on.
+    const straight = directionTo('c2r7', 'c2r8')!;
+    expect(toggleRiverSpoke(BOARD, 'c2r8', straight)).toBe(`the Niger reaches the sea here to the ${straight === 4 ? 'south-west' : straight === 3 ? 'south-east' : 'west'}; tap another seaward spoke to turn its mouth`.replace(/to the [a-z-]+;/, `to the ${['', 'north-east', 'east', 'south-east', 'south-west', 'west', 'north-west'][straight]};`));
+    const turnedNiger = toggleRiverSpoke(BOARD, 'c2r8', directionTo('c2r8', 'c1r8')!) as RawBoard;
+    expect(river(turnedNiger, 'niger').mouth).toBe(directionTo('c2r8', 'c1r8'));
+    expect(river(toggleRiverSpoke(turnedNiger, 'c2r8', directionTo('c2r8', 'c1r8')!) as RawBoard, 'niger').mouth).toBeUndefined();
+  });
+  it('makes the inland end the mouth, turning the course round, and starts a river from the coast', () => {
+    // c19r30, the Limpopo's inland end in the delta, has the sea to its south-east (3): the river now flows out there.
+    const turned = toggleRiverSpoke(BOARD, 'c19r30', 3) as RawBoard;
+    expect(river(turned, 'limpopo').path).toEqual(['c19r30', 'c18r31']);
+    expect(river(turned, 'limpopo').mouth).toBe(3);
+    expect(changesBetween(BOARD, turned)[0]).toMatchObject({ kind: 'river', summary: 'mouth to the south-east; path reordered' });
+    expect(validateBoard(turned)).toBeNull();
+    // A coastal hex without a river: a tap toward the sea starts one, its mouth here.
+    const fresh = toggleRiverSpoke(BOARD, 'c23r19', 2) as RawBoard;
+    expect(fresh.rivers.at(-1)).toEqual({ id: 'river-13', name: 'River 13', mouth: 2, path: ['c23r19'], cataracts: [] });
+    expect(riverSpokes(fresh, 'c23r19')).toEqual([{ direction: 2, river: fresh.rivers.at(-1), sea: true }]);
+    expect(validateBoard(fresh)).toBeNull();
+    // A mouth cannot point at land, nor belong to a tributary.
+    expect(validateBoard({ ...BOARD, rivers: BOARD.rivers.map((r) => (r.id === 'niger' ? { ...r, mouth: directionTo('c2r8', 'c2r7') } : r)) })).toBe("the Niger's mouth points at land");
+    expect(validateBoard({ ...BOARD, rivers: BOARD.rivers.map((r) => (r.id === 'benue' ? { ...r, mouth: 1 } : r)) })).toBe('the Benue joins a river and cannot have a mouth to the sea');
   });
 });

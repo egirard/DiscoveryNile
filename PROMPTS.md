@@ -337,3 +337,9 @@ we need to be able to edit the direction that the river leaves a hex.  Let's mak
 Not saved: Failed to fetch
 
 `Outcome: the browser could not reach the capture server at all, nor the relay: both Bun servers listened on the IPv6 wildcard only, and Windows' localhost forwarding into WSL2 relays only IPv4 sockets (Vite's 127.0.0.1 socket is relayed, which is why the table itself loads). Nothing had ever been captured from the user's table. Both servers now bind 0.0.0.0 (DIAG_HOST / RELAY_HOST override); the capture server and the relay were restarted; docs/diagnostics.md and docs/development.md name the pitfall. Reload the editor (and the table) and Save should go through; the status line's capture dot should turn up.`
+
+## 51. 2026-10-16
+
+c19r31 is sea: a river runs on land (actually, rivers normally end at the sea); when you highlight a hex, the terrain should be highlighted (and should be changeable); the terrain icon should use the game's iconography.
+
+`Outcome: (1) A spoke toward the sea now makes the hex the mouth of the river that ends there (the course turned round if it was the inland end, a junction given up), flowing out that way: rivers gained an optional "mouth" direction (board.json, River.mouth) that the board draws when the way out is not straight on from the second hex, as at Lourenço Marques where the Limpopo's straight-on reach points inland; a coastal hex with no river starts one from the seaward spoke; a hex in the middle of a course is refused with that reason (G-169). (2) The hex editor shows the hex's terrain marked among the terrain symbols and a tap on one changes it live, the port kept. (3) The brushes and the hex editor use the game's own hex iconography (HexBoard's symbols) in place of colour swatches. Scenario 040 gained terrain-from-the-hex-editor and mouth-to-the-sea. The capture server was restarted for the new checks.`
