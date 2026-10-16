@@ -37,6 +37,7 @@ export function perish(state: GameState, explorer: ExplorerState, kind: Fate['ki
     sick: NO_SICKNESS,
     hand: [],
     drawnRound: {},
+    unseen: [],
     specimens: { zoology: 0, geology: 0 },
     goodWorks: { evangelism: 0, medicine: 0 },
     transit: null,

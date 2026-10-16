@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { withLogOpen } from '../helpers/log';
 
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
@@ -35,6 +36,7 @@ test.describe('034 - The table fills the screen', () => {
     });
 
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     await expect(page.getByTestId('turn-marker-bottom-1').or(page.getByTestId('turn-marker-bottom-2')).first()).toBeVisible();
 
     await steps.step('free-edges-to-the-board', {

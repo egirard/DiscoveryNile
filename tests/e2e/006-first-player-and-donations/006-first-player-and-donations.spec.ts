@@ -37,7 +37,7 @@ test.describe('006 - First player and donations', () => {
     await expect(page.getByTestId('first-player-scrim')).toBeVisible();
 
     await steps.step('first-player-decided', {
-      description: 'Both explorers rolled four dice and each roll stands in front of its own station: the four dice and the total, the winner\'s glowing as first player; the table stands still for a few seconds before play begins',
+      description: 'Both explorers rolled four dice and each roll stands in front of its own station: the four dice and the total, the winner\'s glowing as first player; the table stands still for a few seconds before play begins; under each roll the five cards dealt stand in full, the donation large and the disaster it would be in Africa beneath, with a control to take them',
       verifications: [
         { spec: 'Each station shows its own roll, the winner\'s marked and glowing, under a scrim; the turn is decided but the game is held at the roll', check: async () => {
           const s = await page.evaluate(() => window.__TABLETOP__!.getState());
@@ -54,6 +54,16 @@ test.describe('006 - First player and donations', () => {
             await expect(page.getByTestId(`first-player-edge-${seat}`)).toHaveAttribute('data-seat', seat);
           }
           await expect(page.getByTestId('first-player-scrim')).toBeVisible();
+        } },
+        { spec: 'Each station shows the five cards dealt in full, one per card in the hand, waiting to be taken (prompt 44)', check: async () => {
+          const s = await page.evaluate(() => window.__TABLETOP__!.getState());
+          for (const seat of ['bottom-1', 'top-1']) {
+            const e = s.explorers.find((x) => x.seat === seat)!;
+            expect(e.unseen).toEqual(e.hand);
+            await expect(page.getByTestId(`donations-${seat}`)).toHaveAttribute('data-count', String(e.hand.length));
+            for (const id of e.hand) await expect(page.getByTestId(`donation-card-${id}-${seat}`)).toBeVisible();
+            await expect(page.getByTestId(`take-cards-${seat}`)).toBeVisible();
+          }
         } }
       ]
     });
@@ -126,6 +136,29 @@ test.describe('006 - First player and donations', () => {
     const before = await page.evaluate(() => window.__TABLETOP__!.getState());
     await page.reload();
 
+    // The cards are taken at both edges: the first player's six (the hand dealt and the card drawn) and the other seat's five.
+    await expect(page.getByTestId('donations-bottom-1')).toBeVisible();
+    await expect(page.getByTestId('donations-top-1')).toBeVisible();
+    await page.getByTestId('take-cards-bottom-1').click();
+    await page.getByTestId('take-cards-top-1').click();
+    await expect(page.locator('[data-testid^="donations-"]')).toHaveCount(0);
+
+    await steps.step('cards-taken', {
+      description: 'After the pause the cards still wait at both edges, the first player\'s with the sixth card its turn drew; a tap on Take at each edge puts them away, a cards/seen event a seat, and the hands stay at the rails',
+      verifications: [
+        { spec: 'Both panels are gone, two cards/seen events were recorded, nothing waits, and the hands are five and six at the rails', check: async () => {
+          const s = await page.evaluate(() => window.__TABLETOP__!.getState());
+          const events = await page.evaluate(() => window.__TABLETOP__!.getEvents());
+          expect(events.filter((e) => e.type === 'cards/seen').map((e) => e.payload)).toEqual([{ seat: 'bottom-1' }, { seat: 'top-1' }]);
+          for (const e of s.explorers) expect(e.unseen).toEqual([]);
+          const first = s.turn!.current;
+          await expect(page.getByTestId(`hand-${first}`)).toHaveAttribute('data-count', '6');
+          await expect(page.getByTestId(`hand-${first === 'bottom-1' ? 'top-1' : 'bottom-1'}`)).toHaveAttribute('data-count', '5');
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
     await steps.step('persists-after-reload', {
       description: 'After a reload the same roll-off, the same hands and the same first player are restored from the seed',
       verifications: [
@@ -139,9 +172,9 @@ test.describe('006 - First player and donations', () => {
           expect(after.turn).toEqual(before.turn);
           await expect(page.getByTestId(`turn-marker-${before.turn!.current}`)).toHaveAttribute('data-current', 'true');
         } },
-        { spec: 'The stream replayed: game/created, two seats and commissions, game/started, game/begun', check: async () => {
+        { spec: 'The stream replayed: game/created, two seats and commissions, game/started, game/begun, and the cards taken at each seat', check: async () => {
           const events = await page.evaluate(() => window.__TABLETOP__!.getEvents());
-          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken', 'explorer/commissioned', 'seat/taken', 'explorer/commissioned', 'game/started', 'game/begun']);
+          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken', 'explorer/commissioned', 'seat/taken', 'explorer/commissioned', 'game/started', 'game/begun', 'cards/seen', 'cards/seen']);
         } }
       ]
     });

@@ -22,6 +22,7 @@
   import GameOver from '$features/turn/GameOver.svelte';
   import { chartOf, holderOf, moverOf, partyOf } from '$features/expedition/party';
   import Card from '$features/cards/Card.svelte';
+  import DonationCards from '$features/cards/DonationCards.svelte';
   import DeckStack from '$features/cards/DeckStack.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import TurnControls from '$features/turn/TurnControls.svelte';
@@ -503,6 +504,16 @@
     if (seat) await game?.append('expedition/moved', { seat, path: [hex] });
   }
 
+  // The cards a seat has not looked at yet (prompt 44): the hand dealt at the start, shown beside the roll for first
+  // player while the table stands still, and after that, or a card drawn later, at the seat's edge until taken or the
+  // seat acts. The panel stands aside while another panel of the seat's is up.
+  const unseenAt = (seat: string): CardId[] => explorerAt(gameState, seat)?.unseen ?? [];
+  const busySeats = $derived(new Set([awaitingSeat?.id, outfitting?.seat.id, facingDisaster?.seat.id, facingNatives?.seat.id, dealingSpoils?.seat.id, negotiating?.seat.id, trading?.seat.id, retiring?.seat.id, splitting?.seat.id, reorganising?.seat.id, dieNotice?.seat.id].filter((x): x is SeatId => Boolean(x))));
+  const donationPanels = $derived(starting ? [] : seats.filter((seat) => unseenAt(seat.id).length > 0 && !busySeats.has(seat.id)));
+  async function takeCards(seat: string) {
+    await game?.append('cards/seen', { seat });
+  }
+
   onMount(() => {
     diagonal = readDiagonalInches();
     viewport = { w: innerWidth, h: innerHeight };
@@ -591,6 +602,15 @@
   {#each firstPlayerRolls as r (r.seat.id)}
     <EdgePanel seat={r.seat} {viewport} inset={railDepth + target * 0.4} testid="first-player-edge-{r.seat.id}" raised>
       <FirstPlayerRoll seat={r.seat.id} values={r.values} winner={r.winner} decided={r.decided} />
+      {#if r.decided && unseenAt(r.seat.id).length}
+        <!-- The hand dealt, in full under the roll (prompt 44), while the table stands still. -->
+        <DonationCards seat={r.seat.id} ids={unseenAt(r.seat.id)} ontake={() => takeCards(r.seat.id)} />
+      {/if}
+    </EdgePanel>
+  {/each}
+  {#each donationPanels as seat (seat.id)}
+    <EdgePanel {seat} {viewport} inset={railDepth + target * 0.4} testid="donations-edge-{seat.id}">
+      <DonationCards seat={seat.id} ids={unseenAt(seat.id)} ontake={() => takeCards(seat.id)} />
     </EdgePanel>
   {/each}
   {#if physical && DICECAM_URL}

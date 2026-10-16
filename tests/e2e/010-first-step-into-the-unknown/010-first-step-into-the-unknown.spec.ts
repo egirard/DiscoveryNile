@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 import { withLogOpen } from '../helpers/log';
 
@@ -30,6 +31,7 @@ test.describe('010 - First step into the unknown', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.getByTestId('sail-bottom-1').click();
     await expect(page.getByTestId('port-mombasa')).toHaveAttribute('data-fare', 'ticket');

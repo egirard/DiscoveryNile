@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 import { withLogOpen } from '../helpers/log';
 import { dicecamReads, dicecamSays, settled, TRAY } from '../helpers/dicecam';
@@ -218,6 +219,7 @@ test.describe('037 - Physical dice', () => {
 
     await page.evaluate(() => window.__TABLETOP__!.append('game/begun', {}));
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
 
     await steps.step('game-started', {
       description: 'Play begins: bottom-1 plays first, the roll for first player is one line in each log with both throws and who went first, and the table is free again',

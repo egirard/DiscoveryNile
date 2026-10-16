@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
@@ -64,6 +65,7 @@ test.describe('025 - Publishing and points', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await sailTo(page, 'bottom-1');
     await sailTo(page, 'top-1');
@@ -89,6 +91,7 @@ test.describe('025 - Publishing and points', () => {
       ]
     });
 
+    await takeCards(page); // the card the turn in Europe drew waits at the edge, over the hexes to publish (prompt 44)
     await page.getByTestId('publish-target-c24r12').click();
 
     await steps.step('published', {

@@ -295,3 +295,17 @@ you should be able to cache excess food so you can move, then do the move.  when
 how hard is it to carry a sick person?  Also, an expedition can NOT move overland with more gear than you can carry.
 
 `Outcome: the load overland is enforced (G-160, RQ-18): on foot the expedition carries what its bearers and animals can (ten a bearer, twenty a led animal, five a ridden one, nothing for a bearer leading animals or shouldering a canoe); a sick man carried costs twenty of it and a sick bearer carries nothing; with more to carry the reducer refuses the step ("cannot move overland: 105 units to carry, the bearers and animals carry 30; cache or dismiss at the camp first"), the board offers no step and the rail marks the load with a crossed foot until the camp has lightened it, the same turn. By canoe on the water nothing is weighed; mounted the load already had to fit. New scenario 038 (overloaded → lightened → moved). Eight scenarios and five unit fixtures had been playing overloaded expeditions (six bearers under a hundred rations): they now buy what their bearers carry, the 028 trek sets out with sixteen bearers and nine askaris under forty rations and arrives thinned by thirst and hunger, and 015's caravan carries exactly its 150 units; every changed baseline was diffed against its committed version (the rail's food counts, the trade and camp panels' notes, 009's inland step gone for a canoe expedition whose bearers all shoulder canoes).`
+
+## 44. 2026-10-16
+
+show the full card when a new donation arrives, and show the set of cards when the initial donation arrives (similar to the card draw for disasters.
+
+`Outcome: cards are shown in full as they arrive (G-161): the hand dealt stands under each seat's roll for first player while the table stands still, and after that, or whenever a turn in Europe draws a card or a hex published earns one, the cards not yet looked at wait in full at the seat's edge, the donation large and the disaster the card would be in Africa beneath, with a Take control; taking them is a cards/seen event, and any act of the seat takes them too. No scrim, so no other seat is held. Scenario 006 reads the cards at the stations and gained cards-taken; 007 reads the sixth card waiting.`
+
+## 45. 2026-10-16
+
+please make the pop-up dialogs movable (by dragging around the title); we don't need any visual affordance for this; after the dialog closes, forget about the reposition so that the next dialog shows up in the default location
+
+## 46. 2026-10-16
+
+I'd like to see the "end turn" button only show up when the player has an option to end their turn early (IE: there is still a reasonable option that they should take, like move).  If the player has taken their action(s), then the button should either be a checkmark over the action they've selected, OR an empty checkmark icon.  So, for "landed at <port>", the button should just be a checkmark since the player can't do an undo and the player hasn't really done anything.

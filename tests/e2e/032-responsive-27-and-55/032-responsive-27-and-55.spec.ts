@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 
 const SEATS = ['bottom-1', 'bottom-2', 'top-1', 'top-2', 'left-1', 'right-1'];
@@ -103,6 +104,7 @@ test.describe('032 - Responsive pass at 27" and 55"', () => {
     });
 
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('six-hands-dealt', {

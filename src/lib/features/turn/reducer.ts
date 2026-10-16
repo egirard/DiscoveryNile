@@ -58,7 +58,8 @@ function drawOne(state: GameState, explorer: ExplorerState, noted = false): Game
     discard = [];
   }
   const [top, ...rest] = draw;
-  const next: ExplorerState = { ...explorer, hand: [...explorer.hand, top], drawnRound: { ...explorer.drawnRound, [top]: state.turn!.round } };
+  // The card drawn waits at the seat's edge in full until it is taken or the seat acts (prompt 44).
+  const next: ExplorerState = { ...explorer, hand: [...explorer.hand, top], drawnRound: { ...explorer.drawnRound, [top]: state.turn!.round }, unseen: [...explorer.unseen, top] };
   // The draw that opens a turn in Europe is the turn's first entry in the log; a draw earned by publishing is in that record already.
   const log = noted ? [...state.turn!.log, { kind: 'action', seat: explorer.seat, rolls: [], outcome: `drew ${describeCard(top)}` } as RollRecord] : state.turn!.log;
   return { ...replaceExplorer(state, next), rng, deck: { draw: rest, discard }, turn: { ...state.turn!, log } };
@@ -83,8 +84,11 @@ function advance(state: GameState): GameState {
 /** The turn that is ending joins the history with everything it logged (a skipped turn that logged nothing leaves no entry). */
 function archiveTurn(state: GameState): GameState {
   const { round, current, log } = state.turn!;
-  if (log.length === 0) return state;
-  return { ...state, history: [...state.history, { round, seat: current, log }] };
+  // The seat ending its turn has looked at the cards waiting at its edge (prompt 44), before the next turn, perhaps its own again, draws more.
+  const leaving = state.explorers.find((e) => e.seat === current && e.unseen.length > 0);
+  const seen = leaving ? replaceExplorer(state, { ...leaving, unseen: [] }) : state;
+  if (log.length === 0) return seen;
+  return { ...seen, history: [...seen.history, { round, seat: current, log }] };
 }
 
 /**
@@ -166,7 +170,7 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
   if (expired.length) {
     const drawnRound = { ...explorer.drawnRound };
     for (const id of expired) delete drawnRound[id];
-    explorer = { ...explorer, hand: explorer.hand.filter((id) => !expired.includes(id)), drawnRound };
+    explorer = { ...explorer, hand: explorer.hand.filter((id) => !expired.includes(id)), drawnRound, unseen: explorer.unseen.filter((id) => !expired.includes(id)) };
     state = { ...replaceExplorer(state, explorer), deck: { ...state.deck!, discard: [...state.deck!.discard, ...expired] } };
   }
   if (explorer.hand.length > HAND_LIMIT) return { ...state, turn: { ...turn, phase: 'discard' } };
@@ -473,7 +477,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         turn: { order, current: winner, round: 1, roundLimit: (roundLimit as number | null | undefined) ?? null, phase: 'act', disaster: null, moved: false, movement: null, policy: null, trade: null, log: [] },
         deck: { draw, discard: [] },
         explorers: state.explorers.map((e) =>
-          hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])) } : e
+          hands.has(e.seat) ? { ...e, hand: hands.get(e.seat)!, drawnRound: Object.fromEntries(hands.get(e.seat)!.map((id) => [id, 1])), unseen: hands.get(e.seat)! } : e
         )
       };
       return beginTurn(started, winner);
@@ -536,11 +540,11 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (raised < fare) return `passage costs $${fare}; only $${raised} raised`;
       // The whole hand becomes the expedition budget; any ticket not used is lost with it.
       const id = Math.max(0, ...Object.keys(state.parties).map(Number)) + 1;
-      const sailed: ExplorerState = { ...explorer, hand: [], drawnRound: {}, money: raised - fare, location: { kind: 'voyage', port: port as PortId }, transit: null, party: companions.length ? id : null };
+      const sailed: ExplorerState = { ...explorer, hand: [], drawnRound: {}, unseen: [], money: raised - fare, location: { kind: 'voyage', port: port as PortId }, transit: null, party: companions.length ? id : null };
       let next = replaceExplorer(state, sailed);
       let discard = [...state.deck!.discard, ...explorer.hand];
       for (const c of companions) {
-        next = replaceExplorer(next, { ...c, hand: [], drawnRound: {}, money: 0, location: { kind: 'voyage', port: port as PortId }, transit: null, party: id });
+        next = replaceExplorer(next, { ...c, hand: [], drawnRound: {}, unseen: [], money: 0, location: { kind: 'voyage', port: port as PortId }, transit: null, party: id });
         discard = [...discard, ...c.hand];
       }
       if (!companions.length) return { ...next, deck: { ...state.deck!, discard } };
@@ -595,6 +599,13 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const record: RollRecord = { kind: 'party', seat: explorer.seat, hex: standingHex(explorer)!, rolls: [], outcome: `${explorer.seat} leaves the joint expedition with ${listed}` };
       return { ...next, turn: { ...state.turn, log: [...state.turn.log, record] } };
     }
+    case 'cards/seen': {
+      // The player has looked at the cards waiting at the edge (prompt 44): any seat may take its own at any time.
+      const { seat } = event.payload as { seat?: string };
+      const explorer = state.explorers.find((e) => e.seat === seat && e.location.kind !== 'dead');
+      if (!explorer) return `no explorer at ${seat}`;
+      return explorer.unseen.length === 0 ? { ...state } : replaceExplorer(state, { ...explorer, unseen: [] });
+    }
     case 'cards/discarded': {
       const { seat, cardIds } = event.payload as { seat?: string; cardIds?: unknown };
       if (!state.turn) return 'game not started';
@@ -606,7 +617,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const ids = cardIds as CardId[];
       const drawnRound = { ...explorer.drawnRound };
       for (const id of ids) delete drawnRound[id];
-      const trimmed: ExplorerState = { ...explorer, hand: explorer.hand.filter((id) => !ids.includes(id)), drawnRound };
+      const trimmed: ExplorerState = { ...explorer, hand: explorer.hand.filter((id) => !ids.includes(id)), drawnRound, unseen: explorer.unseen.filter((id) => !ids.includes(id)) };
       const turn = state.turn;
       const after: GameState = { ...replaceExplorer(state, trimmed), deck: { ...state.deck!, discard: [...state.deck!.discard, ...ids] } };
       if (trimmed.hand.length > HAND_LIMIT) return after;

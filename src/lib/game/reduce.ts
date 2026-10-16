@@ -16,7 +16,7 @@ export type Step = (state: GameState, event: GameEvent) => GameState | string;
 // why the event is illegal (which becomes a diagnostic and leaves state untouched).
 const steps: Step[] = [reduceSeats, reduceExplorers, reduceTurn, reduceExploration];
 
-const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'disaster/faced', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled', 'dice/corrected']);
+const NEVER_UNDONE = new Set<string>(['game/created', 'game/started', 'game/begun', 'game/continued', 'disaster/faced', 'seat/taken', 'seat/left', 'turn/undone', 'dice/physical', 'dice/rolled', 'dice/corrected', 'cards/seen']);
 
 /**
  * A choice not yet resolved by dice can be taken back within the turn (docs/tabletop-ux.md): the event rolled no die,
@@ -110,6 +110,18 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
   }
 }
 
+/**
+ * A seat that acts has looked at the cards waiting at its edge (prompt 44): any event of the seat clears them, unless
+ * the event brought new ones (a turn's draw, a card for a hex published), which wait in their turn.
+ */
+function cardsSeenByActing(before: GameState, after: GameState, seat: string | undefined): GameState {
+  if (!seat) return after;
+  const was = before.explorers.find((e) => e.seat === seat);
+  const now = after.explorers.find((e) => e.seat === seat);
+  if (!was || !now || was.unseen.length === 0 || now.unseen !== was.unseen) return after;
+  return { ...after, explorers: after.explorers.map((e) => (e === now ? { ...e, unseen: [] } : e)) };
+}
+
 /** The move just made ended lost: its lost check is the turn's last line and says so. */
 function lostNow(before: GameState, after: GameState): boolean {
   const last = after.turn?.log.at(-1);
@@ -132,6 +144,7 @@ function apply(state: GameState, event: GameEvent): GameState {
         }
       }
       const seat = (event.payload as { seat?: string }).seat;
+      result = cardsSeenByActing(state, result, seat);
       const noted = noteAction(event, state, result);
       return { ...noted, undo: seat && undoable(state, noted, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };
     }

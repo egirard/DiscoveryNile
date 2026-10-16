@@ -49,7 +49,7 @@ test.describe('005 - Commission an explorer', () => {
         } },
         { spec: 'The state holds one explorer with the specialties in canonical order and no diagnostics', check: async () => {
           const state = await page.evaluate(() => window.__TABLETOP__!.getState());
-          expect(state.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, sick: { explorer: false, guides: 0, bearers: 0, askaris: 0, animals: 0 }, hand: [], drawnRound: {}, money: 0, chart: null, lastMeal: null, known: [], cameFrom: null, poisonBonus: 0, specimens: { zoology: 0, geology: 0 }, goodWorks: { evangelism: 0, medicine: 0 }, research: null, fate: null, transit: null, party: null }]);
+          expect(state.explorers).toEqual([{ seat: 'bottom-1', specialties: ['medicine', 'zoology'], location: { kind: 'europe' }, sick: { explorer: false, guides: 0, bearers: 0, askaris: 0, animals: 0 }, hand: [], drawnRound: {}, unseen: [], money: 0, chart: null, lastMeal: null, known: [], cameFrom: null, poisonBonus: 0, specimens: { zoology: 0, geology: 0 }, goodWorks: { evangelism: 0, medicine: 0 }, research: null, fate: null, transit: null, party: null }]);
           expect(state.diagnostics).toEqual([]);
         } }
       ]

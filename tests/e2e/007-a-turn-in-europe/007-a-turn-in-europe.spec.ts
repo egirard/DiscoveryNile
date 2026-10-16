@@ -32,12 +32,19 @@ test.describe('007 - A turn in Europe', () => {
     const second = first === 'bottom-1' ? 'top-1' : 'bottom-1';
 
     await steps.step('turn-begins-draw', {
-      description: 'The first player has drawn a sixth card as the turn begins; only that seat shows the ship and the hourglass, and a money total; the roll for first player is the other seat\'s latest line',
+      description: 'The first player has drawn a sixth card as the turn begins; the cards dealt and the card drawn wait in full at each seat\'s edge until taken; only the first seat shows the ship and the hourglass, and a money total; the roll for first player is the other seat\'s latest line',
       verifications: [
         { spec: 'The current seat holds six cards and the other five; the draw pile is 37', check: async () => {
           await expect(page.getByTestId(`hand-${first}`)).toHaveAttribute('data-count', '6');
           await expect(page.getByTestId(`hand-${second}`)).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('deck-draw')).toHaveAttribute('data-count', '37');
+        } },
+        { spec: 'The cards wait in full at each edge: six at the first seat\'s, the sixth the card its turn drew, five at the other\'s (prompt 44)', check: async () => {
+          const s = await state(page);
+          await expect(page.getByTestId(`donations-${first}`)).toHaveAttribute('data-count', '6');
+          await expect(page.getByTestId(`donations-${second}`)).toHaveAttribute('data-count', '5');
+          const drawn = s.explorers.find((e) => e.seat === first)!.hand.at(-1)!;
+          await expect(page.getByTestId(`donation-card-${drawn}-${first}`)).toBeVisible();
         } },
         { spec: 'The hourglass is offered at the current seat only (a turn in Europe is a wait), and no discard is pending', check: async () => {
           await expect(page.getByTestId(`end-turn-${first}`)).toBeVisible();

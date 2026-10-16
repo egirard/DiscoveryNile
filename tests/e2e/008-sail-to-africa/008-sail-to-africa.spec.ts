@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 
 const TICKETS: Record<number, string> = { 2: 'mombasa', 15: 'capetown', 22: 'lourenco-marques', 30: 'quilimane', 31: 'calabar', 32: 'kilwa', 33: 'luanda', 34: 'benguela', 35: 'port-elizabeth', 36: 'zanzibar', 39: 'durban', 43: 'brass' };
@@ -28,6 +29,7 @@ test.describe('008 - Sail to Africa', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     const s0 = await state(page);
     const first = s0.turn!.current;
     const second = first === 'bottom-1' ? 'top-1' : 'bottom-1';

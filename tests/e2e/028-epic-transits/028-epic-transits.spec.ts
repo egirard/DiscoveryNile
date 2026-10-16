@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 import { endTurnFromRail } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
@@ -53,6 +54,7 @@ test.describe('028 - Epic transits', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     expect((await state(page)).turn!.current).toBe('bottom-1');
     await page.evaluate(async (events) => {
       for (const e of events) {
@@ -93,7 +95,11 @@ test.describe('028 - Epic transits', () => {
     const home = await state(page);
     const hexes = toPublish(home);
     await page.getByTestId('publish-bottom-1').click();
-    for (const hex of hexes) await page.getByTestId(`publish-target-${hex}`).click();
+    await takeCards(page); // the card the turn in Europe drew waits at the edge, over the hexes to publish (prompt 44)
+    for (const hex of hexes) {
+      await page.getByTestId(`publish-target-${hex}`).click();
+      await takeCards(page); // each hex published earns a card, which waits in full at the edge (prompt 44)
+    }
 
     await steps.step('route-published', {
       description: 'Home in Europe the whole route is published hex by hex: each note counts the terrain and the epic transit bonus, and the tally at the rail shows the sum',

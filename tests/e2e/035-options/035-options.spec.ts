@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
+import { takeCards } from '../helpers/cards';
 
 const SEATS = ['bottom-1', 'bottom-2', 'top-1', 'top-2', 'left-1', 'right-1'];
 const state = (page: Page) => page.evaluate(() => window.__TABLETOP__!.getState());
@@ -73,6 +74,7 @@ test.describe('035 - Options', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     await expect(page.locator('[data-testid^="turn-marker-"][data-current="true"]')).toHaveCount(1);
     await page.getByTestId('options-nw').click();
     await page.getByTestId('end-game').click();

@@ -56,6 +56,8 @@ export interface ExplorerState {
   hand: CardId[];
   /** The round each card in hand was drawn in; free tickets expire at the owner's next turn. */
   drawnRound: Record<string, number>;
+  /** Cards dealt or drawn that the player has not yet looked at in full (PROMPTS.md, prompt 44): shown at the seat's edge until taken (`cards/seen`) or until the seat acts. */
+  unseen: CardId[];
   /** Expedition budget once passage is booked: the hand's money less the fare, until it is spent. */
   money: number;
   /** The Expedition Organization Chart, once outfitted at a port. */
