@@ -85,12 +85,13 @@ test.describe('024 - Return to Europe', () => {
     await passTurn(page);
 
     await steps.step('back-in-europe', {
-      description: 'The next turn opens in Europe: a donation card is drawn, the sail control is back, and the hexes he walked stay known to him',
+      description: 'The next turn opens in Europe: a donation card is drawn and waits at the edge; one card cannot book passage, so no ship is offered yet (prompt 46); the hexes he walked stay known to him',
       verifications: [
-        { spec: 'The explorer is in Europe with one card and the sail control; c25r11 (pre-printed veldt, so never marked) stays known to him', check: async () => {
+        { spec: 'The explorer is in Europe with one card; no ship is offered, one card being short of a passage; c25r11 (pre-printed veldt, so never marked) stays known to him', check: async () => {
           await expect(page.getByTestId('explorer-token-bottom-1')).toHaveAttribute('data-location', 'europe');
           await expect(page.getByTestId('hand-bottom-1')).toHaveAttribute('data-count', '1');
-          await expect(page.getByTestId('sail-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('sail-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
           const s = await state(page);
           expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5 });
           expect(s.explorers.find((x) => x.seat === 'bottom-1')!.location).toEqual({ kind: 'europe' });

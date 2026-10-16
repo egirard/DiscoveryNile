@@ -7,9 +7,19 @@ import { expect, type Page } from '@playwright/test';
  */
 export async function endTurnFromRail(page: Page, seat: string) {
   const before = await page.evaluate(() => window.__TABLETOP__!.getEvents().length);
-  await page.getByTestId(`end-turn-${seat}`).click();
-  await page.getByTestId(`confirm-end-turn-${seat}`).click();
+  await pressEndTurn(page, seat);
   await faceDisasterIfDrawn(page, before);
+}
+
+/**
+ * Tap the control that ends the seat's turn and confirm when it asks: with something left to do the hourglass or the
+ * arrow asks for confirmation; with nothing left the control is a check mark that ends the turn at once (prompt 46).
+ */
+export async function pressEndTurn(page: Page, seat: string) {
+  const end = page.getByTestId(`end-turn-${seat}`);
+  const icon = await end.getAttribute('data-icon');
+  await end.click();
+  if (icon !== 'check') await page.getByTestId(`confirm-end-turn-${seat}`).click();
 }
 
 /** Once more events than `after` are in: if the turn stands at its disaster card, apply it. */

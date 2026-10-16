@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
-import { endTurnFromRail } from '../helpers/turn';
+import { endTurnFromRail, pressEndTurn } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -68,8 +68,7 @@ test.describe('013 - Disaster cards', () => {
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r11');
     await passTurn(page);
     // top-1's turn ends without the helper, so bottom-1's card stays on the table to be read (prompt 34).
-    await page.getByTestId('end-turn-top-1').click();
-    await page.getByTestId('confirm-end-turn-top-1').click();
+    await pressEndTurn(page, 'top-1');
     await expect(page.getByTestId('disaster-panel-bottom-1')).toBeVisible();
 
     await steps.step('card-drawn', {

@@ -20,8 +20,16 @@
     onstay?: () => void;
     /** Offered while the last action of the turn can still be taken back (no dice rolled, no card drawn). */
     onundo?: (() => void) | null;
+    /**
+     * Nothing reasonable is left to do this turn (PROMPTS.md, prompt 46): the expedition has moved or cannot, there is
+     * no passage to book or hex to publish. The control is then a plain check mark that ends the turn at a tap, without
+     * the confirmation an early end asks for.
+     */
+    done?: boolean;
+    /** The seat is in Europe, where the turn is a wait: the hourglass, whether or not a passage can be booked. */
+    waiting?: boolean;
   }
-  let { seat, phase, onend, onsail = null, sailing = false, portChosen = false, onbook, onstay, onundo = null }: Props = $props();
+  let { seat, phase, onend, onsail = null, sailing = false, portChosen = false, onbook, onstay, onundo = null, done = false, waiting = false }: Props = $props();
   let confirming = $state(false);
   $effect(() => {
     if (phase !== 'act' || sailing) confirming = false;
@@ -36,6 +44,9 @@
 {/snippet}
 {#snippet ship()}
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h18l-2 4H5z" /><path d="M12 3v14" /><path d="M12 3c4 2 6 5 6 9H12" /><path d="M12 6c-3 1-5 3-5 6h5" /></svg>
+{/snippet}
+{#snippet check()}
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" /></svg>
 {/snippet}
 {#snippet cross()}
   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
@@ -74,8 +85,8 @@
   {:else if confirming}
     <!-- The "✕" to the left, where the ship stands in Europe; the hourglass keeps its place under the check mark. -->
     <button class="cancel" data-testid="cancel-end-turn-{seat}" aria-label="Keep playing" onclick={() => (confirming = false)}>{@render cross()}</button>
-    <button class="confirm sure" data-testid="confirm-end-turn-{seat}" data-icon={onsail ? 'hourglass' : 'next'} aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
-      {#if onsail}{@render hourglass()}{:else}{@render next()}{/if}<span class="tick" aria-hidden="true">✓</span>
+    <button class="confirm sure" data-testid="confirm-end-turn-{seat}" data-icon={waiting ? 'hourglass' : 'next'} aria-label="Confirm: end the turn" onclick={() => { confirming = false; onend(); }}>
+      {#if waiting}{@render hourglass()}{:else}{@render next()}{/if}<span class="tick" aria-hidden="true">✓</span>
     </button>
   {:else if sailing}
     <!-- The ship keeps its place under the check mark; the "✕" takes the hourglass's, to the right. -->
@@ -83,11 +94,14 @@
       {@render ship()}<span class="tick" aria-hidden="true">✓</span>
     </button>
     <button class="cancel" data-testid="cancel-sail-{seat}" aria-label="Stay in Europe" onclick={onstay}>{@render cross()}</button>
+  {:else if done}
+    <!-- Nothing more to do: a check mark ends the turn at once (prompt 46). -->
+    <button class="end done" data-testid="end-turn-{seat}" data-icon="check" aria-label="Nothing more to do: end the turn" onclick={onend}>{@render check()}</button>
   {:else}
     {#if onsail}
       <button class="sail" data-testid="sail-{seat}" aria-label="Sail to Africa" onclick={onsail}>{@render ship()}</button>
     {/if}
-    <button class="end" data-testid="end-turn-{seat}" data-icon={onsail ? 'hourglass' : 'next'} aria-label={onsail ? 'Wait: end the turn in Europe' : 'End the turn'} onclick={() => (confirming = true)}>{#if onsail}{@render hourglass()}{:else}{@render next()}{/if}</button>
+    <button class="end" data-testid="end-turn-{seat}" data-icon={waiting ? 'hourglass' : 'next'} aria-label={waiting ? 'Wait: end the turn in Europe' : 'End the turn'} onclick={() => (confirming = true)}>{#if waiting}{@render hourglass()}{:else}{@render next()}{/if}</button>
   {/if}
 </span>
 

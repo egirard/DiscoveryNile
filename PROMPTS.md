@@ -311,3 +311,5 @@ please make the pop-up dialogs movable (by dragging around the title); we don't 
 ## 46. 2026-10-16
 
 I'd like to see the "end turn" button only show up when the player has an option to end their turn early (IE: there is still a reasonable option that they should take, like move).  If the player has taken their action(s), then the button should either be a checkmark over the action they've selected, OR an empty checkmark icon.  So, for "landed at <port>", the button should just be a checkmark since the player can't do an undo and the player hasn't really done anything.
+
+`Outcome: the end-turn control asks for confirmation only when the turn would end early (G-163): with something reasonable left (a passage the hand can book or a hex to publish in Europe; a step to take, a study owed or an expedition to outfit at the port in Africa) it is the hourglass or the arrow as before; with nothing left it is a plain check mark that ends the turn at a tap, and the ship is offered only when a passage can be booked. The check mark over the action taken is not drawn. Scenario 010 reads both; every scenario's end-turn helper handles either.`

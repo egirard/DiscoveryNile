@@ -63,7 +63,7 @@ test.describe('010 - First step into the unknown', () => {
           await expect(page.getByTestId('move-target-c25r11')).toHaveAttribute('data-unknown', 'false');
           await expect(page.getByTestId('move-target-c24r13')).toHaveAttribute('data-unknown', 'false');
         } },
-        { spec: 'The turn is ended with an arrow in Africa, not the hourglass of a wait in Europe', check: async () => {
+        { spec: 'With steps still to take, the turn is ended early with an arrow in Africa (not the hourglass of a wait in Europe), which asks for confirmation', check: async () => {
           await expect(page.getByTestId('end-turn-bottom-1')).toHaveAttribute('data-icon', 'next');
         } },
         { spec: 'No roll has been made and no hex is mapped yet', check: async () => {
@@ -110,6 +110,10 @@ test.describe('010 - First step into the unknown', () => {
     await steps.step('mapped', {
       description: 'Next turn the expedition finds the way: the hex is generated as veldt like its neighbour, drawn, marked, and entered',
       verifications: [
+        { spec: 'The step taken, nothing reasonable is left this turn: the end-turn control is a plain check mark that asks no confirmation (prompt 46)', check: async () => {
+          await expect(page.getByTestId('end-turn-bottom-1')).toHaveAttribute('data-icon', 'check');
+          await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
+        } },
         { spec: 'The lost check succeeded and a terrain roll followed', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');

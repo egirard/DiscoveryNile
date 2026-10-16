@@ -261,6 +261,24 @@
   });
   // Publishing: the current seat, in Europe, opens the claim on the board; a tap on a marker hex publishes it.
   let publishingSeat = $state<string | null>(null);
+  // Whether the current seat has anything reasonable left to do this turn (prompt 46): in Europe a passage it can
+  // book or a hex to publish, in Africa a step to take, a study owed or an expedition to outfit. With nothing left
+  // the end-turn control is a plain check mark that asks no confirmation.
+  const canSailNow = $derived.by(() => {
+    const t = gameState.turn;
+    const explorer = t && explorerAt(gameState, t.current);
+    if (!explorer || explorer.location.kind !== 'europe') return false;
+    return handValue(explorer.hand) >= PASSAGE_FARE || explorer.hand.some((id) => cardOf(id).donation.kind === 'ticket');
+  });
+  const optionsLeft = $derived.by(() => {
+    const t = gameState.turn;
+    const explorer = t && explorerAt(gameState, t.current);
+    if (!t || !explorer || t.phase !== 'act') return true;
+    if (explorer.location.kind === 'europe') return canSailNow || publishable(gameState, t.current).length > 0;
+    if (explorer.location.kind === 'port' && !holderOf(gameState, explorer).chart) return true; // the expedition is outfitted here
+    if (explorer.location.kind === 'hex' || explorer.location.kind === 'port') return targets.length > 0 || (!t.moved && researchPending(explorer).length > 0);
+    return false;
+  });
   const publishTargets = $derived.by((): HexId[] => {
     if (!publishingSeat || gameState.turn?.current !== publishingSeat || gameState.turn.phase !== 'act') return [];
     const explorer = explorerAt(gameState, publishingSeat);
@@ -800,7 +818,9 @@
                 seat={seat.id}
                 phase={gameState.turn.phase}
                 onend={() => endTurn(seat)}
-                onsail={explorer.location.kind === 'europe' ? () => toggleSailing(seat.id) : null}
+                onsail={explorer.location.kind === 'europe' && canSailNow ? () => toggleSailing(seat.id) : null}
+                done={!optionsLeft}
+                waiting={explorer.location.kind === 'europe'}
                 sailing={sailingSeat === seat.id}
                 portChosen={sailingSeat === seat.id && chosenPort !== null && portChoices?.[chosenPort]?.fare !== 'none'}
                 onbook={bookPassage}
