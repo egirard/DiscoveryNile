@@ -19,8 +19,19 @@ describe('movement rates (rules §7.1)', () => {
     expect(canoeRate(1)).toEqual({ known: 1, unknown: 1 });
     expect(canoeRate(0)).toEqual({ known: 1, unknown: 0 });
     expect(budgetFor('canoe', chart({ canoes: 2, bearers: 16 }))).toMatchObject({ points: 4, unknownCost: 2 });
-    expect(budgetFor('canoe', chart({ canoes: 2, bearers: 9 }))).toMatchObject({ points: 3, unknownCost: 3 });
     expect(budgetFor('canoe', chart({ canoes: 1, bearers: 0 })).unknownCost).toBe(Infinity);
+  });
+  it('mixes known and unknown hexes in one turn: a known hex costs one point, an unknown hex two (RQ-19, prompt 47)', () => {
+    // Four to seven paddlers a canoe: three known hexes, or one unknown and one known (the row's "3 known / 1 unknown" are maxima).
+    expect(budgetFor('canoe', chart({ canoes: 2, bearers: 14 }))).toMatchObject({ points: 3, unknownCost: 2 });
+    expect(budgetFor('canoe', chart({ canoes: 2, bearers: 9 }))).toMatchObject({ points: 3, unknownCost: 2 });
+    // Two or three paddlers: two known or one unknown, as before.
+    expect(budgetFor('canoe', chart({ canoes: 2, bearers: 5 }))).toMatchObject({ points: 2, unknownCost: 2 });
+    // One paddler a canoe: the one point buys the row's one unknown hex.
+    expect(budgetFor('canoe', chart({ canoes: 2, bearers: 3 }))).toMatchObject({ points: 1, unknownCost: 1 });
+    // The published rates stand: on foot and mounted nothing changes.
+    expect(budgetFor('foot', chart({}))).toMatchObject({ points: 2, unknownCost: 2 });
+    expect(budgetFor('mounted', chart({ horses: 4 }))).toMatchObject({ points: 4, unknownCost: 2 });
   });
 });
 

@@ -11,16 +11,21 @@ export type Mode = 'foot' | 'mounted' | 'canoe';
 
 export interface MovementBudget {
   mode: Mode;
-  /** Movement points for the turn; a known hex costs 1. */
+  /** Movement points for the turn: the mode's known hexes a turn; a known hex costs 1. */
   points: number;
-  /** What entering an unknown hex costs, so that `points / unknownCost` unknown hexes fit. */
+  /**
+   * What entering an unknown hex costs: 2, whatever the mode, so that known and unknown hexes mix in one turn as the
+   * points allow (PROMPTS.md, prompt 47; RQ-19): three points by canoe are three known hexes, or one unknown and one
+   * known. Never more than the points (a canoe with one paddler has one point and enters its one unknown hex with it);
+   * Infinity when the mode enters no unknown hex (canoes drifting without paddlers).
+   */
   unknownCost: number;
   spent: number;
   /** Lost this turn: movement is over. */
   halted: boolean;
 }
 
-/** Canoe speed in known hexes by paddlers per canoe (rules §7.1). */
+/** Canoe speed by paddlers per canoe (rules §7.1): the hexes a turn when all are known, and when all are unknown. */
 export function canoeRate(paddlersPerCanoe: number): { known: number; unknown: number } {
   if (paddlersPerCanoe >= 8) return { known: 4, unknown: 2 };
   if (paddlersPerCanoe >= 4) return { known: 3, unknown: 1 };
@@ -33,7 +38,7 @@ export function budgetFor(mode: Mode, chart: Chart): MovementBudget {
   if (mode === 'mounted') return { mode, points: 4, unknownCost: 2, spent: 0, halted: false };
   if (mode === 'canoe') {
     const rate = canoeRate(chart.canoes > 0 ? Math.floor(chart.bearers / chart.canoes) : 0);
-    return { mode, points: rate.known, unknownCost: rate.unknown > 0 ? rate.known / rate.unknown : Infinity, spent: 0, halted: false };
+    return { mode, points: rate.known, unknownCost: rate.unknown > 0 ? Math.min(2, rate.known) : Infinity, spent: 0, halted: false };
   }
   return { mode, points: 2, unknownCost: 2, spent: 0, halted: false };
 }
