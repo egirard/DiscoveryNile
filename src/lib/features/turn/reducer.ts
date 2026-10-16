@@ -18,6 +18,7 @@ import type { Tribe } from '$lib/game/state';
 import type { Chart, Item } from '$features/expedition/prices';
 import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
+import { logCamp, type CampAction } from '$features/expedition/camp';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
 import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
@@ -861,7 +862,6 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const chart = { ...holder.chart };
       const men: Item[] = ['guides', 'bearers', 'askaris'];
       const animals: Item[] = ['camels', 'horses'];
-      let outcome: string;
       let caches = state.caches;
       if (action === 'take') {
         // Goods back out of a cache made this round on this hex (prompt 34); an earlier cache is dug up first.
@@ -877,9 +877,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const { [cache.id]: _emptied, ...rest } = caches;
         void _emptied;
         caches = Object.values(contents).some((v) => (v ?? 0) > 0) ? { ...caches, [cache.id]: { ...cache, contents } } : rest;
-        outcome = `${count} ${it} taken back from the cache`;
-        const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [], outcome };
-        return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: [...state.turn.log, record] } };
+        // One line for the camp's doings this turn (prompt 39), added to as each tap comes.
+        return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: logCamp(state.turn.log, explorer.seat, hex, { action: 'take', item: it, count }) } };
       }
       if (chart[it] < count) return `only ${chart[it]} ${it}`;
       if (action === 'cache') {
@@ -888,23 +887,19 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const mine = Object.values(caches).find((c) => c.hex === hex && c.seat === explorer.seat && c.round === state.turn!.round);
         if (mine) caches = { ...caches, [mine.id]: { ...mine, contents: { ...mine.contents, [it]: (mine.contents[it] ?? 0) + count } } };
         else { const id = Math.max(0, ...Object.keys(caches).map(Number)) + 1; caches = { ...caches, [id]: { id, hex, seat: explorer.seat, round: state.turn.round, contents: { [it]: count } } }; }
-        outcome = `${count} ${it} cached`;
       } else if (action === 'dismiss') {
         if (!men.includes(it)) return `${it} cannot be dismissed`;
         chart[it] -= count;
-        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} dismissed`;
       } else if (action === 'release') {
         if (!animals.includes(it)) return `${it} cannot be turned loose`;
         chart[it] -= count;
-        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} turned loose`;
       } else if (action === 'eat') {
         if (!animals.includes(it)) return `${it} cannot be eaten`;
         chart[it] -= count;
         chart.food += 10 * count;
-        outcome = `${count} ${count === 1 ? it.slice(0, -1) : it} eaten: ${10 * count} rations`;
       } else return 'expedition/reorganised needs cache, take, dismiss, release or eat';
-      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [], outcome };
-      return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: [...state.turn.log, record] } };
+      // One line for the camp's doings this turn (prompt 39), added to as each tap comes.
+      return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: logCamp(state.turn.log, explorer.seat, hex, { action: action as CampAction, item: it, count }) } };
     }
     case 'cache/recovered': {
       const { seat, cacheId } = event.payload as { seat?: string; cacheId?: unknown };

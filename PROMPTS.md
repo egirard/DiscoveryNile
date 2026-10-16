@@ -264,6 +264,14 @@ we seem to get some mis-reads on the die rolls.  let's add a way to check again 
 
 cache screen should show cached gear in a right column, with the take back button in between the columns, not at the bottom
 
+`Outcome: the camp panel is in two columns when a cache was made this turn (G-156): the expedition's goods on the left as before, the cached goods in a column to the right under a "cached" head, item by item on the same rows, and the arrow that takes them back standing between the two columns; an item wholly cached keeps its row ("none left") so it can be taken back. Earlier caches, to be dug up, are still listed below. Scenario 023's cached and taken-back steps read the columns.`
+
 ## 39. 2026-10-16
 
 cache actions should be logged in a single line, not 12 individual "1 canoes cached" lines
+
+`Outcome: everything reorganised in a turn at one place is one line of the log (G-157), summed per action and item and written again as each tap adds to it: "20 food, 5 muskets cached; 5 bearers dismissed; 10 food taken back from the cache"; anything else logged in between starts a new camp line. The tally rides on the record (RollRecord.camp, features/expedition/camp.ts); noteAction now counts a rewritten latest line as a record made. Scenario 023's cached and taken-back steps read the line.`
+
+## 40. 2026-10-16
+
+the trade dialog should show the movement capabilities as per the outfitting screen

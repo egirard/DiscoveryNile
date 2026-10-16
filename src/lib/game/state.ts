@@ -169,6 +169,8 @@ export interface RollRecord {
   lost?: boolean;
   /** The roll for first player (prompt 28): each seat's final throw and total, the one line every seat's log holds. */
   contenders?: { seat: SeatId; values: number[]; total: number }[];
+  /** The camp's line (prompt 39): everything reorganised this turn at this place, summed per action and item, so the line is written again as it grows. */
+  camp?: { action: 'cache' | 'take' | 'dismiss' | 'release' | 'eat'; item: Item; count: number }[];
 }
 
 /**

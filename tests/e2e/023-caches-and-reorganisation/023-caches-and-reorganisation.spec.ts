@@ -64,7 +64,7 @@ test.describe('023 - Caches and reorganisation', () => {
     await tap(page, 'dismiss-bearers-bottom-1', 5);
 
     await steps.step('cached', {
-      description: 'On the veldt north of Mombasa twenty rations and five muskets are cached under the bottom seat\'s marker, and five bearers are dismissed: the chart shows 80 rations, no muskets and 10 bearers; the panel shows the cached goods in a column to the right of the expedition\'s, item by item, with the control that takes them back between the two columns, and how the lightened expedition can move',
+      description: 'On the veldt north of Mombasa twenty rations and five muskets are cached under the bottom seat\'s marker, and five bearers are dismissed, the eight taps one line at the rail: the chart shows 80 rations, no muskets and 10 bearers; the panel shows the cached goods in a column to the right of the expedition\'s, item by item, with the control that takes them back between the two columns, and how the lightened expedition can move',
       verifications: [
         { spec: 'The cached column holds 20 food and 5 muskets, each with its take-back control between the columns; the muskets\' row stays though none are left; the movement notes count 15 people', check: async () => {
           await expect(page.getByTestId('cache-row-1-bottom-1')).toHaveAttribute('data-open', 'true');
@@ -79,12 +79,12 @@ test.describe('023 - Caches and reorganisation', () => {
           await expect(page.getByTestId('camp-capacity-bottom-1')).toHaveAttribute('data-people', '16');
           await expect(page.getByTestId('mode-foot-bottom-1')).toHaveAttribute('data-ok', 'true');
         } },
-        { spec: 'A cache marker in the seat colour sits on c25r11; the chart has 80 food, 10 bearers and no muskets', check: async () => {
+        { spec: 'A cache marker in the seat colour sits on c25r11; the chart has 80 food, 10 bearers and no muskets; the eight taps are one line of the log', check: async () => {
           await expect(page.getByTestId('cache-c25r11-bottom-1')).toBeAttached();
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '80');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '10');
           await expect(page.getByTestId('have-muskets-bottom-1')).toHaveCount(0);
-          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('1 bearer dismissed');
+          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('20 food, 5 muskets cached; 5 bearers dismissed'); // one line for the camp (prompt 39)
           const s = await state(page);
           expect(Object.values(s.caches)).toEqual([{ id: 1, hex: 'c25r11', seat: 'bottom-1', round: 3, contents: { food: 20, muskets: 5 } }]);
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart).toMatchObject({ food: 80, muskets: 0, bearers: 10 });
@@ -100,11 +100,11 @@ test.describe('023 - Caches and reorganisation', () => {
     await steps.step('taken-back', {
       description: 'Ten of the cached rations are taken back with the control between the columns: the chart has 90 rations and the cached column holds ten with the muskets',
       verifications: [
-        { spec: 'The cached column holds 10 food and 5 muskets, the chart 90 food; the note reads the taking', check: async () => {
+        { spec: 'The cached column holds 10 food and 5 muskets, the chart 90 food; the camp\'s line grew by the taking', check: async () => {
           await expect(page.getByTestId('cache-item-food-1-bottom-1')).toHaveAttribute('data-count', '10');
           await expect(page.getByTestId('cache-item-muskets-1-bottom-1')).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '90');
-          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('10 food taken back from the cache');
+          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('20 food, 5 muskets cached; 5 bearers dismissed; 10 food taken back from the cache');
           const s = await state(page);
           expect(s.caches[1].contents).toEqual({ food: 10, muskets: 5 });
           expect(s.diagnostics).toEqual([]);

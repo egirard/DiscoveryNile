@@ -90,7 +90,9 @@ export function describeAction(event: GameEvent, before: GameState, after: GameS
 export function noteAction(event: GameEvent, before: GameState, after: GameState): GameState {
   if (!before.turn || !after.turn || after.turn.current !== before.turn.current || after.turn.round !== before.turn.round) return after;
   const seat = (event.payload as { seat?: unknown }).seat;
-  if (seat !== before.turn.current || after.turn.log.length !== before.turn.log.length) return after;
+  // A record made: a line more, or the latest line written again (the camp's line grows in place, prompt 39).
+  const recorded = after.turn.log.length !== before.turn.log.length || after.turn.log.at(-1) !== before.turn.log.at(-1);
+  if (seat !== before.turn.current || recorded) return after;
   const outcome = describeAction(event, before, after);
   if (!outcome) return after;
   const record: RollRecord = { kind: 'action', seat: seat as SeatId, hex: hexOf(after, seat as SeatId), rolls: [], outcome };

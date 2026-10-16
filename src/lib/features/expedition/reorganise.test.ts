@@ -30,7 +30,8 @@ describe('reorganising the expedition (rules §5)', () => {
     expect(s.diagnostics).toEqual([]);
     expect(s.explorers[0].chart).toMatchObject({ food: 80, muskets: 0, bearers: 10 });
     expect(Object.values(s.caches)).toEqual([{ id: 1, hex: 'c25r11', seat: 'bottom-1', round: 3, contents: { food: 20, muskets: 5 } }]);
-    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['5 muskets cached', '5 bearers dismissed']);
+    // One line for the camp (prompt 39), not one a tap.
+    expect(s.turn!.log.filter((l) => l.kind === 'cache').map((l) => l.outcome)).toEqual(['20 food, 5 muskets cached; 5 bearers dismissed']);
     const reason = (payload: Record<string, unknown>) => reduce([...events, r(payload)]).diagnostics.at(-1)?.reason;
     expect(reason({ action: 'cache', item: 'bearers', count: 1 })).toBe('bearers cannot be cached');
     expect(reason({ action: 'eat', item: 'horses', count: 1 })).toBe('only 0 horses');
@@ -45,7 +46,7 @@ describe('reorganising the expedition (rules §5)', () => {
     expect(some.diagnostics).toEqual([]);
     expect(some.explorers[0].chart).toMatchObject({ food: 90, muskets: 0 });
     expect(some.caches[1].contents).toEqual({ food: 10, muskets: 5 });
-    expect(some.turn!.log.at(-1)).toMatchObject({ kind: 'cache', outcome: '10 food taken back from the cache' });
+    expect(some.turn!.log.at(-1)).toMatchObject({ kind: 'cache', outcome: '20 food, 5 muskets cached; 10 food taken back from the cache' });
     const all = reduce([...events, take({ item: 'food', count: 20 }), take({ item: 'muskets', count: 5 })]);
     expect(all.caches).toEqual({});
     expect(all.explorers[0].chart).toMatchObject({ food: 100, muskets: 5 });
@@ -87,6 +88,6 @@ describe('reorganising the expedition (rules §5)', () => {
     const s = reduce([...events, event('expedition/reorganised', { seat: 'bottom-1', action: 'eat', item: 'horses', count: 2 }), event('expedition/reorganised', { seat: 'bottom-1', action: 'release', item: 'horses', count: 1 })]);
     expect(s.diagnostics).toEqual([]);
     expect(s.explorers[0].chart).toMatchObject({ horses: 8, food: 70 });
-    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['2 horses eaten: 20 rations', '1 horse turned loose']);
+    expect(s.turn!.log.at(-1)!.outcome).toBe('2 horses eaten: 20 rations; 1 horse turned loose');
   });
 });
