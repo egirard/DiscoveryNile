@@ -18,7 +18,7 @@
     "test:e2e:report": "playwright show-report",
     "relay": "bun run scripts/relay.ts",
     "verify:change": "bash scripts/verify-change.sh",
-    "build:e2e": "VITE_E2E=true VITE_GIT_HASH=e2e-test-commit VITE_BUILD_DATE=2026-10-14T12:00:00.000Z VITE_DEFAULT_BACKEND=local VITE_RELAY_URL=ws://127.0.0.1:3001 VITE_DICECAM_URL=/dicecam-stub.worker.js VITE_FIRST_PLAYER_PAUSE_MS=0 vite build",
+    "build:e2e": "VITE_E2E=true VITE_GIT_HASH=e2e-test-commit VITE_BUILD_DATE=2026-10-14T12:00:00.000Z VITE_DEFAULT_BACKEND=local VITE_RELAY_URL=ws://127.0.0.1:3001 VITE_DICECAM_URL=/dicecam-stub.worker.js VITE_FIRST_PLAYER_PAUSE_MS=0 VITE_DICE_RESULT_MS=600000 vite build",
     "test:e2e:only": "playwright test",
     "diag": "bun run scripts/diag-server.ts",
     "diag:context": "bun run scripts/diag-context.ts",

@@ -21,7 +21,7 @@ import { modeFor } from '$features/exploration/movement';
 import { logCamp, type CampAction } from '$features/expedition/camp';
 import { logTrade, type Trade } from '$features/natives/trades';
 import { directionTo } from '$features/map/hex';
-import { drink, dryDesert, feed, hunt, sicknessRound, starve } from '$features/rations/rations';
+import { drink, dryDesert, feed, hunt, huntRate, sicknessRound, starve } from '$features/rations/rations';
 import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
 import type { GameEnd } from '$lib/game/state';
 import { fmtPoints } from '$features/scoring/transits';
@@ -204,11 +204,13 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   // A defensive stand (policy 1) forbids hunting (rules §8.1): the die is still rolled but no game is taken.
   const crew = members(state, explorer); // a joint expedition's explorers eat and drink from the one chart (rules §13)
   const h = hunt(state.rng!, camp, askaris, crew.some((m) => m.specialties.includes('zoology')));
-  if (state.turn!.policy === 1) h.result = { ...h.result, game: 0 };
+  const defensive = state.turn!.policy === 1;
+  if (defensive) h.result = { ...h.result, game: 0 };
   const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game, crew.length);
   const water = drink(meal.chart, camp, crew.length);
   const hex = (explorer.location as { hex: string }).hex as HexId;
-  const parts = [meal.summary];
+  // The line explains the meal from the die (prompt 54): the rate a hunter, then what was bagged, eaten and drawn from the stores.
+  const parts = [`${huntRate(h.result, askaris, defensive)}: ${meal.summary}`];
   if (water) parts.push(water.summary);
   let sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
   // Starvation, desertion and sickness (rules §11) on the 'sickness' stream.

@@ -74,9 +74,12 @@ export function hostilities(rng: RngState, input: ReactionInput): Omit<ReactionR
   const done = (outcome: Outcome, summary: string): Omit<ReactionResult, 'reaction'> => ({ rng, combat, outcome, summary, chart, warriors });
 
   // Hostile: strong enough to attack? d6 × askaris ÷ policy against the warriors.
-  const strength = Math.floor((roll('strength', { what: "for the natives' nerve", hint: `the die × ${chart.askaris} askaris ÷ policy ${input.policy} over ${warriors} warriors and they hide` }) * chart.askaris) / input.policy);
-  if (strength > warriors) return done('hide', `hostile, but the natives hide from the expedition (${strength} against ${warriors} warriors)`);
-  const notes: string[] = ['hostile: the natives attack'];
+  // The line states the check in full (prompt 55): the die, the askaris, the policy, the result against the warriors.
+  const die = roll('strength', { what: "for the natives' nerve", hint: `the die × ${chart.askaris} askaris ÷ policy ${input.policy}: more than the ${warriors} warrior${warriors === 1 ? '' : 's'} and they hide` });
+  const strength = Math.floor((die * chart.askaris) / input.policy);
+  const nerve = `nerve ${die} × ${chart.askaris} askari${chart.askaris === 1 ? '' : 's'} ÷ policy ${input.policy} = ${strength}, ${strength > warriors ? 'more' : 'not more'} than ${warriors} warrior${warriors === 1 ? '' : 's'}`;
+  if (strength > warriors) return done('hide', `hostile; ${nerve}: the natives hide`);
+  const notes: string[] = [`hostile; ${nerve}: the natives attack`];
   const original = chart.askaris;
 
   // Surprise: two dice, mounted or desert adjustments, under the policy number means surprised.

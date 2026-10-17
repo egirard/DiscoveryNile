@@ -366,6 +366,10 @@ test.describe('037 - Physical dice', () => {
     await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6');
     await dicecamReads(page, 'throw-5', [5]);
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
+    // The hunt's result stays in view (prompt 54) until tapped away; the second hunt below shows it as a step.
+    await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('two a hunter (5 askaris and the explorer): 12 rations bagged');
+    await page.getByTestId('dice-result-ok-bottom-1').click();
+    await expect(page.getByTestId('dice-result-bottom-1')).toHaveCount(0);
     await endTurn(page, 'top-1');
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
     await page.getByTestId('move-target-c24r11').click();
@@ -410,6 +414,25 @@ test.describe('037 - Physical dice', () => {
     // own (prompt 36): the one resting where it lay is not the throw, the five beside it is.
     await dicecamReads(page, 'throw-6', [1, 5], 1);
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
+
+    await steps.step('hunt-explained', {
+      description: 'The hunt\'s die is in and the turn has passed, but the ask stays at bottom-1\'s edge for a moment with what the dice decided (prompt 54): the lost check that led to the hunt and the meal, every number explained, the five giving two rations a hunter, so five askaris and the explorer bag twelve and the stores make up the rest; the table waits for a tap or two seconds before going on',
+      verifications: [
+        { spec: 'The result panel is titled The hunt and holds two lines, the lost check and the hunt; the hunt\'s line opens with the rate a hunter and who hunted, then the rations bagged, the men fed and the stores drawn on; the dice prompt is gone and the turn is already top-1\'s', check: async () => {
+          await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The hunt');
+          await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '2');
+          await expect(page.getByTestId('result-roll-lost-check-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('two a hunter (5 askaris and the explorer): 12 rations bagged, ');
+          await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('from the stores)');
+          await expect(page.getByTestId('result-meal-total-bottom-1')).toHaveCount(0); // no modifier at this camp: the die stands alone
+          await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveCount(0);
+          expect((await state(page)).turn!.current).toBe('top-1');
+        } }
+      ]
+    });
+    await page.getByTestId('dice-result-ok-bottom-1').click();
+    await expect(page.getByTestId('dice-result-bottom-1')).toHaveCount(0);
 
     await steps.step('hunted-and-passed', {
       description: 'A second die tossed in beside the lost die, under the lost die\'s own name (the engine missed the toss), is the hunt: the one resting where it lay is left out and the five beside it is taken; the meal closes the turn and it passes to top-1; bottom-1\'s rail reads the hunt with what it needed, and keeps the lost mark',

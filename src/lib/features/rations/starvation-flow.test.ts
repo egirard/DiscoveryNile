@@ -32,7 +32,7 @@ describe('starvation, desertion and sickness at the end of the turn (rules §11)
     const s3 = reduce(events);
     expect(s3.diagnostics).toEqual([]);
     const e3 = s3.explorers[0];
-    expect(e3.lastMeal!.outcome).toBe('no game, 14 men ate (5 from the stores), 9 men go hungry; 6 bearers desert; 3 bearers go hungry; 3 starving bearers fall sick');
+    expect(e3.lastMeal!.outcome).toBe('nothing a hunter: no game, 14 men ate (5 from the stores), 9 men go hungry; 6 bearers desert; 3 bearers go hungry; 3 starving bearers fall sick');
     expect(e3.chart).toMatchObject({ bearers: 4, askaris: 3, food: 0 });
     expect(e3.sick).toMatchObject({ bearers: 3, explorer: false });
     const s4 = reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' })]); // the card is read first (prompt 34)
@@ -42,7 +42,7 @@ describe('starvation, desertion and sickness at the end of the turn (rules §11)
     expect(reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' }), event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]).diagnostics.at(-1)?.reason).toBe('the sick cannot all be carried: the expedition halts');
     const s5 = reduce([...events, ...pass('top-1', s3), event('disaster/faced', { seat: 'bottom-1' }), event('turn/ended', { seat: 'bottom-1' })]);
     const e5 = s5.explorers[0];
-    expect(e5.lastMeal!.outcome).toBe('no game, 7 men ate (0 from the stores), 7 men go hungry; 1 bearer, 2 askaris desert; 3 bearers go hungry; the explorer goes hungry; 2 bearers die of sickness, the starving explorer falls sick');
+    expect(e5.lastMeal!.outcome).toBe('nothing a hunter: no game, 7 men ate (0 from the stores), 7 men go hungry; 1 bearer, 2 askaris desert; 3 bearers go hungry; the explorer goes hungry; 2 bearers die of sickness, the starving explorer falls sick');
     expect(e5.chart).toMatchObject({ bearers: 1, askaris: 0, food: 0 });
     expect(e5.sick).toMatchObject({ bearers: 1, explorer: true });
     expect(e5.lastMeal!.rolls.map((r) => r.value)).toEqual([1, 1, 2, 3, 4]);

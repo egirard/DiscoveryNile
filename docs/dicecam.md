@@ -8,7 +8,7 @@ Every place a rule rolls says what for, in the words the table uses (`DiceAsk` i
 
 `dice/rolled { seat, values }` appends the values to the stream's script and applies the held event again from the same state; its earlier throws are read back in order, and it either completes or stops at the next roll. A throw of several dice (the roll for first player, a mountain's height, the natives' reaction) is asked for as one. The dice an event used are dropped from the state once it completes.
 
-The table shows the ask at the rolling seat's edge (`DicePrompt.svelte`): the prompt, the throws already made for the action, what the dicecam sees, and six faces to tap when there is no camera, or when it misreads. A scrim holds the rest of the table still.
+The table shows the ask at the rolling seat's edge (`DicePrompt.svelte`): the prompt, the throws already made for the action, what the dicecam sees, and six faces to tap when there is no camera, or when it misreads. A scrim holds the rest of the table still. When the last die of the hunt, of the natives' nerve or of a fight is in, what it decided stays at the edge for two seconds (`DiceResult.svelte`, prompts 54 and 55), the lines it made with every number explained, and Carry on goes sooner.
 
 A die asked for part way through a step comes with the step's log lines so far (`DiceNeeded.sofar`, prompt 34): the prompt shows them as the log will, the verdict on the same line as the die, and lists a throw on its own only until its line is written.
 

@@ -91,6 +91,9 @@ export interface HuntResult {
   total: number;
   /** What the modified die needed, as the log notes it. */
   needed: string;
+  /** Rations a hunter at the table rate, and the explorer's own share (a zoologist's die counts one more). */
+  perHunter: number;
+  explorerShare: number;
   /** Rations bagged: askaris at the table rate, the explorer at his own (zoologist +1). */
   game: number;
 }
@@ -101,8 +104,22 @@ export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: bool
   const bonus = modifiers.reduce((a, m) => a + m.value, 0);
   const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags a ration a hunter at 2, two at 4, three at 6` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
-  const game = rationsPerHunter(total) * askaris + rationsPerHunter(total + (zoologist ? 1 : 0));
-  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, needed: '2 / 4 / 6 for one, two, three a hunter', game } };
+  const perHunter = rationsPerHunter(total), explorerShare = rationsPerHunter(total + (zoologist ? 1 : 0));
+  const game = perHunter * askaris + explorerShare;
+  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, needed: '2 / 4 / 6 for one, two, three a hunter', perHunter, explorerShare, game } };
+}
+
+const RATE = ['nothing', 'one', 'two', 'three'];
+
+/** The hunt's result in words before the meal (prompt 54): the rate the die gave each hunter and who hunted, so the
+ *  rations bagged are accounted for: "two a hunter (5 askaris and the explorer)", "nothing a hunter", or none on a
+ *  defensive stand (rules §8.1). */
+export function huntRate(h: HuntResult, askaris: number, defensive: boolean): string {
+  if (defensive) return 'no hunting on a defensive stand';
+  if (h.game === 0) return 'nothing a hunter';
+  const who = askaris ? `${askaris} askari${askaris === 1 ? '' : 's'} and the explorer` : 'the explorer alone';
+  const zoology = h.explorerShare !== h.perHunter ? `, ${RATE[h.explorerShare]} with zoology` : '';
+  return `${RATE[h.perHunter]} a hunter (${who}${zoology})`;
 }
 
 export interface MealResult {

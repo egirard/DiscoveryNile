@@ -65,7 +65,7 @@ test.describe('021 - Sickness, starvation and desertion', () => {
       description: 'Fourteen men and five rations: nine go hungry. The three askaris can guard three bearers; the other six desert. The three guarded bearers roll 4, 5 and 6 and all fall sick',
       verifications: [
         { spec: 'The meal note tells the hunger, the desertion and the sickness; the chart shows 4 bearers with 3 sick', check: async () => {
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('no game, 14 men ate (5 from the stores), 9 men go hungry; 6 bearers desert; 3 bearers go hungry; 3 starving bearers fall sick');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing a hunter: no game, 14 men ate (5 from the stores), 9 men go hungry; 6 bearers desert; 3 bearers go hungry; 3 starving bearers fall sick');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '4');
           await expect(page.getByTestId('sick-bottom-1')).toHaveAttribute('data-count', '3');
           const s = await state(page);
@@ -100,7 +100,7 @@ test.describe('021 - Sickness, starvation and desertion', () => {
       description: 'With nothing to eat everyone goes hungry: the two askaris and the well bearer desert, the sick cannot. The three sick roll with +3 for starving: one lingers, two die; the starving explorer rolls a 4 and falls sick',
       verifications: [
         { spec: 'The note reads the desertions and deaths; one sick bearer and the sick explorer remain', check: async () => {
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('no game, 7 men ate (0 from the stores), 7 men go hungry; 1 bearer, 2 askaris desert; 3 bearers go hungry; the explorer goes hungry; 2 bearers die of sickness, the starving explorer falls sick');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing a hunter: no game, 7 men ate (0 from the stores), 7 men go hungry; 1 bearer, 2 askaris desert; 3 bearers go hungry; the explorer goes hungry; 2 bearers die of sickness, the starving explorer falls sick');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '1');
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('sick-bottom-1')).toHaveAttribute('data-explorer', 'true');

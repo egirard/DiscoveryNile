@@ -73,7 +73,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     expect(insulted.diagnostics).toEqual([]);
     expect(insulted.turn!.log.slice(-3).map((l) => l.outcome)).toEqual([
       '0 gifts offered: the chief is insulted (1 × 0 against 1 warriors)',
-      'hostile, but the natives hide from the expedition (6 against 1 warriors)',
+      'hostile; nerve 6 × 5 askaris ÷ policy 5 = 6, more than 1 warrior: the natives hide',
       'the chief’s poison kills the explorer'
     ]);
     expect(insulted.explorers[0].location).toEqual({ kind: 'dead' });

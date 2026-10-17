@@ -51,6 +51,9 @@
   import type { Specialty } from '$lib/game/state';
   import type { SeatId } from '$lib/tabletop/seats';
   import DicePrompt from '$features/dice/DicePrompt.svelte';
+  import type { RollRecord } from '$lib/game/state';
+  import DiceResult from '$features/dice/DiceResult.svelte';
+  import { lingerLines } from '$features/dice/linger';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
@@ -320,6 +323,33 @@
     }
     return out;
   });
+  /** What the dice just decided (prompts 54 and 55): the hunt's meal, the natives' nerve or the fight, kept at the seat's
+   *  edge for a moment after the last die is in, so the result is read before the table goes on. */
+  let lingering = $state<{ seat: Seat; prompt: string; lines: RollRecord[] } | null>(null);
+  /** How long: `?dice-result=<ms>` (`hold` keeps it until tapped), else the build's, else two seconds. */
+  const DICE_RESULT_MS: number | null = (() => {
+    const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dice-result');
+    if (q === 'hold') return null;
+    if (q !== null && q !== '' && Number.isFinite(Number(q))) return Number(q);
+    const env = import.meta.env.VITE_DICE_RESULT_MS;
+    return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : 2000;
+  })();
+  let lastSeen: GameState | null = null;
+  $effect(() => {
+    const now = gameState;
+    const before = lastSeen;
+    lastSeen = now;
+    if (!before) return;
+    const lines = lingerLines(before, now);
+    if (!lines) return;
+    const seat = seats.find((s) => s.id === before.awaiting!.seat);
+    if (seat) lingering = { seat, prompt: before.awaiting!.prompt, lines };
+  });
+  $effect(() => {
+    if (!lingering || DICE_RESULT_MS === null) return;
+    const t = setTimeout(() => (lingering = null), DICE_RESULT_MS);
+    return () => clearTimeout(t);
+  });
   /** How long the decided roll is shown before play begins: `?first-player-pause=<ms>` (`hold` never begins by itself), else the build's, else three seconds. */
   const FIRST_PLAYER_PAUSE_MS: number | null = (() => {
     const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('first-player-pause');
@@ -526,7 +556,7 @@
   // player while the table stands still, and after that, or a card drawn later, at the seat's edge until taken or the
   // seat acts. The panel stands aside while another panel of the seat's is up.
   const unseenAt = (seat: string): CardId[] => explorerAt(gameState, seat)?.unseen ?? [];
-  const busySeats = $derived(new Set([awaitingSeat?.id, outfitting?.seat.id, facingDisaster?.seat.id, facingNatives?.seat.id, dealingSpoils?.seat.id, negotiating?.seat.id, trading?.seat.id, retiring?.seat.id, splitting?.seat.id, reorganising?.seat.id, dieNotice?.seat.id].filter((x): x is SeatId => Boolean(x))));
+  const busySeats = $derived(new Set([awaitingSeat?.id, outfitting?.seat.id, facingDisaster?.seat.id, facingNatives?.seat.id, dealingSpoils?.seat.id, negotiating?.seat.id, trading?.seat.id, retiring?.seat.id, splitting?.seat.id, reorganising?.seat.id, dieNotice?.seat.id, lingering?.seat.id].filter((x): x is SeatId => Boolean(x))));
   const donationPanels = $derived(starting ? [] : seats.filter((seat) => unseenAt(seat.id).length > 0 && !busySeats.has(seat.id)));
   async function takeCards(seat: string) {
     await game?.append('cards/seen', { seat });
@@ -611,6 +641,12 @@
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
       <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
+    </EdgePanel>
+  {:else if lingering}
+    <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read. -->
+    <div class="scrim" data-testid="dice-result-scrim" aria-hidden="true"></div>
+    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised>
+      <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} ondone={() => (lingering = null)} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
     </EdgePanel>
   {/if}
   {#if starting}

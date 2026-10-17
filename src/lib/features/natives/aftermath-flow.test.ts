@@ -72,7 +72,7 @@ describe('defeat: captivity, escape and death', () => {
     const beaten = reduce(ev4);
     expect(beaten.diagnostics).toEqual([]);
     expect(beaten.turn!.log.filter((l) => l.kind === 'combat' || l.kind === 'defeat').map((l) => l.outcome)).toEqual([
-      'hostile: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat',
+      'hostile; nerve 2 × 5 askaris ÷ policy 4 = 2, not more than 2 warriors: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat',
       'the explorer is held prisoner'
     ]);
     const e4 = beaten.explorers[0];

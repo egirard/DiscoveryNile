@@ -209,7 +209,7 @@ test.describe('018 - Defeat, escape and victory', () => {
       verifications: [
         { spec: 'The combat and defeat notes tell the rout and the capture; the token shows the captive mark', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat');
+            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile; nerve 2 × 5 askaris ÷ policy 4 = 2, not more than 2 warriors: the natives attack; the expedition is surprised; 2 askaris fall; the askaris break and run: defeat');
             await expect(page.getByTestId('defeat-note-bottom-1').last()).toHaveText('the explorer is held prisoner');
           });
           await expect(page.getByTestId('captive-bottom-1')).toBeVisible();

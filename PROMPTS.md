@@ -360,10 +360,10 @@ The River 13 label should be limpopo, and there is no other river there.  Is it 
 
 after the hunt roll, let's leave the die roll dialog open and show the result for two seconds before proceeding to the next turn; make sure to fully explain the result (5+2=7 gives 3 food per askari, 21 food plus 3 from stores) or something like that.
 
-`Outcome:` pending
+`Outcome: Done with prompt 55 in one slice (037, 017, G-173): when the last die of an ask is in and the event wrote a hunt or a fight line, the ask stays at the seat's edge for two seconds as a result panel (DiceResult.svelte; VITE_DICE_RESULT_MS, ?dice-result=<ms>|hold, held in the E2E build) with the lines the throw made, dice tappable, and Carry on to go sooner, the scrim holding the table meanwhile; the hunt's line now opens with the rate and who hunted: "two a hunter (5 askaris and the explorer): 12 rations bagged, 21 men ate (9 from the stores)" (the die, its camp modifiers and the total stand beside it as before), "nothing a hunter", "no hunting on a defensive stand". With the table rolling its own dice nothing lingers.`
 
 ## 55. 2026-10-17
 
 for the die roll determining that the tribe is hiding, leave the message up on screen for two seconds along with a full explanation (Nerve roll of 5 times 4 askari is greater than the number of warriors, so they hide) or something like that (I'm not sure what the calculation means, so please state it correctly)
 
-`Outcome:` pending
+`Outcome: The check is d6 × askaris ÷ policy number, rounded down, against the warriors (rules §8.2): more than the warriors and they hide, otherwise they attack. The fight's line now states it in full, "hostile; nerve 6 × 4 askaris ÷ policy 4 = 6, more than 1 warrior: the natives hide" or "…= 1, not more than 12 warriors: the natives attack; …", the ask's hint says the same, and the result stays in view for two seconds after the die as prompt 54 describes (scenario 017 turns physical dice on for its second turn to show it).`
