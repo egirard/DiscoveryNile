@@ -3,10 +3,10 @@ import { BOARD, LAND_HEXES, PORTS, RIVERS, blankHexes, hasRiver, hexAt, isCatara
 import { directionTo, parseHexId } from './hex';
 
 describe('board manifest', () => {
-  it('has a 27 by 42 grid with 626 land hexes', () => {
+  it('has a 27 by 42 grid with 625 land hexes', () => {
     expect(BOARD.cols).toBe(27);
     expect(BOARD.rows).toBe(42);
-    expect(LAND_HEXES).toHaveLength(626);
+    expect(LAND_HEXES).toHaveLength(625); // 626 as transcribed; Zanzibar's old hex c24r15 is sea (prompt 52)
   });
   it('ids match their coordinates and lie inside the grid', () => {
     for (const h of LAND_HEXES) {
@@ -17,8 +17,8 @@ describe('board manifest', () => {
       expect(h.row).toBeLessThan(BOARD.rows);
     }
   });
-  it('has 447 blank hexes to explore (the rules say 452: RQ-5)', () => {
-    expect(blankHexes()).toHaveLength(447);
+  it('has 448 blank hexes to explore (the rules say 452: RQ-5)', () => {
+    expect(blankHexes()).toHaveLength(448); // 447 as transcribed; c18r26 was corrected to blank in the editor
   });
   it('pre-prints only the six basic terrains and the two jungle composites, no lakes', () => {
     const allowed = new Set(['desert', 'mountain', 'swamp', 'jungle', 'veldt', 'jungle-swamp', 'jungle-mountain']);
@@ -29,6 +29,8 @@ describe('board manifest', () => {
     expect(isLand('c20r1')).toBe(true);
     expect(isLand('c0r0')).toBe(false);
     expect(hexAt('c20r1')?.port).toBe('khartoum');
+    expect(hexAt('c23r15')?.port).toBe('zanzibar'); // one hex west of the transcription (prompt 52)
+    expect(isLand('c24r15')).toBe(false);
   });
 });
 
@@ -48,7 +50,7 @@ describe('ports of entry', () => {
 describe('pre-printed rivers', () => {
   it('run through adjacent land hexes from the mouth inland', () => {
     for (const r of RIVERS) {
-      expect(r.path.length).toBeGreaterThanOrEqual(2);
+      expect(r.path.length).toBeGreaterThanOrEqual(1); // a river of one hex is allowed (G-169)
       for (let i = 0; i < r.path.length; i++) {
         expect(isLand(r.path[i]), `${r.id} ${r.path[i]}`).toBe(true);
         if (i > 0) expect(directionTo(r.path[i - 1], r.path[i]), `${r.id} ${r.path[i - 1]}→${r.path[i]}`).not.toBeNull();
@@ -92,9 +94,9 @@ describe('river helpers', () => {
     expect(hasRiver('c10r10')).toBe(false);
   });
   it('knows the printed cataracts and the mouths', () => {
-    expect(isCataract('c7r15')).toBe(true);
     expect(isCataract('c22r5')).toBe(true);
+    expect(isCataract('c7r15')).toBe(false); // the Congo's cataract was taken off in the editor
     expect(isCataract('c20r2')).toBe(false);
-    expect(riverMouths().map((m) => m.river.id).sort()).toEqual(['congo', 'cunene', 'limpopo', 'niger', 'ogooue', 'orange', 'rufiji', 'white-nile', 'zambezi']);
+    expect(riverMouths().map((m) => m.river.id).sort()).toEqual(['congo', 'cunene', 'limpopo', 'niger', 'ogooue', 'orange', 'river-13', 'rufiji', 'white-nile', 'zambezi']);
   });
 });

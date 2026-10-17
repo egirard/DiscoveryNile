@@ -1674,11 +1674,6 @@
   "c23r15": {
    "col": 23,
    "row": 15,
-   "terrain": "veldt"
-  },
-  "c24r15": {
-   "col": 24,
-   "row": 15,
    "terrain": "veldt",
    "port": "zanzibar"
   },
@@ -2609,7 +2604,7 @@
   "c18r26": {
    "col": 18,
    "row": 26,
-   "terrain": "veldt"
+   "terrain": null
   },
   "c19r26": {
    "col": 19,
@@ -2619,7 +2614,7 @@
   "c20r26": {
    "col": 20,
    "row": 26,
-   "terrain": "veldt"
+   "terrain": "jungle"
   },
   "c7r27": {
    "col": 7,
@@ -2874,7 +2869,7 @@
   "c19r30": {
    "col": 19,
    "row": 30,
-   "terrain": "jungle-swamp"
+   "terrain": "veldt"
   },
   "c20r30": {
    "col": 20,
@@ -3157,7 +3152,7 @@
   },
   "zanzibar": {
    "name": "Zanzibar",
-   "hex": "c24r15"
+   "hex": "c23r15"
   },
   "kilwa": {
    "name": "Kilwa",
@@ -3262,7 +3257,8 @@
    "drainage": 10,
    "path": [
     "c4r12",
-    "c5r12"
+    "c5r12",
+    "c6r12"
    ],
    "cataracts": []
   },
@@ -3275,9 +3271,7 @@
     "c7r16",
     "c7r15"
    ],
-   "cataracts": [
-    "c7r15"
-   ]
+   "cataracts": []
   },
   {
    "id": "cunene",
@@ -3285,7 +3279,8 @@
    "drainage": 10,
    "path": [
     "c6r24",
-    "c7r24"
+    "c7r24",
+    "c8r24"
    ],
    "cataracts": []
   },
@@ -3323,8 +3318,7 @@
    "name": "Limpopo",
    "drainage": 13,
    "path": [
-    "c18r31",
-    "c19r30"
+    "c18r31"
    ],
    "cataracts": []
   },
@@ -3347,6 +3341,16 @@
     "c24r20",
     "c23r20",
     "c22r20"
+   ],
+   "cataracts": []
+  },
+  {
+   "id": "river-13",
+   "name": "River 13",
+   "mouth": 3,
+   "path": [
+    "c19r30",
+    "c18r29"
    ],
    "cataracts": []
   }

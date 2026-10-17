@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-const LAND_HEXES = 626;
+const LAND_HEXES = 625; // 626 as transcribed; Zanzibar's old hex is sea (prompt 52)
 const PORTS = ['khartoum', 'mombasa', 'zanzibar', 'kilwa', 'quilimane', 'lourenco-marques', 'durban', 'port-elizabeth', 'capetown', 'benguela', 'luanda', 'calabar', 'brass'];
 
 test.describe('003 - Africa board and six seats', () => {
@@ -21,8 +21,8 @@ test.describe('003 - Africa board and six seats', () => {
           await expect(page.getByTestId('hex-grid')).toBeVisible();
           await expect(page.getByTestId('board').locator('[data-testid^="hex-c"]')).toHaveCount(LAND_HEXES);
         } },
-        { spec: '447 hexes are blank; the map is turned so north points to the left edge', check: async () => {
-          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(447);
+        { spec: '448 hexes are blank; the map is turned so north points to the left edge', check: async () => {
+          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(448);
           await expect(page.getByTestId('hex-grid')).toHaveAttribute('data-rotated', 'true');
         } },
         { spec: 'The thirteen ports of entry are marked', check: async () => {

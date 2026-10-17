@@ -5,12 +5,14 @@ import raw from './board.json?raw';
 import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverSpokes, riverTap, seaward, serialiseBoard, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type RawBoard } from './editor';
 
 const BOARD = board as RawBoard;
+/** The board as transcribed (RQ-5): twelve rivers, the Limpopo running into the delta at c19r30, before the corrections saved from the editor. */
+const DELTA: RawBoard = { ...BOARD, rivers: BOARD.rivers.filter((r) => r.id !== 'river-13').map((r) => (r.id === 'limpopo' ? { ...r, path: ['c18r31', 'c19r30'] } : r)) };
 
 describe('the map editor (prompt 47)', () => {
   it('writes board.json back exactly as the transcription wrote it', () => {
     expect(serialiseBoard(BOARD)).toBe(raw);
     expect(validateBoard(BOARD)).toBeNull();
-    expect(counts(BOARD)).toEqual({ land: 626, blank: 447 }); // RQ-5
+    expect(counts(BOARD)).toEqual({ land: 625, blank: 448 }); // RQ-5, after the corrections saved from the editor and Zanzibar's move (prompt 52)
   });
   it('paints a terrain, a blank or the sea onto a hex and lists the change', () => {
     const jungle = paint(BOARD, 'c8r20', 'jungle') as RawBoard;
@@ -45,7 +47,7 @@ describe('the map editor (prompt 47)', () => {
     expect(keys[i + 1]).toBe('c8r20'); // before the first hex of row 20 as it was
     expect(land.hexes[keys[i - 1]].row).toBe(19);
     expect(validateBoard(land)).toBeNull();
-    expect(counts(land)).toEqual({ land: 627, blank: 448 });
+    expect(counts(land)).toEqual({ land: 626, blank: 449 });
   });
   it('refuses a board the file cannot hold', () => {
     expect(validateBoard(null)).toBe('the board is not an object');
@@ -91,13 +93,13 @@ describe('rivers in the map editor (prompt 48)', () => {
     expect(validateBoard(twice)).toBeNull();
   });
   it('adds, names and removes rivers, a river another joins staying', () => {
-    const { board: added, id } = addRiver(BOARD);
+    const { board: added, id } = addRiver(DELTA);
     expect(id).toBe('river-13');
     expect(river(added, id)).toEqual({ id, name: 'River 13', path: [], cataracts: [] });
     expect(validateBoard(added)).toBe('the River 13 has no hexes');
     const placed = riverTap(added, id, 'c12r12') as RawBoard;
     expect(river(placed, id).path).toEqual(['c12r12']);
-    expect(changesBetween(BOARD, placed)).toEqual([{ kind: 'river', id, name: 'River 13', summary: 'added, 1 hex' }]);
+    expect(changesBetween(DELTA, placed)).toEqual([{ kind: 'river', id, name: 'River 13', summary: 'added, 1 hex' }]);
     const named = updateRiver(placed, id, { name: 'Lualaba', drainage: 12, continuesOffMap: true }) as RawBoard;
     expect(river(named, id)).toEqual({ id, name: 'Lualaba', drainage: 12, continuesOffMap: true, path: ['c12r12'], cataracts: [] });
     expect(validateBoard(named)).toBeNull();
@@ -156,16 +158,16 @@ describe('the single hex editor (prompt 49)', () => {
     expect(toggleRiverSpoke(BOARD, 'c2r7', directionTo('c2r7', 'c1r7')!)).toBe('c2r7 is in the middle of the Niger: a river reaches the sea from its mouth, the first hex of its course');
   });
   it('starts a tributary from a hex in the middle of a course, and a new river from a hex without one', () => {
-    const tributary = toggleRiverSpoke(BOARD, 'c2r7', 2) as RawBoard; // east of the Niger's second hex: c3r7, jungle
+    const tributary = toggleRiverSpoke(DELTA, 'c2r7', 2) as RawBoard; // east of the Niger's second hex: c3r7, jungle
     const t = tributary.rivers.at(-1)!;
     expect(t).toEqual({ id: 'river-13', name: 'River 13', joins: 'niger', path: ['c2r7', 'c3r7'], cataracts: [] });
     expect(validateBoard(tributary)).toBeNull();
     expect(spokes(tributary, 'c2r7')).toEqual(['2:river-13', '4:niger', '6:niger']);
-    const fresh = toggleRiverSpoke(BOARD, 'c12r12', 2) as RawBoard;
+    const fresh = toggleRiverSpoke(DELTA, 'c12r12', 2) as RawBoard;
     expect(fresh.rivers.at(-1)).toEqual({ id: 'river-13', name: 'River 13', path: ['c12r12', 'c13r12'], cataracts: [] });
-    expect(changesBetween(BOARD, fresh)).toEqual([{ kind: 'river', id: 'river-13', name: 'River 13', summary: 'added, 2 hexes' }]);
+    expect(changesBetween(DELTA, fresh)).toEqual([{ kind: 'river', id: 'river-13', name: 'River 13', summary: 'added, 2 hexes' }]);
     // Two rivers that do not meet: the Niger's junction hex toward the Ogooue? Both carry rivers already.
-    const twoRivers = toggleRiverSpoke(toggleRiverSpoke(BOARD, 'c12r12', 2) as RawBoard, 'c12r14', 6) as RawBoard; // a second new river below
+    const twoRivers = toggleRiverSpoke(toggleRiverSpoke(DELTA, 'c12r12', 2) as RawBoard, 'c12r14', 6) as RawBoard; // a second new river below
     expect(twoRivers.rivers).toHaveLength(14);
   });
 });
@@ -177,15 +179,15 @@ describe('the mouth of a river (prompt 51)', () => {
     const straight = directionTo('c2r7', 'c2r8')!;
     expect(seaward(BOARD, river(BOARD, 'niger'))).toBe(straight);
     expect(riverSpokes(BOARD, 'c2r8')).toEqual([{ direction: directionTo('c2r8', 'c2r7'), river: river(BOARD, 'niger') }, { direction: straight, river: river(BOARD, 'niger'), sea: true }].sort((a, b) => a.direction! - b.direction!));
-    expect(seaward(BOARD, river(BOARD, 'limpopo'))).toBeNull();
+    expect(seaward(DELTA, river(DELTA, 'limpopo'))).toBeNull();
     expect(seaward(BOARD, river(BOARD, 'benue'))).toBeNull(); // a tributary
   });
   it('turns a river\'s mouth with a tap toward the sea, and lets it go straight on again', () => {
     // Lourenço Marques (c18r31) is the Limpopo's mouth; the sea lies to its east and south-east.
-    const east = toggleRiverSpoke(BOARD, 'c18r31', 2) as RawBoard;
+    const east = toggleRiverSpoke(DELTA, 'c18r31', 2) as RawBoard;
     expect(river(east, 'limpopo')).toEqual({ id: 'limpopo', name: 'Limpopo', drainage: 13, mouth: 2, path: ['c18r31', 'c19r30'], cataracts: [] });
     expect(Object.keys(river(east, 'limpopo'))).toEqual(['id', 'name', 'drainage', 'mouth', 'path', 'cataracts']);
-    expect(changesBetween(BOARD, east)).toEqual([{ kind: 'river', id: 'limpopo', name: 'Limpopo', summary: 'mouth to the east' }]);
+    expect(changesBetween(DELTA, east)).toEqual([{ kind: 'river', id: 'limpopo', name: 'Limpopo', summary: 'mouth to the east' }]);
     expect(riverSpokes(east, 'c18r31').map((s) => `${s.direction}${s.sea ? '~' : ''}`)).toEqual(['2~', String(directionTo('c18r31', 'c19r30'))].sort());
     expect(validateBoard(east)).toBeNull();
     // The same spoke again: straight on, but the sea is not there, so the mouth stays and the reason says so.
@@ -201,13 +203,13 @@ describe('the mouth of a river (prompt 51)', () => {
   });
   it('makes the inland end the mouth, turning the course round, and starts a river from the coast', () => {
     // c19r30, the Limpopo's inland end in the delta, has the sea to its south-east (3): the river now flows out there.
-    const turned = toggleRiverSpoke(BOARD, 'c19r30', 3) as RawBoard;
+    const turned = toggleRiverSpoke(DELTA, 'c19r30', 3) as RawBoard;
     expect(river(turned, 'limpopo').path).toEqual(['c19r30', 'c18r31']);
     expect(river(turned, 'limpopo').mouth).toBe(3);
-    expect(changesBetween(BOARD, turned)[0]).toMatchObject({ kind: 'river', summary: 'mouth to the south-east; path reordered' });
+    expect(changesBetween(DELTA, turned)[0]).toMatchObject({ kind: 'river', summary: 'mouth to the south-east; path reordered' });
     expect(validateBoard(turned)).toBeNull();
     // A coastal hex without a river: a tap toward the sea starts one, its mouth here.
-    const fresh = toggleRiverSpoke(BOARD, 'c23r19', 2) as RawBoard;
+    const fresh = toggleRiverSpoke(DELTA, 'c23r19', 2) as RawBoard;
     expect(fresh.rivers.at(-1)).toEqual({ id: 'river-13', name: 'River 13', mouth: 2, path: ['c23r19'], cataracts: [] });
     expect(riverSpokes(fresh, 'c23r19')).toEqual([{ direction: 2, river: fresh.rivers.at(-1), sea: true }]);
     expect(validateBoard(fresh)).toBeNull();

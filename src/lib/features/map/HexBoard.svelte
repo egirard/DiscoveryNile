@@ -320,7 +320,9 @@
     {/each}
     {#each riverMouths() as { river } (river.id)}
       {@const p = mouthLabel(river)}
-      <text data-testid="drainage-{river.id}" class="drainage" aria-label="{river.name} drains at least {river.drainage} hexes" transform="translate({p.x} {p.y}) {upright}" font-size={radius * 0.8}>{river.drainage}</text>
+      {#if river.drainage !== undefined}
+        <text data-testid="drainage-{river.id}" class="drainage" aria-label="{river.name} drains at least {river.drainage} hexes" transform="translate({p.x} {p.y}) {upright}" font-size={radius * 0.8}>{river.drainage}</text>
+      {/if}
       <!-- The river's name beside its mouth, upright for a reader at the south edge. -->
       <text data-testid="label-river-{river.id}" class="river-name" aria-label="Mouth of the {river.name}" transform="translate({p.x} {p.y}) {upright}" x={nameSide(river).x} text-anchor={nameSide(river).anchor} font-size={radius * 0.55}>{river.name}</text>
     {/each}
