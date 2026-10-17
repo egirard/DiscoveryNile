@@ -17,8 +17,8 @@ describe('board manifest', () => {
       expect(h.row).toBeLessThan(BOARD.rows);
     }
   });
-  it('has 448 blank hexes to explore (the rules say 452: RQ-5)', () => {
-    expect(blankHexes()).toHaveLength(448); // 447 as transcribed; c18r26 was corrected to blank in the editor
+  it('has 450 blank hexes to explore (the rules say 452: RQ-5)', () => {
+    expect(blankHexes()).toHaveLength(450); // 447 as transcribed; c18r26, c17r29 and c17r30 were corrected to blank in the editor (prompts 52 and 53)
   });
   it('pre-prints only the six basic terrains and the two jungle composites, no lakes', () => {
     const allowed = new Set(['desert', 'mountain', 'swamp', 'jungle', 'veldt', 'jungle-swamp', 'jungle-mountain']);
@@ -97,6 +97,6 @@ describe('river helpers', () => {
     expect(isCataract('c22r5')).toBe(true);
     expect(isCataract('c7r15')).toBe(false); // the Congo's cataract was taken off in the editor
     expect(isCataract('c20r2')).toBe(false);
-    expect(riverMouths().map((m) => m.river.id).sort()).toEqual(['congo', 'cunene', 'limpopo', 'niger', 'ogooue', 'orange', 'river-13', 'rufiji', 'white-nile', 'zambezi']);
+    expect(riverMouths().map((m) => m.river.id).sort()).toEqual(['congo', 'cunene', 'limpopo', 'niger', 'ogooue', 'orange', 'rufiji', 'white-nile', 'zambezi']);
   });
 });

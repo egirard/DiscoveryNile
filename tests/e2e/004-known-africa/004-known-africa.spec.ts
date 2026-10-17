@@ -1,14 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 
-const PRINTED = 625 - 448; // the transcription's 626 and 447, corrected in the map editor (RQ-5, prompt 52)
+const PRINTED = 625 - 450; // the transcription's 626 and 447, corrected in the map editor (RQ-5, prompts 52 and 53)
 
 test.describe('004 - Known Africa', () => {
   test('the pre-printed periphery of 1820 is drawn: terrain, rivers with their drainage numbers, and cataracts', async ({ page }, testInfo) => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Known Africa',
-      'The periphery of the board known in 1820 is drawn from the manifest: desert across the north and down the south-west coast, the Abyssinian mountains, the Sudd, the Cape, the coastal veldt and jungle, the pre-printed rivers with the drainage number at each mouth, and the printed cataract on the Blue Nile. The interior stays blank. The board carries the corrections saved from the map editor (prompt 52): Zanzibar one hex west of where the photograph was read, its old hex sea. The marks are the board\'s own (prompt 52): veldt a V with a stem up from its vertex, veldt and swamp a little smaller than the mountain, a cataract one hatch across its river, and each port a brown square set half-way toward the sea so the terrain symbol in the middle of its hex stays readable, its name in the water beside it.'
+      'The periphery of the board known in 1820 is drawn from the manifest: desert across the north and down the south-west coast, the Abyssinian mountains, the Sudd, the Cape, the coastal veldt and jungle, the pre-printed rivers with the drainage number at each mouth, and the printed cataract on the Blue Nile. The interior stays blank. The board carries the corrections saved from the map editor (prompt 52): Zanzibar one hex west of where the photograph was read, its old hex sea, and the Limpopo redrawn to reach the sea south-east of c19r30, a hex north-east of Lourenço Marques (prompt 53). The marks are the board\'s own (prompt 52): veldt a V with a stem up from its vertex, veldt and swamp a little smaller than the mountain, a cataract one hatch across its river, and each port a brown square set half-way toward the sea so the terrain symbol in the middle of its hex stays readable, its name in the water beside it.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
@@ -16,9 +16,9 @@ test.describe('004 - Known Africa', () => {
     await steps.step('known-africa', {
       description: 'The pre-printed terrain, rivers, drainage numbers and cataracts are shown; the interior is blank',
       verifications: [
-        { spec: 'Every pre-printed hex (177) carries a terrain class and the 448 blank hexes do not', check: async () => {
+        { spec: 'Every pre-printed hex (175) carries a terrain class and the 450 blank hexes do not', check: async () => {
           await expect(page.locator('[data-testid^="hex-c"]:not([data-terrain="blank"])')).toHaveCount(PRINTED);
-          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(448);
+          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(450);
         } },
         { spec: 'Desert hexes are filled brown and carry no symbol; every other printed terrain draws its symbol', check: async () => {
           await expect(page.locator('[data-testid^="hex-c"][data-terrain="desert"]')).toHaveCount(49);
@@ -34,12 +34,11 @@ test.describe('004 - Known Africa', () => {
           await expect(page.getByTestId('terrain-c10r36')).toHaveAttribute('data-terrain', 'veldt');
           await expect(page.getByTestId('terrain-c3r8').locator('use')).toHaveCount(2);
         } },
-        { spec: 'The twelve pre-printed rivers are drawn, including both Niles meeting at Khartoum, and the thirteenth drawn in the editor', check: async () => {
-          await expect(page.locator('[data-testid^="river-"]')).toHaveCount(13);
-          for (const id of ['white-nile', 'blue-nile', 'niger', 'benue', 'ogooue', 'congo', 'cunene', 'orange', 'vaal', 'limpopo', 'zambezi', 'rufiji', 'river-13']) {
+        { spec: 'The twelve pre-printed rivers are drawn, including both Niles meeting at Khartoum; the Limpopo as redrawn in the editor reaches the sea from c19r30', check: async () => {
+          await expect(page.locator('[data-testid^="river-"]')).toHaveCount(12);
+          for (const id of ['white-nile', 'blue-nile', 'niger', 'benue', 'ogooue', 'congo', 'cunene', 'orange', 'vaal', 'limpopo', 'zambezi', 'rufiji']) {
             await expect(page.getByTestId(`river-${id}`)).toBeAttached();
-            // The Limpopo was cut back to its port hex in the editor: one point, no reach, until its course is drawn again.
-            expect((await page.getByTestId(`river-${id}`).getAttribute('points'))!.split(' ').length).toBeGreaterThanOrEqual(id === 'limpopo' ? 1 : 2);
+            expect((await page.getByTestId(`river-${id}`).getAttribute('points'))!.split(' ').length).toBeGreaterThanOrEqual(2);
           }
         } },
         { spec: 'Each of the nine mouths shows its drainage number', check: async () => {

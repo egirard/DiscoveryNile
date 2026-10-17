@@ -21,7 +21,7 @@ describe('the board as drawn (prompt 52)', () => {
     const niger = BOARD.rivers.find((r) => r.id === 'niger')!;
     expect(riverLine(BOARD, niger, centre, 10)).toHaveLength(niger.path.length + 2); // the reach into the sea, and on off the map
     const limpopo = BOARD.rivers.find((r) => r.id === 'limpopo')!;
-    expect(riverLine(BOARD, limpopo, centre, 10)).toHaveLength(1); // cut back to its port, no way out yet
+    expect(riverLine(BOARD, limpopo, centre, 10)).toHaveLength(limpopo.path.length + 1); // redrawn in the editor (prompt 53): two hexes and the reach out south-east
     // A straight course west to east: the hatch stands north to south.
     expect(hatchAcross({ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 })).toEqual({ x: -0, y: 1 });
     expect(hatchAcross(null, { x: 1, y: 0 }, { x: 2, y: 0 })).toEqual({ x: -0, y: 1 });

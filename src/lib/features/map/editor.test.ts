@@ -5,14 +5,14 @@ import raw from './board.json?raw';
 import { addRiver, brushAt, changesBetween, counts, normaliseRiver, paint, removeRiver, riverCandidates, riverSpokes, riverTap, seaward, serialiseBoard, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type RawBoard } from './editor';
 
 const BOARD = board as RawBoard;
-/** The board as transcribed (RQ-5): twelve rivers, the Limpopo running into the delta at c19r30, before the corrections saved from the editor. */
-const DELTA: RawBoard = { ...BOARD, rivers: BOARD.rivers.filter((r) => r.id !== 'river-13').map((r) => (r.id === 'limpopo' ? { ...r, path: ['c18r31', 'c19r30'] } : r)) };
+/** The board as transcribed (RQ-5): the Limpopo running from Lourenço Marques into the delta at c19r30 with no mouth of its own, before it was redrawn in the editor (prompts 52 and 53). */
+const DELTA: RawBoard = { ...BOARD, rivers: BOARD.rivers.map((r) => (r.id === 'limpopo' ? { id: r.id, name: r.name, drainage: r.drainage, path: ['c18r31', 'c19r30'], cataracts: [] } : r)) };
 
 describe('the map editor (prompt 47)', () => {
   it('writes board.json back exactly as the transcription wrote it', () => {
     expect(serialiseBoard(BOARD)).toBe(raw);
     expect(validateBoard(BOARD)).toBeNull();
-    expect(counts(BOARD)).toEqual({ land: 625, blank: 448 }); // RQ-5, after the corrections saved from the editor and Zanzibar's move (prompt 52)
+    expect(counts(BOARD)).toEqual({ land: 625, blank: 450 }); // RQ-5, after the corrections saved from the editor and Zanzibar's move (prompts 52 and 53)
   });
   it('paints a terrain, a blank or the sea onto a hex and lists the change', () => {
     const jungle = paint(BOARD, 'c8r20', 'jungle') as RawBoard;
@@ -47,7 +47,7 @@ describe('the map editor (prompt 47)', () => {
     expect(keys[i + 1]).toBe('c8r20'); // before the first hex of row 20 as it was
     expect(land.hexes[keys[i - 1]].row).toBe(19);
     expect(validateBoard(land)).toBeNull();
-    expect(counts(land)).toEqual({ land: 626, blank: 449 });
+    expect(counts(land)).toEqual({ land: 626, blank: 451 });
   });
   it('refuses a board the file cannot hold', () => {
     expect(validateBoard(null)).toBe('the board is not an object');

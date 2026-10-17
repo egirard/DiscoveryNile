@@ -21,8 +21,8 @@ test.describe('003 - Africa board and six seats', () => {
           await expect(page.getByTestId('hex-grid')).toBeVisible();
           await expect(page.getByTestId('board').locator('[data-testid^="hex-c"]')).toHaveCount(LAND_HEXES);
         } },
-        { spec: '448 hexes are blank; the map is turned so north points to the left edge', check: async () => {
-          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(448);
+        { spec: '450 hexes are blank; the map is turned so north points to the left edge', check: async () => {
+          await expect(page.locator('[data-testid^="hex-c"][data-terrain="blank"]')).toHaveCount(450);
           await expect(page.getByTestId('hex-grid')).toHaveAttribute('data-rotated', 'true');
         } },
         { spec: 'The thirteen ports of entry are marked', check: async () => {
