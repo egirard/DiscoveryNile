@@ -354,4 +354,16 @@ the veldt icon should be a V with a vertical line through it from the vertex; ve
 
 The River 13 label should be limpopo, and there is no other river there.  Is it possible to have labels extending outside of the hex edge, maybe by introducing an otherwise unmarked background around the edge of the map?  That would allow Capetown, Brass, Mombasa and others to be properly labelled.
 
-`Outcome: (1) Data (004, 040): the river drawn in the editor from c19r30 is the Limpopo, drainage 13, mouth to the south-east, the one-hex stub at Lourenço Marques gone; the board also carries the save made from the editor that morning (c17r29 and c17r30 mountain to blank), so the RQ-5 counts are 625 land and 450 blank. (2) Margin and names: pending.`
+`Outcome: (1) Data (004, 040): the river drawn in the editor from c19r30 is the Limpopo, drainage 13, mouth to the south-east, the one-hex stub at Lourenço Marques gone; the board also carries the save made from the editor that morning (c17r29 and c17r30 mountain to blank), so the RQ-5 counts are 625 land and 450 blank. (2) Margin and names (033, 040, G-172): the window keeps an unmarked margin of 1.75 radii around the land in both the table and the editor (the table's hexes about 8% smaller for it), and a port's name is placed on the map, by a direction and a distance from its hex (PORT_LABELS in art.ts), turned with the board and anchored to run away from the port, so Capetown's, Brass's, Mombasa's, Port Elizabeth's and the rest lie in the sea in both views (Luanda's moved north-west, clear of Benguela's; Khartoum's east; Calabar's south-west, closer); both svgs let a long name run past the margin; every baseline regenerated and the four board scenarios inspected.`
+
+## 54. 2026-10-17
+
+after the hunt roll, let's leave the die roll dialog open and show the result for two seconds before proceeding to the next turn; make sure to fully explain the result (5+2=7 gives 3 food per askari, 21 food plus 3 from stores) or something like that.
+
+`Outcome:` pending
+
+## 55. 2026-10-17
+
+for the die roll determining that the tribe is hiding, leave the message up on screen for two seconds along with a full explanation (Nerve roll of 5 times 4 askari is greater than the number of warriors, so they hide) or something like that (I'm not sure what the calculation means, so please state it correctly)
+
+`Outcome:` pending

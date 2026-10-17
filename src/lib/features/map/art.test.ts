@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import board from './board.json';
 import type { RawBoard } from './editor';
-import { cataractHatch, centreIn, extentsOf, hatchAcross, mouthLabelAt, portAnchor, riverLine } from './art';
+import { MARGIN, cataractHatch, centreIn, extentsOf, hatchAcross, mouthLabelAt, portAnchor, portLabel, riverLine } from './art';
 import { directionTo, neighbour, toPixel, type HexId } from './hex';
 
 const BOARD = board as RawBoard;
@@ -9,13 +9,41 @@ const centre = (id: string) => toPixel(BOARD.hexes[id] ?? parse(id), 10);
 const parse = (id: string) => ({ col: Number(/c(\d+)/.exec(id)![1]), row: Number(/r(\d+)/.exec(id)![1]) });
 
 describe('the board as drawn (prompt 52)', () => {
-  it('shows the window of the grid the land fills, without the sea around it', () => {
+  it('shows the window of the grid the land fills, with an unmarked margin around it and no sea beyond', () => {
     const e = extentsOf(Object.values(BOARD.hexes));
     expect([e.minCol, e.maxCol, e.minRow, e.maxRow]).toEqual([2, 25, 1, 36]);
-    // The hex at the top left of the window sits at its own half-width and a radius in.
+    // The hex at the top left of the window sits a radius in from the land's edge, and the margin beyond that (prompt 53).
     const c = centreIn(e, 10, BOARD.hexes['c2r1']);
-    expect(c.y).toBeCloseTo(10);
-    expect(c.x).toBeGreaterThan(0);
+    expect(c.y).toBeCloseTo(10 * (1 + MARGIN));
+    expect(c.x).toBeGreaterThan(10 * MARGIN);
+    const bare = extentsOf(Object.values(BOARD.hexes), 0);
+    expect(e.w).toBeCloseTo(bare.w + 2 * MARGIN);
+    expect(e.h).toBeCloseTo(bare.h + 2 * MARGIN);
+    expect(bare.h).toBeCloseTo(1.5 * 35 + 2); // 36 rows of pointy-top hexes
+  });
+  it('places a port\'s name on the map, so it lies in the same sea whichever way the board is turned (prompt 53)', () => {
+    // Capetown's name lies west of its hex: left of it north-up, below it when north is to the left.
+    const up = portLabel(BOARD, 'capetown', 'c10r36', false), turned = portLabel(BOARD, 'capetown', 'c10r36', true);
+    expect(up.x).toBeLessThan(-1);
+    expect(Math.abs(up.y)).toBeLessThan(1e-9);
+    expect(up.anchor).toBe('end');
+    expect(Math.abs(turned.x)).toBeLessThan(1e-9);
+    expect(turned.y).toBeGreaterThan(1);
+    expect(turned.anchor).toBe('middle');
+    // Mombasa's lies off its mark, toward the sea east-south-east: to the right north-up, above and to the right turned.
+    const m = portLabel(BOARD, 'mombasa', 'c25r12', false), mt = portLabel(BOARD, 'mombasa', 'c25r12', true);
+    expect(m.dir).toBe(2.5);
+    expect(m.anchor).toBe('start');
+    expect(m.y).toBeGreaterThan(0);
+    expect(mt.anchor).toBe('start');
+    expect(mt.y).toBeLessThan(-0.9);
+    // Khartoum's name is east of it; Port Elizabeth's due south, read centred north-up and to the right when turned.
+    expect(portLabel(BOARD, 'khartoum', 'c20r1', true)).toMatchObject({ anchor: 'middle', dir: 2 });
+    expect(portLabel(BOARD, 'port-elizabeth', 'c14r36', false).anchor).toBe('middle');
+    expect(portLabel(BOARD, 'port-elizabeth', 'c14r36', true)).toMatchObject({ anchor: 'start', y: expect.closeTo(0, 6) });
+    // A port not listed takes its mark's side.
+    const unlisted = portLabel(BOARD, 'nowhere', 'c7r21', false);
+    expect(unlisted.dir).toBe(portAnchor(BOARD, 'c7r21').at);
   });
   it('reaches into the sea at a mouth and draws a hatch across the course at a cataract', () => {
     const niger = BOARD.rivers.find((r) => r.id === 'niger')!;

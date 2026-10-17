@@ -9,14 +9,14 @@ test.describe('033 - Map legibility', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Map legibility',
-      'The names on the map are for the players at the table, so they are placed where a reader at the south edge finds them: a port\'s name sits in the sea beside its port, level with it where the coast allows, above the east coast (the sea is up when north is to the left), to the south of Khartoum and of Port Elizabeth and at Calabar\'s south-west corner. Luanda stands on the coast. Every river that reaches the sea carries its name at its mouth beside its drainage number.'
+      'The names on the map are for the players at the table, so they are placed where a reader at the south edge finds them: a port\'s name is placed on the map, in the sea beside its port on the side its mark takes (prompt 53), and read horizontally from there whichever way the board is turned; at the north and south edges it runs along the edge, in an unmarked margin around the land that the board keeps for the names at the coast, so Capetown\'s, Brass\'s and Mombasa\'s lie whole in the sea. Khartoum, inland, has its name to the east (the Nile\'s name has the north); Port Elizabeth\'s lies south of it, Calabar\'s south-west, down between the Niger\'s number and its hex. Luanda stands on the coast. Every river that reaches the sea carries its name at its mouth beside its drainage number.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
     await expect(page.getByTestId('hex-grid')).toBeVisible();
 
     await steps.step('ports-named-in-the-sea', {
-      description: 'The empty table: every port named beside it in the sea, Luanda on the coast, and the nine rivers that reach the sea named at their mouths',
+      description: 'The empty table: every port named beside it in the sea, the names at the coast in the margin around the land, Luanda on the coast, and the nine rivers that reach the sea named at their mouths',
       verifications: [
         { spec: 'Luanda is the port of c7r19, a coastal hex (c6r19 is sea), and c8r19 is plain veldt', check: async () => {
           await expect(page.getByTestId('hex-c7r19')).toHaveAttribute('data-port', 'luanda');
@@ -28,16 +28,44 @@ test.describe('033 - Map legibility', () => {
           const boxes = await Promise.all(PORTS.map((id) => page.getByTestId(`label-port-${id}`).boundingBox()));
           for (const box of boxes) expect(box!.width).toBeGreaterThan(box!.height); // a horizontal line of text, not rotated
         } },
-        { spec: 'Khartoum\'s and Port Elizabeth\'s names lie to the south (screen right) of their ports, Calabar\'s below and to the right', check: async () => {
-          const HEX: Record<string, string> = { khartoum: 'c20r1', 'port-elizabeth': 'c14r36', calabar: 'c4r8' };
+        { spec: 'Each name is placed on the map (prompt 53): Khartoum\'s east of it (above, with north to the left), Port Elizabeth\'s south (to the right), Calabar\'s south-west (below and to the right), Capetown\'s west (centred below it), Mombasa\'s east-south-east (above and to the right)', check: async () => {
+          const HEX: Record<string, string> = { khartoum: 'c20r1', 'port-elizabeth': 'c14r36', calabar: 'c4r8', capetown: 'c10r36', mombasa: 'c25r12' };
           const at = async (id: string) => (await page.getByTestId(`hex-${HEX[id]}`).boundingBox())!;
           const name = async (id: string) => (await page.getByTestId(`label-port-${id}`).boundingBox())!;
-          const k = await at('khartoum');
-          expect((await name('khartoum')).x).toBeGreaterThan(k.x + k.width / 2);
-          expect((await name('port-elizabeth')).x).toBeGreaterThan((await at('port-elizabeth')).x + (await at('port-elizabeth')).width / 2);
+          const mid = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+          const k = await at('khartoum'), kn = await name('khartoum');
+          expect(mid(kn).y).toBeLessThan(k.y);
+          expect(Math.abs(mid(kn).x - mid(k).x)).toBeLessThan(k.width / 4);
+          await expect(page.getByTestId('label-port-khartoum')).toHaveAttribute('data-dir', '2');
+          const pe = await at('port-elizabeth'), pen = await name('port-elizabeth');
+          expect(pen.x).toBeGreaterThan(mid(pe).x);
+          expect(Math.abs(mid(pen).y - mid(pe).y)).toBeLessThan(pe.height / 4);
           const c = await at('calabar'), n = await name('calabar');
-          expect(n.x).toBeGreaterThan(c.x + c.width / 2);
-          expect(n.y).toBeGreaterThan(c.y + c.height / 2);
+          expect(n.x).toBeGreaterThan(mid(c).x);
+          expect(mid(n).y).toBeGreaterThan(mid(c).y);
+          const ct = await at('capetown'), ctn = await name('capetown');
+          expect(ctn.y).toBeGreaterThan(mid(ct).y + ct.height / 4);
+          expect(Math.abs(mid(ctn).x - mid(ct).x)).toBeLessThan(ct.width / 4);
+          const m = await at('mombasa'), mn = await name('mombasa');
+          expect(mid(mn).y).toBeLessThan(mid(m).y - m.height / 4);
+          expect(mn.x).toBeGreaterThan(mid(m).x);
+        } },
+        { spec: 'The land is inset from the board\'s edge by an unmarked margin of about a hex, and the names at the coast lie whole within the board: Capetown\'s, Brass\'s, Mombasa\'s, Khartoum\'s and the White Nile\'s number', check: async () => {
+          const grid = (await page.getByTestId('hex-grid').boundingBox())!;
+          const north = (await page.getByTestId('hex-c20r1').boundingBox())!; // row 1 lies along the left edge
+          const third = (await page.getByTestId('hex-c20r3').boundingBox())!;
+          const r = (third.x - north.x) / 3; // rows are a radius and a half apart
+          expect(north.x - grid.x).toBeGreaterThan(1.5 * r);
+          expect(north.x - grid.x).toBeLessThan(2 * r);
+          const west = (await page.getByTestId('hex-c2r8').boundingBox())!; // column 2 lies along the bottom edge
+          expect(grid.y + grid.height - (west.y + west.height)).toBeGreaterThan(1.5 * r);
+          for (const id of ['label-port-capetown', 'label-port-brass', 'label-port-mombasa', 'label-port-khartoum', 'drainage-white-nile']) {
+            const b = (await page.getByTestId(id).boundingBox())!;
+            expect(b.x, id).toBeGreaterThanOrEqual(grid.x - 1);
+            expect(b.y, id).toBeGreaterThanOrEqual(grid.y - 1);
+            expect(b.x + b.width, id).toBeLessThanOrEqual(grid.x + grid.width + 1);
+            expect(b.y + b.height, id).toBeLessThanOrEqual(grid.y + grid.height + 1);
+          }
         } },
         { spec: 'Each river with a mouth is named there, beside its drainage number', check: async () => {
           for (const id of MOUTHS) {

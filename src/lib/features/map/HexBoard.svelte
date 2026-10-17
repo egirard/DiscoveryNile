@@ -52,7 +52,7 @@
   let { width, height, touch = 44, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
   const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
-  /** The window shown: the land's bounding box, no sea around it. */
+  /** The window shown: the land's bounding box with an unmarked margin around it for the names at the coast (prompt 53). */
   const extents = extentsOf(LAND_HEXES);
 
   const rotated = $derived(width > height);
@@ -82,8 +82,8 @@
     return `${c.x.toFixed(1)},${c.y.toFixed(1)} ${(c.x + ux * k).toFixed(1)},${(c.y + uy * k).toFixed(1)}`;
   }
 
-  /** The fare of a port chooser sits on the side of the port its name does not take. */
-  const fareDy = (id: PortId) => (portLabel(id).dy < 0 ? 1.1 : -0.95);
+  /** The fare of a port chooser sits on the side of the port its name does not take: below a name above, else above. */
+  const fareDy = (id: PortId) => (portLabel(rawBoard as RawBoard, id, BOARD.ports[id].hex, rotated).y < -0.3 ? 1.1 : -0.95);
   /** The chooser's state on a port's group, for the scenarios and the styles. */
   const portAttrs = (id: string) => {
     const choice = portChoices?.[id as PortId];

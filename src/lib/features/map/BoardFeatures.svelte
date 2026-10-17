@@ -4,7 +4,8 @@
   // The features drawn over the hexes, shared by the table's board and the map editor (PROMPTS.md, prompt 52) so both
   // label the map alike: the rivers with their reach into the sea, a single hatch across the river at each cataract,
   // the drainage number and the name at each mouth, and the ports, each a brown square set half-way toward the sea
-  // (clear of the terrain symbol in the middle of the hex) with its name in the water beside it. Nothing here takes
+  // (clear of the terrain symbol in the middle of the hex) with its name in the water beside it, placed on the map
+  // (art.ts PORT_LABELS) so it lies in the same sea whichever way the board is turned (prompt 53). Nothing here takes
   // a tap; the board's own controls lie under or over it. The table adds its port chooser through the snippets.
   import type { Snippet } from 'svelte';
   import { HATCH, MARK, cataractHatch, mouthLabelAt, nameSide, pointsOf, portAnchor, portLabel, riverLine, type Pt } from './art';
@@ -65,12 +66,12 @@
 {#each Object.entries(board.ports) as [id, p] (id)}
   {@const c = centre(p.hex)}
   {@const a = portAnchor(board, p.hex as HexId)}
-  {@const l = portLabel(id)}
+  {@const l = portLabel(board, id, p.hex as HexId, rotated)}
   <g data-testid="port-{id}" class="port" aria-label="Port of entry: {p.name}" {...portAttrs?.(id)} transform="translate({c.x} {c.y})">
     {@render under?.(id)}
     <rect class="mark" data-testid="mark-port-{id}" data-at={a.at} x={(a.dx - MARK) * radius} y={(a.dy - MARK) * radius} width={2 * MARK * radius} height={2 * MARK * radius} />
     <g transform={upright}>
-      <text class="label" data-testid="label-port-{id}" x={radius * l.dx} y={radius * l.dy} text-anchor={l.anchor} dominant-baseline="central" font-size={radius * 0.62}>{p.name}</text>
+      <text class="label" data-testid="label-port-{id}" data-dir={l.dir} x={radius * l.x} y={radius * l.y} text-anchor={l.anchor} dominant-baseline="central" font-size={radius * 0.62}>{p.name}</text>
       {@render over?.(id)}
     </g>
   </g>

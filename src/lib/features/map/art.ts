@@ -1,6 +1,6 @@
 // How the board is drawn, shared by the table's board (HexBoard) and the map editor (PROMPTS.md, prompt 52) so both
 // show the same map: the terrain symbols each terrain draws, the window of the grid that is shown (the land's
-// bounding box, no sea around it), a river's line with its reach into the sea, the hatch across a river at a
+// bounding box with an unmarked margin around it for the names at the coast, prompt 53), a river's line with its reach into the sea, the hatch across a river at a
 // cataract, where a port's mark sits in its hex, and where the names and drainage numbers go. Pure geometry; the
 // lengths are in units of the hex radius unless a radius is passed.
 import { DIRECTIONS, neighbour, toPixel, type HexId } from './hex';
@@ -37,8 +37,13 @@ export interface Extents {
   h: number;
 }
 
-/** The window of the grid that is shown: the bounding box of the land, in rows and columns and in pixels at radius 1. */
-export function extentsOf(hexes: Iterable<{ col: number; row: number }>): Extents {
+/** The unmarked margin around the window, in radii (prompt 53): room for the names and numbers at the coast to lie in the
+ *  sea beyond the last hexes, where a reader finds them, instead of over the land or off the board. */
+export const MARGIN = 1.75;
+
+/** The window of the grid that is shown: the bounding box of the land with the margin around it, in rows and columns and
+ *  in pixels at radius 1. */
+export function extentsOf(hexes: Iterable<{ col: number; row: number }>, margin = MARGIN): Extents {
   let minCol = Infinity, maxCol = -Infinity, minRow = Infinity, maxRow = -Infinity;
   let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const h of hexes) {
@@ -52,7 +57,7 @@ export function extentsOf(hexes: Iterable<{ col: number; row: number }>): Extent
     minY = Math.min(minY, y - 1);
     maxY = Math.max(maxY, y + 1);
   }
-  return { minCol, maxCol, minRow, maxRow, minX, minY, w: maxX - minX, h: maxY - minY };
+  return { minCol, maxCol, minRow, maxRow, minX: minX - margin, minY: minY - margin, w: maxX - minX + 2 * margin, h: maxY - minY + 2 * margin };
 }
 
 /** The centre of a hex in the window, in pixels. */
@@ -140,26 +145,46 @@ export function nameSide(r: RawRiver, mouth: Pt, label: Pt, radius: number, rota
   return seawardOf < 0 ? { x: -clear, anchor: 'end' } : { x: clear, anchor: 'start' };
 }
 
-/** Where each port's name sits, in the upright (screen) frame and radius units: in the water off the coast and level with
- *  the port where the coast allows, above the east coast (the sea is up when north is to the left), south of Khartoum
- *  (the Nile's name has the north), south of Port Elizabeth, at Calabar's south-west corner. A port not named here is
- *  labelled above. */
-export const PORT_LABELS: Record<string, { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }> = {
-  khartoum: { dx: 1.05, dy: 0, anchor: 'start' },
-  mombasa: { dx: 0, dy: -1.05, anchor: 'middle' },
-  zanzibar: { dx: 0.3, dy: -1.05, anchor: 'start' },
-  kilwa: { dx: 0, dy: -1.05, anchor: 'middle' },
-  quilimane: { dx: 0, dy: -1.05, anchor: 'middle' },
-  'lourenco-marques': { dx: 0, dy: -1.5, anchor: 'middle' }, // clear of the Limpopo's name at the same mouth
-  durban: { dx: 0, dy: -1.05, anchor: 'middle' },
-  'port-elizabeth': { dx: 1.05, dy: 0, anchor: 'start' },
-  capetown: { dx: 1.05, dy: 0, anchor: 'start' },
-  benguela: { dx: 0.3, dy: 1.35, anchor: 'start' }, // the two names lean apart
-  luanda: { dx: -0.3, dy: 1.35, anchor: 'end' },
-  calabar: { dx: 0.7, dy: 1.15, anchor: 'start' },
-  brass: { dx: 0, dy: 1.35, anchor: 'middle' }
+/** Where each port's name sits, on the map (prompt 53): the direction from the hex's centre (1–6 toward an edge, n.5 toward
+ *  the vertex clockwise after n, so 3.5 is due south and 6.5 due north) and the distance in radii. The name lies in the sea
+ *  beside its port in both the game's turned board and the editor's north-up one, and is read horizontally from there
+ *  whichever way the board is turned. Along the coast the name takes the sea side (the mark's); at the north and south
+ *  edges it runs along the edge, in the margin, where the board is turned too; Khartoum, inland, has its name to the east
+ *  (the Nile's name has the north) and Calabar's leans down between the Niger's number and its own hex. A port not named
+ *  here is labelled on its mark's side. */
+export const PORT_LABELS: Record<string, { dir: number; dist: number }> = {
+  khartoum: { dir: 2, dist: 1.15 },
+  mombasa: { dir: 2.5, dist: 1.15 },
+  zanzibar: { dir: 2.5, dist: 1.15 },
+  kilwa: { dir: 2, dist: 1.15 },
+  quilimane: { dir: 2, dist: 1.15 }, // the Zambezi's number lies to its south-west
+  'lourenco-marques': { dir: 2.5, dist: 1.15 }, // the Limpopo's mouth is the hex to its north-east
+  durban: { dir: 3, dist: 1.15 },
+  'port-elizabeth': { dir: 3.5, dist: 1.15 },
+  capetown: { dir: 5, dist: 1.15 },
+  benguela: { dir: 5, dist: 1.15 },
+  luanda: { dir: 6, dist: 1.15 }, // north-west, away from Benguela's name two rows south
+  calabar: { dir: 4, dist: 1.05 },
+  brass: { dir: 5, dist: 1.15 }
 };
-export const portLabel = (id: string) => PORT_LABELS[id] ?? { dx: 0, dy: -1.05, anchor: 'middle' as const };
+
+export interface Label {
+  /** The offset from the hex centre in the upright (screen) frame, in radii. */
+  x: number;
+  y: number;
+  /** The text begins at the offset when it lies to the right of the port, ends there when to the left, is centred above or below. */
+  anchor: 'start' | 'middle' | 'end';
+  dir: number;
+}
+
+/** A port's name in the upright frame: its place on the map turned with the board (north to the left when `rotated`),
+ *  anchored so the text runs away from the port. */
+export function portLabel(board: RawBoard, id: string, hex: HexId, rotated: boolean): Label {
+  const l = PORT_LABELS[id] ?? { dir: portAnchor(board, hex).at, dist: 1.15 };
+  const mx = Math.cos(bearing(l.dir)) * l.dist, my = Math.sin(bearing(l.dir)) * l.dist;
+  const x = rotated ? my : mx, y = rotated ? -mx : my;
+  return { x, y, anchor: x > 0.25 ? 'start' : x < -0.25 ? 'end' : 'middle', dir: l.dir };
+}
 
 /** Half the side of a port's mark, in radii. */
 export const MARK = 0.22;

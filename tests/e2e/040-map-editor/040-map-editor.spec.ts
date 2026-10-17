@@ -27,7 +27,7 @@ test.describe('040 - Map editor', () => {
     await expect(page.getByTestId('editor-grid')).toBeVisible();
 
     await steps.step('editor-opened', {
-      description: 'The editor shows the board\'s window north up, 24 hexes by 36 as the table shows it with no sea beyond the land, the sea hexes inside it drawn dark, with the pre-printed terrain, the rivers and the ports named as the game names them; the counts read 625 land hexes and 450 blank, the brushes wait, the capture server is named, and there is nothing to save',
+      description: 'The editor shows the board\'s window north up, 24 hexes by 36 as the table shows it with no sea beyond the land but an unmarked margin around it for the names at the coast, the sea hexes inside it drawn dark, with the pre-printed terrain, the rivers and the ports named as the game names them; the counts read 625 land hexes and 450 blank, the brushes wait, the capture server is named, and there is nothing to save',
       verifications: [
         { spec: 'The window is the land\'s bounding box, columns 2 to 25 and rows 1 to 36 (prompt 52): no sea north of Khartoum, west of Brass or east of Mombasa; 625 hexes are land and 450 blank (RQ-5); Luanda stands on a veldt hex', check: async () => {
           await expect(page.locator('[data-testid^="edit-hex-"]')).toHaveCount(24 * 36);
@@ -39,6 +39,30 @@ test.describe('040 - Map editor', () => {
           await expect(page.getByTestId('edit-hex-c7r19')).toHaveAttribute('data-terrain', 'veldt');
           await expect(page.getByTestId('edit-hex-c7r19')).toHaveAttribute('data-port', 'luanda');
           await expect(page.getByTestId('edit-hex-c6r19')).toHaveAttribute('data-kind', 'sea');
+        } },
+        { spec: 'An unmarked margin of about a hex lies around the land (prompt 53), and the names at the coast lie in the sea as they do on the table: Capetown\'s west of its hex along the bottom row, Port Elizabeth\'s centred below it, Mombasa\'s to the east, Brass\'s to the west', check: async () => {
+          const grid = (await page.getByTestId('editor-grid').boundingBox())!;
+          const corner = (await page.getByTestId('edit-hex-c2r2').boundingBox())!; // an even row: not shifted
+          const r = ((await page.getByTestId('edit-hex-c2r4').boundingBox())!.y - corner.y) / 3; // rows are a radius and a half apart
+          expect(corner.x - grid.x).toBeGreaterThan(1.5 * r);
+          expect(corner.x - grid.x).toBeLessThan(2 * r);
+          const top = (await page.getByTestId('edit-hex-c2r1').boundingBox())!;
+          expect(top.y - grid.y).toBeGreaterThan(1.5 * r);
+          const box = async (id: string) => (await page.getByTestId(id).boundingBox())!;
+          const mid = (b: { x: number; y: number; width: number; height: number }) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+          const cape = await box('edit-hex-c10r36'), capeName = await box('label-port-capetown');
+          expect(capeName.x + capeName.width).toBeLessThan(mid(cape).x);
+          expect(Math.abs(mid(capeName).y - mid(cape).y)).toBeLessThan(r / 4);
+          const pe = await box('edit-hex-c14r36'), peName = await box('label-port-port-elizabeth');
+          expect(peName.y).toBeGreaterThan(mid(pe).y + r / 4);
+          expect(Math.abs(mid(peName).x - mid(pe).x)).toBeLessThan(r / 4);
+          expect(peName.y + peName.height).toBeLessThanOrEqual(grid.y + grid.height + 1);
+          const mombasa = await box('edit-hex-c25r12'), mombasaName = await box('label-port-mombasa');
+          expect(mombasaName.x).toBeGreaterThan(mid(mombasa).x);
+          const brass = await box('edit-hex-c2r8'), brassName = await box('label-port-brass');
+          expect(brassName.x + brassName.width).toBeLessThan(mid(brass).x);
+          await expect(page.getByTestId('label-port-capetown')).toHaveAttribute('text-anchor', 'end');
+          await expect(page.getByTestId('label-port-port-elizabeth')).toHaveAttribute('text-anchor', 'middle');
         } },
         { spec: 'The ports, rivers and numbers are labelled as the game labels them (prompt 52): the same marks and names, Zanzibar\'s mark toward the sea, the Niger\'s 6 at its mouth, the cataract one hatch', check: async () => {
           await expect(page.getByTestId('label-port-zanzibar')).toHaveText('Zanzibar');

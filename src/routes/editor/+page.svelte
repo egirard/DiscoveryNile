@@ -371,6 +371,7 @@
   }
   svg {
     display: block;
+    overflow: visible; /* a name at the edge of the window may run past its margin */
   }
   .hex {
     fill: #efe6cc;
