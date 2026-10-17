@@ -3,8 +3,15 @@
   // table the whole board is turned so north points to the left edge, because Africa is taller
   // than it is wide and hexes must stay touch-sized. Symbols and labels are kept upright for the
   // bottom seat; every seat reads the same omnidirectional iconography.
-  import { BOARD, LAND_HEXES, PORTS, RIVERS, hexAt, riverMouths, type BoardHex, type PortId, type River } from './manifest';
-  import { DIRECTIONS, hexPoints, neighbour, parseHexId, toPixel, type HexId } from './hex';
+  // The symbols, rivers, cataracts, ports and names are drawn by the parts shared with the map editor (art.ts,
+  // TerrainSymbols, BoardFeatures; PROMPTS.md, prompt 52), so the table and the editor show the same map.
+  import { BOARD, LAND_HEXES, hexAt, type BoardHex, type PortId } from './manifest';
+  import { DIRECTIONS, hexPoints, parseHexId, type HexId } from './hex';
+  import rawBoard from './board.json';
+  import type { RawBoard } from './editor';
+  import { EDGE, HATCH, SYMBOLS, bearing, centreIn, extentsOf, hatchAcross, portLabel } from './art';
+  import TerrainSymbols from './TerrainSymbols.svelte';
+  import BoardFeatures from './BoardFeatures.svelte';
 
   import { colourFor } from '$features/explorers/colours';
   import type { MappedHex, Cache } from '$lib/game/state';
@@ -45,18 +52,8 @@
   let { width, height, touch = 44, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
   const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
 
-  const SQ3 = Math.sqrt(3);
-  const extents = (() => {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const h of LAND_HEXES) {
-      const { x, y } = toPixel(h, 1);
-      minX = Math.min(minX, x - SQ3 / 2);
-      maxX = Math.max(maxX, x + SQ3 / 2);
-      minY = Math.min(minY, y - 1);
-      maxY = Math.max(maxY, y + 1);
-    }
-    return { minX, minY, w: maxX - minX, h: maxY - minY };
-  })();
+  /** The window shown: the land's bounding box, no sea around it. */
+  const extents = extentsOf(LAND_HEXES);
 
   const rotated = $derived(width > height);
   const radius = $derived(rotated ? Math.min(width / extents.h, height / extents.w) : Math.min(width / extents.w, height / extents.h));
@@ -67,10 +64,10 @@
   const transform = $derived(rotated ? `translate(0 ${natW}) rotate(-90)` : '');
   const upright = $derived(rotated ? 'rotate(90)' : '');
 
-  function centre(h: BoardHex | HexId) {
-    const hex = typeof h === 'string' ? hexAt(h)! : h;
-    const p = toPixel(hex, radius);
-    return { x: p.x - extents.minX * radius, y: p.y - extents.minY * radius };
+  /** The centre of a hex, land or (for a river's reach) the sea beside it. */
+  function centre(h: BoardHex | HexId | string) {
+    const hex = typeof h === 'string' ? (hexAt(h) ?? parseHexId(h)!) : h;
+    return centreIn(extents, radius, hex);
   }
 
   /** The compass (PROMPTS.md, prompt 20): a hex with the six directions numbered as the dice give them (hex.ts),
@@ -79,98 +76,53 @@
     const c = centre(BOARD.ports.capetown.hex);
     return { x: c.x - Math.sqrt(3) * radius * 6, y: c.y + radius * 0.75 };
   });
-  /** Where direction `d` leaves a pointy-top hex: east is 2, so the angle is (d − 2) × 60° clockwise from east. */
-  const bearing = (d: number) => ((d - 2) * Math.PI) / 3;
-
-  /** The way a river leaves its mouth hex for the sea: the direction it names, else straight on from its second hex. */
-  function seaward(r: River, pts: { x: number; y: number }[]): { dx: number; dy: number } | null {
-    if (r.joins) return null;
-    const m = pts[0];
-    if (r.mouth !== undefined) {
-      const sea = toPixel(parseHexId(neighbour(r.path[0], r.mouth))!, radius);
-      return { dx: sea.x - extents.minX * radius - m.x, dy: sea.y - extents.minY * radius - m.y };
-    }
-    if (pts.length < 2) return null;
-    return { dx: m.x - pts[1].x, dy: m.y - pts[1].y };
-  }
-
-  /** A river as a polyline through hex centres, extended past a mouth (or the board edge) into the sea. */
-  function riverPoints(r: River): string {
-    const pts = r.path.map((id) => centre(id));
-    const out = seaward(r, pts);
-    if (out) {
-      const m = pts[0];
-      const len = Math.hypot(out.dx, out.dy) || 1;
-      pts.unshift({ x: m.x + (out.dx / len) * radius * 0.95, y: m.y + (out.dy / len) * radius * 0.95 });
-    }
-    if (r.continuesOffMap && pts.length > 1) {
-      const e = pts[pts.length - 1], p = pts[pts.length - 2];
-      const dx = e.x - p.x, dy = e.y - p.y;
-      const len = Math.hypot(dx, dy) || 1;
-      pts.push({ x: e.x + (dx / len) * radius * 0.95, y: e.y + (dy / len) * radius * 0.95 });
-    }
-    return pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  }
-
-  /** Where the drainage number sits: just seaward of the mouth. */
-  function mouthLabel(r: River) {
-    const m = centre(r.path[0]);
-    const out = seaward(r, r.path.map((id) => centre(id))) ?? { dx: 0, dy: -1 };
-    const dx = out.dx, dy = out.dy;
-    const len = Math.hypot(dx, dy) || 1;
-    return { x: m.x + (dx / len) * radius * 1.15 + (dy / len) * radius * 0.9, y: m.y + (dy / len) * radius * 1.15 - (dx / len) * radius * 0.9 };
-  }
-
-  /** Unit vector from a hex centre toward the midpoint of the edge in direction d (pointy-top). */
-  const EDGE: Record<number, [number, number]> = { 1: [0.5, -0.866], 2: [1, 0], 3: [0.5, 0.866], 4: [-0.5, 0.866], 5: [-1, 0], 6: [-0.5, -0.866] };
   function segment(c: { x: number; y: number }, d: number): string {
     const [ux, uy] = EDGE[d];
     const k = radius * 0.87;
     return `${c.x.toFixed(1)},${c.y.toFixed(1)} ${(c.x + ux * k).toFixed(1)},${(c.y + uy * k).toFixed(1)}`;
   }
 
-  /** A river's name goes on the seaward side of its drainage number (screen x = map y when the board is
-   *  rotated), clear of it whatever its width: a bold digit at that size is about 0.48 of a radius wide. */
-  function nameSide(r: River): { x: number; anchor: 'start' | 'end' } {
-    const m = centre(r.path[0]);
-    const p = mouthLabel(r);
-    const seaward = rotated ? p.y - m.y : p.x - m.x;
-    const clear = radius * (0.24 * String(r.drainage).length + 0.3);
-    return seaward < 0 ? { x: -clear, anchor: 'end' } : { x: clear, anchor: 'start' };
-  }
-
-  /** Where each port's name sits, in the upright (screen) frame and radius units: in the water off the
-   *  coast and level with the port where the coast allows, above the east coast (the sea is up when north
-   *  is to the left), south of Khartoum (the Nile's name has the north), south of Port Elizabeth, at Calabar's south-west corner. */
-  const LABEL_AT: Record<PortId, { dx: number; dy: number; anchor: 'start' | 'middle' | 'end' }> = {
-    khartoum: { dx: 1.05, dy: 0, anchor: 'start' }, // south: the Nile's name takes the north side
-    mombasa: { dx: 0, dy: -1.05, anchor: 'middle' },
-    zanzibar: { dx: 0.3, dy: -1.05, anchor: 'start' },
-    kilwa: { dx: 0, dy: -1.05, anchor: 'middle' },
-    quilimane: { dx: 0, dy: -1.05, anchor: 'middle' },
-    'lourenco-marques': { dx: 0, dy: -1.5, anchor: 'middle' }, // clear of the Limpopo's name at the same mouth
-    durban: { dx: 0, dy: -1.05, anchor: 'middle' },
-    'port-elizabeth': { dx: 1.05, dy: 0, anchor: 'start' },
-    capetown: { dx: 1.05, dy: 0, anchor: 'start' },
-    benguela: { dx: 0.3, dy: 1.35, anchor: 'start' }, // the two names lean apart
-    luanda: { dx: -0.3, dy: 1.35, anchor: 'end' },
-    calabar: { dx: 0.7, dy: 1.15, anchor: 'start' },
-    brass: { dx: 0, dy: 1.35, anchor: 'middle' }
-  };
   /** The fare of a port chooser sits on the side of the port its name does not take. */
-  const fareDy = (id: PortId) => (LABEL_AT[id].dy < 0 ? 1.1 : -0.95);
-
-  const symbolFor: Record<string, string[]> = {
-    desert: [],
-    veldt: ['veldt'],
-    swamp: ['swamp'],
-    mountain: ['mountain'],
-    jungle: ['jungle'],
-    lake: [],
-    'jungle-swamp': ['jungle', 'swamp'],
-    'jungle-mountain': ['jungle', 'mountain']
+  const fareDy = (id: PortId) => (portLabel(id).dy < 0 ? 1.1 : -0.95);
+  /** The chooser's state on a port's group, for the scenarios and the styles. */
+  const portAttrs = (id: string) => {
+    const choice = portChoices?.[id as PortId];
+    return { 'data-choosable': choice ? 'true' : undefined, 'data-fare': choice?.fare, 'data-selected': choice ? String(Boolean(choice.selected)) : undefined };
   };
+
 </script>
+
+{#snippet under(id: string)}
+  {@const choice = portChoices?.[id as PortId]}
+  {#if choice}
+    <circle class="halo" class:none={choice.fare === 'none'} class:selected={choice.selected} r={radius * (choice.selected ? 1.45 : 1.15)} />
+  {/if}
+{/snippet}
+{#snippet over(id: string)}
+  {@const p = BOARD.ports[id as PortId]}
+  {@const choice = portChoices?.[id as PortId]}
+  {#if choice}
+    <g class="fare" transform="translate(0 {radius * fareDy(p.id)})">
+      {#if choice.fare === 'ticket'}
+        <rect x={-radius * 0.55} y={-radius * 0.32} width={radius * 1.1} height={radius * 0.64} rx={radius * 0.12} class="ticket" />
+        <path d="M{-radius * 0.15} {-radius * 0.22} V{radius * 0.22}" class="ticket-perf" />
+      {:else}
+        <text class="fare-text" font-size={radius * 0.6} dominant-baseline="central">{choice.fare === 'cash' ? '$500' : '✕'}</text>
+      {/if}
+    </g>
+    <circle
+      class="hit"
+      r={Math.max(radius * 1.2, touch / 2)}
+      role="button"
+      tabindex="0"
+      data-testid="choose-port-{p.id}"
+      aria-disabled={choice.fare === 'none'}
+      aria-label="Sail to {p.name}{choice.fare === 'ticket' ? ' with a free ticket' : choice.fare === 'cash' ? ' for $500' : ': cannot afford passage'}"
+      onclick={() => choice.fare !== 'none' && onport?.(p.id)}
+      onkeydown={(e) => e.key === 'Enter' && choice.fare !== 'none' && onport?.(p.id)}
+    />
+  {/if}
+{/snippet}
 
 <svg
   data-testid="hex-grid"
@@ -183,13 +135,7 @@
   aria-label="Map of Africa"
   style="--r:{radius}px"
 >
-  <defs>
-    <!-- Terrain symbols in units of the hex radius, centred on the origin. Original iconography. -->
-    <g id="sym-mountain" class="sym mountain"><path d="M-0.5 0.36 L0 -0.42 L0.5 0.36" /></g>
-    <g id="sym-veldt" class="sym veldt"><path d="M-0.5 -0.32 L-0.26 0.36 L0 -0.12 L0.26 0.36 L0.5 -0.32" /></g>
-    <g id="sym-swamp" class="sym swamp"><path d="M-0.42 0.38 H0.42 M0 0.38 V-0.42 M-0.24 0.38 L-0.3 -0.22 M0.24 0.38 L0.3 -0.22" /></g>
-    <g id="sym-jungle" class="sym jungle"><polygon points={hexPoints(0, 0, 0.74)} /></g>
-  </defs>
+  <TerrainSymbols />
   <g {transform}>
     {#each LAND_HEXES as h (h.id)}
       {@const c = centre(h)}
@@ -210,10 +156,10 @@
     {/each}
     {#each LAND_HEXES as h (h.id)}
       {@const t = terrainFor(h)}
-      {#if t && symbolFor[t].length}
+      {#if t && SYMBOLS[t].length}
         {@const c = centre(h)}
         <g data-testid="terrain-{h.id}" data-terrain={t} aria-label={t} transform="translate({c.x} {c.y}) {upright} scale({radius})">
-          {#each symbolFor[t] as sym (sym)}
+          {#each SYMBOLS[t] as sym (sym)}
             <use href="#sym-{sym}" />
           {/each}
         </g>
@@ -231,8 +177,11 @@
             <circle class="source" cx={c.x} cy={c.y} r={radius * 0.22} />
           {/if}
           {#if m.river.cataract}
-            <g class="cataract" data-testid="cataract-{id}" transform="translate({c.x} {c.y}) {upright} scale({radius})">
-              <circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" />
+            <!-- A single hatch across the course (prompt 52): perpendicular to the way in and out. -->
+            {@const h = hatchAcross(m.river.in.length ? { x: c.x + EDGE[m.river.in[0]][0], y: c.y + EDGE[m.river.in[0]][1] } : null, c, m.river.out !== null ? { x: c.x + EDGE[m.river.out][0], y: c.y + EDGE[m.river.out][1] } : null)}
+            <g class="cataract" data-testid="cataract-{id}" data-across="{h.x.toFixed(2)},{h.y.toFixed(2)}">
+              <line class="hatch-bank" x1={c.x - h.x * HATCH * radius} y1={c.y - h.y * HATCH * radius} x2={c.x + h.x * HATCH * radius} y2={c.y + h.y * HATCH * radius} />
+              <line class="hatch" x1={c.x - h.x * HATCH * radius} y1={c.y - h.y * HATCH * radius} x2={c.x + h.x * HATCH * radius} y2={c.y + h.y * HATCH * radius} />
             </g>
           {/if}
           {#if m.river.waterfallFeet}
@@ -305,27 +254,7 @@
         onkeydown={(e) => e.key === 'Enter' && onpublish?.(hex)}
       />
     {/each}
-    {#each RIVERS as r (r.id)}
-      <polyline data-testid="river-{r.id}" class="river-bank" points={riverPoints(r)} />
-      <polyline class="river" aria-label="River {r.name}" points={riverPoints(r)} />
-    {/each}
-    {#each RIVERS as r (r.id)}
-      {#each r.cataracts as id (id)}
-        {@const c = centre(id)}
-        <g data-testid="cataract-{id}" class="cataract" aria-label="Cataract on the {r.name}" transform="translate({c.x} {c.y}) {upright} scale({radius})">
-          <circle r="0.34" />
-          <path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" />
-        </g>
-      {/each}
-    {/each}
-    {#each riverMouths() as { river } (river.id)}
-      {@const p = mouthLabel(river)}
-      {#if river.drainage !== undefined}
-        <text data-testid="drainage-{river.id}" class="drainage" aria-label="{river.name} drains at least {river.drainage} hexes" transform="translate({p.x} {p.y}) {upright}" font-size={radius * 0.8}>{river.drainage}</text>
-      {/if}
-      <!-- The river's name beside its mouth, upright for a reader at the south edge. -->
-      <text data-testid="label-river-{river.id}" class="river-name" aria-label="Mouth of the {river.name}" transform="translate({p.x} {p.y}) {upright}" x={nameSide(river).x} text-anchor={nameSide(river).anchor} font-size={radius * 0.55}>{river.name}</text>
-    {/each}
+    <BoardFeatures board={rawBoard as RawBoard} {centre} {radius} {upright} {rotated} {under} {over} {portAttrs} />
     <g class="compass" data-testid="compass" role="img" aria-label="Compass: the directions 1 to 6 around a hex, as a die gives them" transform="translate({compass.x} {compass.y})">
       <polygon class="rose" points={hexPoints(0, 0, radius * 1.1)} />
       {#each DIRECTIONS as d (d)}
@@ -333,43 +262,6 @@
         <text class="direction" data-testid="compass-{d}" transform="translate({Math.cos(bearing(d)) * radius * 1.95} {Math.sin(bearing(d)) * radius * 1.95}) {upright}" font-size={radius * 0.85}>{d}</text>
       {/each}
     </g>
-    {#each PORTS as p (p.id)}
-      {@const c = centre(BOARD.hexes[p.hex])}
-      {@const choice = portChoices?.[p.id]}
-      <g data-testid="port-{p.id}" class="port" class:choosable={Boolean(choice)} class:selected={choice?.selected} data-fare={choice?.fare} data-selected={choice ? Boolean(choice.selected) : undefined} aria-label="Port of entry: {p.name}" transform="translate({c.x} {c.y}) {upright}">
-        {#if choice}
-          <circle class="halo" class:none={choice.fare === 'none'} r={radius * (choice.selected ? 1.45 : 1.15)} />
-        {/if}
-        <circle r={radius * 0.48} />
-        <g class="anchor" transform="scale({radius / 28}) translate(-12 -12)">
-          <circle cx="12" cy="5" r="3" />
-          <line x1="12" y1="22" x2="12" y2="8" />
-          <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
-        </g>
-        <text class="label" data-testid="label-port-{p.id}" x={radius * LABEL_AT[p.id].dx} y={radius * LABEL_AT[p.id].dy} text-anchor={LABEL_AT[p.id].anchor} dominant-baseline="central" font-size={radius * 0.62}>{p.name}</text>
-        {#if choice}
-          <g class="fare" transform="translate(0 {radius * fareDy(p.id)})">
-            {#if choice.fare === 'ticket'}
-              <rect x={-radius * 0.55} y={-radius * 0.32} width={radius * 1.1} height={radius * 0.64} rx={radius * 0.12} class="ticket" />
-              <path d="M{-radius * 0.15} {-radius * 0.22} V{radius * 0.22}" class="ticket-perf" />
-            {:else}
-              <text class="fare-text" font-size={radius * 0.6} dominant-baseline="central">{choice.fare === 'cash' ? '$500' : '✕'}</text>
-            {/if}
-          </g>
-          <circle
-            class="hit"
-            r={Math.max(radius * 1.2, touch / 2)}
-            role="button"
-            tabindex="0"
-            data-testid="choose-port-{p.id}"
-            aria-disabled={choice.fare === 'none'}
-            aria-label="Sail to {p.name}{choice.fare === 'ticket' ? ' with a free ticket' : choice.fare === 'cash' ? ' for $500' : ': cannot afford passage'}"
-            onclick={() => choice.fare !== 'none' && onport?.(p.id)}
-            onkeydown={(e) => e.key === 'Enter' && choice.fare !== 'none' && onport?.(p.id)}
-          />
-        {/if}
-      </g>
-    {/each}
     {#each tokens as t (t.seat)}
       {@const c = centre(t.hex)}
       {@const sharing = tokens.filter((o) => o.hex === t.hex)}
@@ -402,28 +294,9 @@
     fill: #3f86c9;
     stroke: #2b5f94;
   }
-  .sym {
-    fill: none;
-    stroke-width: 0.14;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .sym.mountain {
-    stroke: #6b3a2c;
-  }
-  .sym.veldt,
-  .sym.swamp {
-    stroke: #3f8a3f;
-  }
-  .sym.jungle {
-    stroke: #3f8a3f;
-    stroke-width: 0.12;
-  }
-  /* Rivers, cataracts and heights are drawn over the targets; a tap on a river hex must still reach its target. */
-  .river-bank,
-  .river,
+  /* Courses mapped in play, their cataracts and heights are drawn over the targets; a tap on a river hex must still reach its target. */
+  .course,
   .cataract,
-  .drainage,
   .height {
     pointer-events: none;
   }
@@ -441,28 +314,15 @@
     stroke-linecap: round;
     stroke-linejoin: round;
   }
-  .cataract circle {
-    fill: #2d72c9;
-  }
-  .cataract path {
-    fill: none;
+  .hatch-bank {
     stroke: #efe6cc;
-    stroke-width: 0.07;
+    stroke-width: calc(var(--r) * 0.22);
     stroke-linecap: round;
   }
-  .drainage {
-    fill: #1c2a2e;
-    text-anchor: middle;
-    dominant-baseline: central;
-    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
-    font-weight: 700;
-    paint-order: stroke;
-    stroke: #efe6cc;
-    stroke-width: 3px;
-    stroke-linejoin: round;
-  }
-  .port > circle:not(.halo):not(.hit) {
-    fill: #1c2a2e;
+  .hatch {
+    stroke: #2d72c9;
+    stroke-width: calc(var(--r) * 0.1);
+    stroke-linecap: round;
   }
   .halo {
     fill: #c9a24a;
@@ -472,13 +332,15 @@
     fill: #777;
     opacity: 0.4;
   }
-  .port.selected .halo {
+  .halo.selected {
     /* The port tapped: a wider, solid halo until the rail confirms or the chooser closes. */
     opacity: 1;
     stroke: #efe6cc;
     stroke-width: 3px;
   }
   .hit {
+    /* The one part of a port that takes a tap, while it is a chooser (BoardFeatures draws the rest without). */
+    pointer-events: auto;
     fill: transparent;
     cursor: pointer;
   }
@@ -546,10 +408,6 @@
     stroke: #efe6cc;
     stroke-width: 1;
   }
-  /* A port marker only takes taps while it is a chooser; otherwise the hex's move target beneath must. */
-  .port:not(.choosable) {
-    pointer-events: none;
-  }
   .cache rect {
     stroke: #efe6cc;
     stroke-width: 1.2;
@@ -586,13 +444,6 @@
     stroke: #1c2a2e;
     stroke-width: 3;
   }
-  .anchor {
-    fill: none;
-    stroke: #e8d8b0;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
   .compass .rose {
     fill: rgba(239, 230, 204, 0.08);
     stroke: #efe6cc;
@@ -611,25 +462,5 @@
     font-weight: 700;
     text-anchor: middle;
     dominant-baseline: central;
-  }
-  .river-name {
-    fill: #2d72c9;
-    dominant-baseline: central;
-    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
-    font-weight: 700;
-    font-style: italic;
-    paint-order: stroke;
-    stroke: #efe6cc;
-    stroke-width: 3px;
-    stroke-linejoin: round;
-  }
-  .label {
-    fill: #1c2a2e;
-    font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
-    font-weight: 600;
-    paint-order: stroke;
-    stroke: #efe6cc;
-    stroke-width: 3px;
-    stroke-linejoin: round;
   }
 </style>

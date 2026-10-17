@@ -8,7 +8,7 @@ test.describe('004 - Known Africa', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Known Africa',
-      'The periphery of the board known in 1820 is drawn from the manifest: desert across the north and down the south-west coast, the Abyssinian mountains, the Sudd, the Cape, the coastal veldt and jungle, the pre-printed rivers with the drainage number at each mouth, and the printed cataract on the Blue Nile. The interior stays blank. The board carries the corrections saved from the map editor (prompt 52): Zanzibar one hex west of where the photograph was read, its old hex sea.'
+      'The periphery of the board known in 1820 is drawn from the manifest: desert across the north and down the south-west coast, the Abyssinian mountains, the Sudd, the Cape, the coastal veldt and jungle, the pre-printed rivers with the drainage number at each mouth, and the printed cataract on the Blue Nile. The interior stays blank. The board carries the corrections saved from the map editor (prompt 52): Zanzibar one hex west of where the photograph was read, its old hex sea. The marks are the board\'s own (prompt 52): veldt a V with a stem up from its vertex, veldt and swamp a little smaller than the mountain, a cataract one hatch across its river, and each port a brown square set half-way toward the sea so the terrain symbol in the middle of its hex stays readable, its name in the water beside it.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
@@ -59,6 +59,23 @@ test.describe('004 - Known Africa', () => {
           await expect(page.getByTestId('hex-c19r30')).toHaveAttribute('data-terrain', 'veldt');
           expect((await page.getByTestId('river-ogooue').getAttribute('points'))!.split(' ')).toHaveLength(4); // the reach into the sea and three hexes
           expect((await page.getByTestId('river-cunene').getAttribute('points'))!.split(' ')).toHaveLength(4);
+        } },
+        { spec: 'The marks are the board\'s own (prompt 52): veldt is a V with a stem, the cataract one hatch across the Blue Nile, and each port a brown square half-way from the centre of its hex toward the sea, clear of the river through it', check: async () => {
+          await expect(page.locator('#sym-veldt path')).toHaveAttribute('d', 'M-0.42 -0.27 L0 0.31 L0.42 -0.27 M0 0.31 V-0.35');
+          await expect(page.locator('#sym-swamp path')).toHaveAttribute('d', 'M-0.36 0.32 H0.36 M0 0.32 V-0.36 M-0.2 0.32 L-0.26 -0.19 M0.2 0.32 L0.26 -0.19');
+          const across = (await page.getByTestId('cataract-c22r5').getAttribute('data-across'))!.split(',').map(Number);
+          expect(Math.hypot(across[0], across[1])).toBeCloseTo(1, 1);
+          await expect(page.getByTestId('cataract-c22r5').locator('line')).toHaveCount(2);
+          await expect(page.getByTestId('mark-port-mombasa')).toHaveAttribute('data-at', '2.5'); // the sea to the east and south-east: the vertex between
+          await expect(page.getByTestId('mark-port-khartoum')).toHaveAttribute('data-at', '6'); // the Niles come in from the south, the Nile runs off north-east
+          await expect(page.getByTestId('mark-port-brass')).toHaveAttribute('data-at', '5'); // the Niger comes in from the north-east and leaves south-west
+          await expect(page.getByTestId('mark-port-zanzibar')).toHaveAttribute('data-at', '2.5');
+          await expect(page.getByTestId('mark-port-mombasa')).toHaveCSS('fill', 'rgb(107, 58, 44)');
+          const hex = (await page.getByTestId('hex-c25r12').boundingBox())!, mark = (await page.getByTestId('mark-port-mombasa').boundingBox())!;
+          const off = Math.hypot(mark.x + mark.width / 2 - (hex.x + hex.width / 2), mark.y + mark.height / 2 - (hex.y + hex.height / 2));
+          expect(off).toBeGreaterThan(hex.width * 0.15); // off the centre, where the terrain symbol is
+          expect(off).toBeLessThan(hex.width * 0.5); // and still inside the hex
+          await expect(page.getByTestId('label-port-mombasa')).toHaveText('Mombasa');
         } },
         { spec: 'The thirteen ports are still marked and six seats are free', check: async () => {
           await expect(page.locator('[data-testid^="port-"]')).toHaveCount(13);
