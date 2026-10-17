@@ -10,11 +10,16 @@
   // editor (prompt 49) shows the hex tapped with six spokes, blue where a river leaves it; a tap on a spoke adds or
   // clears that river edge as an edit of the courses, and the map follows at once. A spoke toward the sea makes the hex
   // the river's mouth, flowing out that way (prompt 51); the hex's terrain is shown there with the game's own symbols
-  // and changed with a tap on one of them.
+  // and changed with a tap on one of them. The map is drawn through the parts the table's board uses (art.ts,
+  // TerrainSymbols, BoardFeatures; prompt 52): the same window of the grid (the land's bounding box, the sea hexes
+  // inside it), the same symbols, rivers, cataracts, ports and names.
   import { onMount } from 'svelte';
   import rawBoard from '$features/map/board.json';
-  import { BRUSHES, DIRECTION_NAMES, DIRECTIONS, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverSpokes, riverTap, seaward, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
-  import { hexId, hexPoints, neighbour, parseHexId, toPixel, type HexId } from '$features/map/hex';
+  import { BRUSHES, DIRECTION_NAMES, DIRECTIONS, addRiver, brushAt, changesBetween, counts, paint, removeRiver, riverCandidates, riverSpokes, riverTap, toggleCataract, toggleRiverSpoke, updateRiver, validateBoard, type Brush, type RawBoard, type RawRiver } from '$features/map/editor';
+  import { hexId, hexPoints, neighbour, parseHexId, type HexId } from '$features/map/hex';
+  import { HATCH, SYMBOLS, bearing, centreIn, extentsOf, hatchAcross } from '$features/map/art';
+  import TerrainSymbols from '$features/map/TerrainSymbols.svelte';
+  import BoardFeatures from '$features/map/BoardFeatures.svelte';
   import { serverUrlFrom } from '$lib/diagnostics/diag';
 
   const SESSION = 'map-editor';
@@ -46,8 +51,6 @@
   const spokes = $derived(selected ? riverSpokes(working, selected) : []);
   const riversThrough = $derived(selected ? working.rivers.filter((r) => r.path.includes(selected!)) : []);
   const cataractHere = $derived(selected ? working.rivers.some((r) => r.cataracts.includes(selected!)) : false);
-  /** Where direction d leaves a pointy-top hex: east is 2, so the angle is (d − 2) × 60° clockwise from east. */
-  const bearing = (d: number) => ((d - 2) * Math.PI) / 3;
   const HEX_R = 62;
   /** The wedge of the single hex editor's hex that is direction d's control: from the centre to the edge in that direction. */
   function wedge(d: number): string {
@@ -56,39 +59,23 @@
   }
   const isBrush = (t: typeof tool): t is Brush => t !== null && t !== 'river' && t !== 'cataract';
 
-  // The grid north up: every hex of cols × rows, sea or land, sized to the pane.
-  const SQ3 = Math.sqrt(3);
-  const gridW = $derived(SQ3 * (working.cols + 0.5));
-  const gridH = $derived(1.5 * working.rows + 0.5);
-  const radius = $derived(Math.max(4, Math.min(paneW / gridW, paneH / gridH)) * zoom);
-  const svgW = $derived(gridW * radius);
-  const svgH = $derived(gridH * radius);
-  function centre(col: number, row: number) {
-    const p = toPixel({ col, row }, radius);
-    return { x: p.x + (SQ3 / 2) * radius, y: p.y + radius };
-  }
+  // The window the table shows (art.ts): the land's bounding box as saved, north up and sized to the pane, with the sea
+  // hexes inside it drawn too, so the coast can be moved. A hex painted sea at the window's edge stays in view until saved.
+  const extents = $derived(extentsOf(Object.values(saved.hexes)));
+  const radius = $derived(Math.max(4, Math.min(paneW / extents.w, paneH / extents.h)) * zoom);
+  const svgW = $derived(extents.w * radius);
+  const svgH = $derived(extents.h * radius);
+  const centre = (id: string) => centreIn(extents, radius, working.hexes[id] ?? parseHexId(id)!);
   const grid = $derived.by(() => {
     const out: { id: HexId; col: number; row: number }[] = [];
-    for (let row = 0; row < working.rows; row++) for (let col = 0; col < working.cols; col++) out.push({ id: hexId(col, row), col, row });
+    for (let row = extents.minRow; row <= extents.maxRow; row++) for (let col = extents.minCol; col <= extents.maxCol; col++) out.push({ id: hexId(col, row), col, row });
     return out;
   });
-  const symbolFor: Record<string, string[]> = {
-    desert: [], veldt: ['veldt'], swamp: ['swamp'], mountain: ['mountain'], jungle: ['jungle'], lake: [],
-    'jungle-swamp': ['jungle', 'swamp'], 'jungle-mountain': ['jungle', 'mountain']
-  };
-  /** A river through its hex centres, reaching into the sea at its mouth the way it leaves (named, or straight on). */
-  function riverPoints(r: RawRiver): string {
-    const at = (id: string) => { const o = parseHexId(id)!; return centre(o.col, o.row); };
-    const pts = r.path.map(at);
-    const out = seaward(working, r);
-    if (out !== null && pts.length) {
-      const sea = at(neighbour(r.path[0] as HexId, out));
-      const m = pts[0];
-      const dx = sea.x - m.x, dy = sea.y - m.y, len = Math.hypot(dx, dy) || 1;
-      pts.unshift({ x: m.x + (dx / len) * radius * 0.95, y: m.y + (dy / len) * radius * 0.95 });
-    }
-    return pts.map((c) => `${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  }
+  /** The hatch across the single hex editor's hex at a cataract: perpendicular to the course through its spokes. */
+  const hatch = $derived.by(() => {
+    const at = spokes.map((s) => ({ x: Math.cos(bearing(s.direction)), y: Math.sin(bearing(s.direction)) }));
+    return hatchAcross(at[0] ?? null, { x: 0, y: 0 }, at[1] ?? null);
+  });
   const changed = $derived(new Set(changes.filter((c) => c.kind === 'hex').map((c) => c.id)));
 
   /** Take a result of the pure functions: a board is applied, a reason is shown. */
@@ -187,24 +174,17 @@
   <!-- A hex in the game's own iconography (HexBoard's symbols), for the brushes and the hex editor. -->
   <svg class="swatch" viewBox="-1.15 -1.15 2.3 2.3" aria-hidden="true">
     <polygon class="hex {kind}" points={hexPoints(0, 0, 1)} />
-    {#each symbolFor[kind] ?? [] as sym (sym)}<use href="#ed-{sym}" />{/each}
+    {#each SYMBOLS[kind] ?? [] as sym (sym)}<use href="#sym-{sym}" />{/each}
   </svg>
 {/snippet}
 
 <main class="editor" data-e2e-layout data-testid="map-editor" style="--target:44px; --gap:8px">
-  <svg class="defs" width="0" height="0" aria-hidden="true">
-    <defs>
-      <g id="ed-mountain" class="sym mountain"><path d="M-0.5 0.36 L0 -0.42 L0.5 0.36" /></g>
-      <g id="ed-veldt" class="sym veldt"><path d="M-0.5 -0.32 L-0.26 0.36 L0 -0.12 L0.26 0.36 L0.5 -0.32" /></g>
-      <g id="ed-swamp" class="sym swamp"><path d="M-0.42 0.38 H0.42 M0 0.38 V-0.42 M-0.24 0.38 L-0.3 -0.22 M0.24 0.38 L0.3 -0.22" /></g>
-      <g id="ed-jungle" class="sym jungle"><polygon points={hexPoints(0, 0, 0.74)} /></g>
-    </defs>
-  </svg>
+  <svg class="defs" width="0" height="0" aria-hidden="true"><TerrainSymbols /></svg>
   <div class="pane" data-testid="editor-pane" bind:clientWidth={paneW} bind:clientHeight={paneH}>
     {#if paneW > 0}
-      <svg data-testid="editor-grid" width={svgW} height={svgH} viewBox="0 0 {svgW} {svgH}" role="img" aria-label="The board, every hex of its grid, north up" style="--r:{radius}px">
+      <svg data-testid="editor-grid" width={svgW} height={svgH} viewBox="0 0 {svgW} {svgH}" role="img" aria-label="The board as the table shows it, north up, with the sea hexes between" style="--r:{radius}px">
         {#each grid as g (g.id)}
-          {@const c = centre(g.col, g.row)}
+          {@const c = centre(g.id)}
           {@const h = working.hexes[g.id]}
           {@const kind = h ? (h.terrain ?? 'blank') : 'sea'}
           <polygon
@@ -225,51 +205,24 @@
         {/each}
         {#each grid as g (g.id)}
           {@const t = working.hexes[g.id]?.terrain}
-          {#if t && symbolFor[t].length}
-            {@const c = centre(g.col, g.row)}
+          {#if t && SYMBOLS[t].length}
+            {@const c = centre(g.id)}
             <g class="symbols" transform="translate({c.x} {c.y}) scale({radius})">
-              {#each symbolFor[t] as sym (sym)}<use href="#ed-{sym}" />{/each}
+              {#each SYMBOLS[t] as sym (sym)}<use href="#sym-{sym}" />{/each}
             </g>
           {/if}
         {/each}
-        {#each working.rivers as r (r.id)}
-          {#if r.path.length}
-            <polyline class="river" class:chosen={r.id === riverId} data-testid="river-course-{r.id}" data-hexes={r.path.join(',')} data-mouth={seaward(working, r) ?? undefined} points={riverPoints(r)} aria-label="River {r.name}" />
-          {/if}
-        {/each}
-        {#each working.rivers as r (r.id)}
-          {#each r.cataracts as id (id)}
-            {@const at = parseHexId(id)!}
-            {@const c = centre(at.col, at.row)}
-            <g class="cataract" data-testid="cataract-{id}" transform="translate({c.x} {c.y}) scale({radius})"><circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" /></g>
-          {/each}
-          {#if r.path.length && !r.joins && r.drainage !== undefined}
-            {@const at = parseHexId(r.path[0])!}
-            {@const c = centre(at.col, at.row)}
-            <text class="drainage" x={c.x} y={c.y + radius * 0.3} font-size={radius * 0.8}>{r.drainage}</text>
-          {/if}
-        {/each}
+        <BoardFeatures board={working} {centre} {radius} chosen={riverId} />
         {#each candidates as id (id)}
-          {@const at = parseHexId(id)!}
-          {@const c = centre(at.col, at.row)}
+          {@const c = centre(id)}
           <polygon class="candidate" data-testid="river-candidate-{id}" points={hexPoints(c.x, c.y, radius * 0.8)} />
         {/each}
-        {#each Object.values(working.ports) as p (p.hex)}
-          {@const at = parseHexId(p.hex)!}
-          {@const c = centre(at.col, at.row)}
-          <g class="port" transform="translate({c.x} {c.y})">
-            <circle r={radius * 0.4} />
-            <text y={-radius * 0.75} font-size={radius * 0.7}>{p.name}</text>
-          </g>
-        {/each}
         {#each [...changed] as id (id)}
-          {@const at = parseHexId(id)!}
-          {@const c = centre(at.col, at.row)}
+          {@const c = centre(id)}
           <polygon class="changed" data-testid="changed-{id}" points={hexPoints(c.x, c.y, radius * 0.96)} />
         {/each}
         {#if selected}
-          {@const at = parseHexId(selected)!}
-          {@const c = centre(at.col, at.row)}
+          {@const c = centre(selected)}
           <polygon class="outline" points={hexPoints(c.x, c.y, radius * 0.96)} />
         {/if}
       </svg>
@@ -349,7 +302,12 @@
             <line class="spoke" class:river={on} class:sea={on?.sea} x1="0" y1="0" x2={(Math.cos(bearing(d)) * HEX_R * 0.87).toFixed(1)} y2={(Math.sin(bearing(d)) * HEX_R * 0.87).toFixed(1)} />
             <text class="dir" x={(Math.cos(bearing(d)) * HEX_R * 1.15).toFixed(1)} y={(Math.sin(bearing(d)) * HEX_R * 1.15).toFixed(1)}>{d}</text>
           {/each}
-          {#if cataractHere}<g class="cataract" transform="scale({HEX_R * 0.5})"><circle r="0.34" /><path d="M-0.2 -0.08 H0.2 M-0.2 0.08 H0.2" /></g>{/if}
+          {#if cataractHere}
+            <g class="cataract" aria-label="Cataract">
+              <line class="hatch-bank" x1={(-hatch.x * HATCH * HEX_R).toFixed(1)} y1={(-hatch.y * HATCH * HEX_R).toFixed(1)} x2={(hatch.x * HATCH * HEX_R).toFixed(1)} y2={(hatch.y * HATCH * HEX_R).toFixed(1)} />
+              <line class="hatch" x1={(-hatch.x * HATCH * HEX_R).toFixed(1)} y1={(-hatch.y * HATCH * HEX_R).toFixed(1)} x2={(hatch.x * HATCH * HEX_R).toFixed(1)} y2={(hatch.y * HATCH * HEX_R).toFixed(1)} />
+            </g>
+          {/if}
         {/if}
       </svg>
       {#if selected}
@@ -437,77 +395,18 @@
     stroke: #fff;
     stroke-width: 2;
   }
-  .sym {
-    fill: none;
-    stroke-width: 0.14;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .sym.mountain {
-    stroke: #6b3a2c;
-  }
-  .sym.veldt,
-  .sym.swamp,
-  .sym.jungle {
-    stroke: #3f8a3f;
-  }
-  .sym.jungle {
-    stroke-width: 0.12;
-  }
   .symbols,
-  .river,
   .cataract,
-  .drainage,
-  .port,
   .changed,
   .candidate,
   .outline {
     pointer-events: none;
-  }
-  .river.chosen {
-    stroke: #8fc4ff;
-    stroke-width: calc(var(--r) * 0.26);
-  }
-  .cataract circle {
-    fill: #2d72c9;
-  }
-  .cataract path {
-    fill: none;
-    stroke: #efe6cc;
-    stroke-width: 0.07;
-    stroke-linecap: round;
-  }
-  .drainage {
-    fill: #1c2a2e;
-    text-anchor: middle;
-    font-weight: 700;
-    paint-order: stroke;
-    stroke: #efe6cc;
-    stroke-width: 3px;
   }
   .candidate {
     fill: rgba(143, 196, 255, 0.35);
     stroke: #8fc4ff;
     stroke-width: 2;
     stroke-dasharray: 3 3;
-  }
-  .river {
-    fill: none;
-    stroke: #2d72c9;
-    stroke-width: calc(var(--r) * 0.16);
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-  .port circle {
-    fill: #1c2a2e;
-  }
-  .port text {
-    fill: #e8d8b0;
-    text-anchor: middle;
-    font-weight: 700;
-    paint-order: stroke;
-    stroke: #1c2a2e;
-    stroke-width: 3px;
   }
   .changed {
     fill: none;
@@ -605,9 +504,6 @@
   .swatch .hex.sea {
     stroke: #e8d8b0;
   }
-  .swatch .sym {
-    stroke-width: 0.16;
-  }
   .terrains {
     width: 188px;
     flex: none;
@@ -702,8 +598,15 @@
     dominant-baseline: central;
     pointer-events: none;
   }
-  .one-hex .cataract {
-    pointer-events: none;
+  .one-hex .hatch-bank {
+    stroke: #efe6cc;
+    stroke-width: 13;
+    stroke-linecap: round;
+  }
+  .one-hex .hatch {
+    stroke: #2d72c9;
+    stroke-width: 6;
+    stroke-linecap: round;
   }
   .hex-info {
     line-height: 1.3;
