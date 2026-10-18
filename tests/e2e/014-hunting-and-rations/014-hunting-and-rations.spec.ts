@@ -67,7 +67,7 @@ test.describe('014 - Hunting and rations', () => {
         { spec: 'The bottom rail shows the hunting die (4) and the meal note', check: async () => {
           await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
           await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-total', '4');
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('two a hunter (5 askaris and the explorer): 12 rations bagged, 21 men ate (9 from the stores)');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('two per hunter: 12 rations bagged, 21 men ate (9 from the stores)');
         } },
         { spec: 'The chart shows 91 food; the state records the meal on the explorer', check: async () => {
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '91');
@@ -91,7 +91,7 @@ test.describe('014 - Hunting and rations', () => {
       verifications: [
         { spec: 'The rail shows a 1 and "no game"; the chart shows 71 food and 4 askaris', check: async () => {
           await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-total', '1');
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing a hunter: no game, 20 men ate (20 from the stores)');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing per hunter: no game, 20 men ate (20 from the stores)');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '71');
           const s = await state(page);
           expect(s.explorers.find((x) => x.seat === 'bottom-1')!.chart).toMatchObject({ askaris: 4, bearers: 15, food: 71 });

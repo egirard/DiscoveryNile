@@ -73,10 +73,11 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     rng = r.state;
     r.values.forEach((v, i) => rolls.push({ label: `peak die ${i + 1}`, value: v }));
     const hundreds = r.values.reduce((a, b) => a * b, 1) + 100;
+    const product = r.values.join(' × ');
     if (hundreds > 150) {
       peakFeet = hundreds * 100;
-      notes.push(`a peak of ${peakFeet.toLocaleString('en-US')} ft`);
-    }
+      notes.push(`a peak of ${peakFeet.toLocaleString('en-US')} ft (${product} + 100 hundred ft, a record over 15,000)`);
+    } else notes.push(`a mountain of ${(hundreds * 100).toLocaleString('en-US')} ft (${product} + 100 hundred ft, no record under 15,000)`);
   }
 
   // Water hexes have no visible river course (rules §7.4); rivers that reach them simply end there.
@@ -105,7 +106,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     // Several rivers leave here: it must be a lake, a swamp or a jungle-swamp.
     const v = roll('lake, swamp or jungle-swamp', { what: 'for the water two rivers leave from', hint: '1–2 lake, 3–4 swamp, 5–6 jungle-swamp' });
     const water: Terrain = v <= 2 ? 'lake' : v <= 4 ? 'swamp' : 'jungle-swamp';
-    notes.push(`two rivers leave this hex: it is ${water}`);
+    notes.push(`two rivers leave this hex, so it is water: ${v} makes it ${water}`);
     return { rng, result: { terrain: water, river: null, oasis: false, peakFeet, rolls, notes } };
   }
   if (outflows.length === 1) {
@@ -120,7 +121,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
         notes.push(`the river comes from the ${nb(d)!.mapped ? 'water' : 'unexplored hex'} in direction ${d}`);
       } else {
         river = { in: [], out, source: true, cataract: false, waterfallFeet: null };
-        notes.push('the river rises here');
+        notes.push(`the river rises here: nothing for it to come from in direction ${d}`);
       }
     }
   } else if (inflows.length) {
@@ -131,13 +132,15 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
       return { rng, result: { terrain: 'lake', river: null, oasis: false, peakFeet, rolls, notes } };
     }
     let out: Direction | null = null;
+    const passed: Direction[] = [];
     for (let i = 0; i < 12 && out === null; i++) {
       const d = roll('where the river goes', { what: 'for where the river flows on to', hint: 'a direction around the hex, rolled again until the river can go that way' }) as Direction;
       if (exits.includes(d)) out = d;
+      else passed.push(d);
     }
     if (out === null) out = exits[0];
     river = { in: inflows, out, source: false, cataract: false, waterfallFeet: null };
-    notes.push(`the river flows on in direction ${out}`);
+    notes.push(`the river flows on in direction ${out}${passed.length ? ` (not ${passed.join(', ')}: mapped land there)` : ''}`);
   } else {
     // No rivers known in or out: maybe a source (an oasis in desert).
     const v = roll('a river source?', { what: 'for a river source', hint: 'an even roll means a river rises here' });
@@ -146,13 +149,13 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
       const n = nb(d);
       if (n && (!n.mapped || isWater(n.terrain))) {
         if (terrain === 'desert') {
-          notes.push('an oasis');
+          notes.push(`${v} is even: an oasis (in desert a source is an oasis)`);
           return { rng, result: { terrain, river: null, oasis: true, peakFeet, rolls, notes } };
         }
         river = { in: [], out: d, source: true, cataract: false, waterfallFeet: null };
-        notes.push(`a river rises here and flows in direction ${d}`);
-      }
-    }
+        notes.push(`${v} is even: a river rises here and flows in direction ${d}`);
+      } else notes.push(`${v} is even, but direction ${d} is mapped land: no river`);
+    } else notes.push(`${v} is odd: no river`);
   }
 
   // Cataracts (rules §7.5) whenever a river is mapped in a hex that is not water.
@@ -166,8 +169,8 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
       h.values.forEach((x, i) => rolls.push({ label: `waterfall die ${i + 1}`, value: x }));
       const feet = h.values.reduce((a, b) => a * b, 1);
       if (feet >= 400) river.waterfallFeet = feet;
-      notes.push(`a cataract${feet >= 400 ? ` with a ${feet} ft fall` : ''}`);
-    }
+      notes.push(`a cataract on a ${v}${feet >= 400 ? ` with a ${feet} ft fall (${h.values.join(' × ')}, a record from 400)` : ` (its fall of ${feet} ft, ${h.values.join(' × ')}, under the 400 recorded)`}`);
+    } else notes.push(`no cataract (${v})`);
   }
   return { rng, result: { terrain, river, oasis: false, peakFeet, rolls, notes } };
 }

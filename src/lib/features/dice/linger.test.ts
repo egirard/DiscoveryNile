@@ -4,7 +4,7 @@ import { allRecords, lingerLines, resultTitle } from './linger';
 
 const line = (kind: RollRecord['kind'], outcome = ''): RollRecord => ({ kind, seat: 'bottom-1', rolls: [], outcome });
 const game = (history: RollRecord[][], turn: RollRecord[] | null, awaiting: boolean): GameState =>
-  ({ history: history.map((log) => ({ log })), turn: turn ? { log: turn } : null, awaiting: awaiting ? { seat: 'bottom-1', prompt: 'Roll a D6 for the hunt; the die bags a ration a hunter at 2' } : null }) as unknown as GameState;
+  ({ history: history.map((log) => ({ log })), turn: turn ? { log: turn } : null, awaiting: awaiting ? { seat: 'bottom-1', prompt: 'Roll a D6 for the hunt; the die bags one ration per hunter at 2', event: { type: 'turn/ended' } } : null }) as unknown as GameState;
 
 describe('the lines kept in view after a throw (prompts 54 and 55)', () => {
   it('lists every line of the game in order, the turns played before the turn under way', () => {
@@ -13,22 +13,26 @@ describe('the lines kept in view after a throw (prompts 54 and 55)', () => {
   });
   it('keeps the hunt in view with the lost check that led to it, the turn having passed to history', () => {
     const before = game([], [line('disaster')], true);
-    const after = game([[line('disaster'), line('lost-check', 'lost'), line('hunting', 'two a hunter')]], [], false);
+    const after = game([[line('disaster'), line('lost-check', 'lost'), line('hunting', 'two per hunter')]], [], false);
     expect(lingerLines(before, after)!.map((r) => r.kind)).toEqual(['lost-check', 'hunting']);
   });
-  it("keeps the natives' reaction and the fight, leaving out the action noted, and nothing after a lost check alone", () => {
+  it("keeps the natives' reaction and the fight, leaving out the action noted, and a lost check alone as well (prompt 56)", () => {
     const before = game([], [line('disaster')], true);
     const after = game([], [line('disaster'), line('action', 'chose policy 4'), line('reaction', 'hostile'), line('combat', 'the natives hide')], false);
     expect(lingerLines(before, after)!.map((r) => r.kind)).toEqual(['reaction', 'combat']);
-    expect(lingerLines(before, game([], [line('disaster'), line('lost-check', 'lost')], false))).toBeNull();
+    expect(lingerLines(before, game([], [line('disaster'), line('lost-check', 'lost')], false))!.map((r) => r.kind)).toEqual(['lost-check']);
+    expect(lingerLines(before, game([], [line('disaster'), line('action', 'drew a card')], false))).toBeNull();
   });
-  it('lingers only when the throw finished the event: not while more dice are asked for, nor on an ordinary event', () => {
+  it('lingers only when the throw finished the event: not while more dice are asked for, nor on an ordinary event, nor after the roll for first player', () => {
     const held = game([], [line('hunting')], true);
     expect(lingerLines(held, held)).toBeNull();
     expect(lingerLines(game([], [], false), game([], [line('hunting')], false))).toBeNull();
+    const starting = { ...game([], null, true), awaiting: { seat: 'bottom-1', prompt: 'Roll 4 D6 for first player', event: { type: 'game/started' } } } as unknown as GameState;
+    expect(lingerLines(starting, game([[line('first-player')]], [], false))).toBeNull();
   });
   it('titles the result by what the throw was for', () => {
-    expect(resultTitle('Roll a D6 for the hunt; the die bags a ration a hunter at 2, two at 4, three at 6')).toBe('The hunt');
+    expect(resultTitle('Roll a D6 for the hunt; the die bags one ration per hunter at 2, two at 4, three at 6')).toBe('The hunt');
+    expect(resultTitle("Roll a D6 to see if you are lost; 2+ means you're okay")).toBe('To see if you are lost');
     expect(resultTitle("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4 over 1 warrior and they hide")).toBe("The natives' nerve");
     expect(resultTitle('Roll 2 D6 for surprise; 4+ and the expedition is ready')).toBe('Surprise');
   });

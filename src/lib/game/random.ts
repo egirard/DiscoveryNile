@@ -1,6 +1,6 @@
 // Seeded, versioned PRNG (mulberry32). All game randomness comes through here, keyed by a
 // seed committed in an event, so every client derives the same outcome.
-import type { RollRecord } from './state';
+import type { GameState, RollRecord } from './state';
 
 export const PRNG_VERSION = 1;
 
@@ -60,6 +60,18 @@ export class DiceNeeded extends Error {
    * made with what they meant, not only their faces.
    */
   sofar?: RollRecord[];
+  /**
+   * The game as it stood when the dice ran out (prompt 56), when a rule with the state at hand says so (`noting`):
+   * the lines it holds beyond the state the event was applied to are the event's lines so far, shown with the ask.
+   * The deepest rule's state has the most lines, so the first to note it wins.
+   */
+  state?: GameState;
+  /**
+   * Lines still in the making when the dice ran out (prompt 56): a fight part fought, a disaster part resolved, the
+   * meal before the sickness dice, as the rule has them so far, without the seat the reducer adds. Outer rules put
+   * theirs first, so the natives' reaction stands before the fight.
+   */
+  making?: LineInMaking[];
   constructor(
     public readonly stream: Stream,
     public readonly count: number,
@@ -69,6 +81,27 @@ export class DiceNeeded extends Error {
   ) {
     super(`${count} physical ${count === 1 ? 'die' : 'dice'} needed on the ${stream} stream ${ask.what}`);
     this.name = 'DiceNeeded';
+  }
+}
+
+/** A log line a rule is still writing when the dice run out: the record without its seat and hex (prompt 56). */
+export type LineInMaking = Omit<RollRecord, 'seat' | 'hex'>;
+
+/**
+ * Run a rule that may run out of dice (prompt 56); when it does, note for the ask how the game stood (`state`, whose
+ * lines beyond the event's starting state are the lines so far) and the line the caller was making, then let the ask
+ * go on up. A line in the making is noted only when it has something to say.
+ */
+export function noting<T>(run: () => T, at: { state?: GameState; making?: () => LineInMaking | null }): T {
+  try {
+    return run();
+  } catch (e) {
+    if (e instanceof DiceNeeded) {
+      if (at.state) e.state ??= at.state;
+      const line = at.making?.();
+      if (line && (line.rolls.length || line.outcome)) e.making = [line, ...(e.making ?? [])];
+    }
+    throw e;
   }
 }
 

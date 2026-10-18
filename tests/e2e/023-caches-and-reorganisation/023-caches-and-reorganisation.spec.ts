@@ -158,7 +158,7 @@ test.describe('023 - Caches and reorganisation', () => {
       description: 'Next turn the panel lists the cache with its ten rations and five muskets, to be dug up rather than taken from; digging it up rolls a 5, so the goods rejoin the chart and the marker is lifted',
       verifications: [
         { spec: 'The cache die and note show at the rail; the marker is gone; the chart regains the goods', check: async () => {
-          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('the cache is recovered: 10 food, 5 muskets');
+          await expect(page.getByTestId('cache-note-bottom-1').last()).toHaveText('the cache is recovered on a 5 (1 or 2 and it would be gone): 10 food, 5 muskets');
           await expect(page.getByTestId('cache-c25r11-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('have-muskets-bottom-1')).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '84');

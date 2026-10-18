@@ -32,10 +32,11 @@ export function tagRolls(records: RollRecord[], read: ReadDie[]): RollRecord[] {
   });
 }
 
-/** Every line of the game so far, in order: the turns played, then the turn in progress. */
-function records(s: GameState): RollRecord[] {
+/** Every line of the game so far, in order: the turns played, then the turn in progress. Append-only as the game goes on. */
+export function allRecords(s: GameState): RollRecord[] {
   return [...s.history.flatMap((t) => t.log), ...(s.turn?.log ?? [])];
 }
+const records = allRecords;
 
 /**
  * The lines `after` added to `before`, tagged with the dice the event between them read, put back where they lie:

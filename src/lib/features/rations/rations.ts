@@ -102,24 +102,23 @@ export interface HuntResult {
 export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: boolean): { rng: RngState; result: HuntResult } {
   const modifiers = huntingModifiers(camp);
   const bonus = modifiers.reduce((a, m) => a + m.value, 0);
-  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags a ration a hunter at 2, two at 4, three at 6` });
+  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags one ration per hunter at 2, two at 4, three at 6` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
   const perHunter = rationsPerHunter(total), explorerShare = rationsPerHunter(total + (zoologist ? 1 : 0));
   const game = perHunter * askaris + explorerShare;
-  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, needed: '2 / 4 / 6 for one, two, three a hunter', perHunter, explorerShare, game } };
+  return { rng: r.state, result: { rolls: [{ label: 'hunting', value: r.value }], modifiers, total, needed: '2 / 4 / 6 for one, two, three per hunter', perHunter, explorerShare, game } };
 }
 
 const RATE = ['nothing', 'one', 'two', 'three'];
 
-/** The hunt's result in words before the meal (prompt 54): the rate the die gave each hunter and who hunted, so the
- *  rations bagged are accounted for: "two a hunter (5 askaris and the explorer)", "nothing a hunter", or none on a
- *  defensive stand (rules §8.1). */
-export function huntRate(h: HuntResult, askaris: number, defensive: boolean): string {
+/** The hunt's result in words before the meal (prompts 54 and 56): the rate the die gave each hunter, "two per hunter"
+ *  (the hunters are the askaris and the explorer, rules §11), "two per hunter, three for the zoologist", "nothing per
+ *  hunter", or none on a defensive stand (rules §8.1). */
+export function huntRate(h: HuntResult, defensive: boolean): string {
   if (defensive) return 'no hunting on a defensive stand';
-  if (h.game === 0) return 'nothing a hunter';
-  const who = askaris ? `${askaris} askari${askaris === 1 ? '' : 's'} and the explorer` : 'the explorer alone';
-  const zoology = h.explorerShare !== h.perHunter ? `, ${RATE[h.explorerShare]} with zoology` : '';
-  return `${RATE[h.perHunter]} a hunter (${who}${zoology})`;
+  if (h.game === 0) return 'nothing per hunter';
+  const zoology = h.explorerShare !== h.perHunter ? `, ${RATE[h.explorerShare]} for the zoologist` : '';
+  return `${RATE[h.perHunter]} per hunter${zoology}`;
 }
 
 export interface MealResult {

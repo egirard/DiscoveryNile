@@ -95,7 +95,7 @@ test.describe('015 - Water in the desert', () => {
       description: 'The caravan camps in the dry desert west of the Nile: no game, thirteen rations eaten, and twenty-five water drunk, five left',
       verifications: [
         { spec: 'The meal note reads the evening\'s food and water; the chart shows 27 food and 5 water', check: async () => {
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing a hunter: no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing per hunter: no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
           await expect(page.getByTestId('have-water-bottom-1')).toHaveAttribute('data-count', '5');
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '17');
           const s = await state(page);
@@ -113,7 +113,7 @@ test.describe('015 - Water in the desert', () => {
       description: 'The second night only five rations remain: the explorer and the askaris drink, two bearers get the last of it, eight bearers die of thirst and the three camels are shot for their meat',
       verifications: [
         { spec: 'The meal note tells of the deaths; the chart shows 2 bearers, no camels, no water and 44 food', check: async () => {
-          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing a hunter: no game, 13 men ate (13 from the stores); drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
+          await expect(page.getByTestId('meal-note-bottom-1')).toHaveText('nothing per hunter: no game, 13 men ate (13 from the stores); drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '2');
           await expect(page.getByTestId('have-camels-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('have-water-bottom-1')).toHaveCount(0);

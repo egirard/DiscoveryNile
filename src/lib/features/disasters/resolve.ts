@@ -7,7 +7,7 @@ import type { Specialty, Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
 import { hasPart } from '$features/map/generate';
 import type { Roll } from '$features/map/generate';
-import { d6, dice as rollDice, type DiceAsk, type RngState } from '$lib/game/random';
+import { d6, dice as rollDice, noting, type DiceAsk, type RngState } from '$lib/game/random';
 
 /** The expedition's circumstances when the card is drawn. */
 export interface Situation {
@@ -74,10 +74,14 @@ class Resolver {
   }
   /** The card is drawn at the start of the explorer's turn by the previous seat's `turn/ended`: the ask names him. */
   private roll(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
-    const r = d6(this.rng, 'main', { ...ask, seat: this.seat });
+    const r = this.asking(() => d6(this.rng, 'main', { ...ask, seat: this.seat }));
     this.rng = r.state;
     this.rolls.push({ label, value: r.value });
     return r.value;
+  }
+  /** A die asked for part way through the card: the card's line so far, its dice and what they did, goes with the ask (prompt 56). */
+  private asking<T>(run: () => T): T {
+    return noting(run, { making: () => ({ kind: 'disaster', applies: true, rolls: [...this.rolls], outcome: this.notes.join(', ') || 'the dice so far' }) });
   }
   /** One die per explorer and askari; a 6 (5–6 for a zoologist explorer) is a kill. */
   shoot(label: string): number {
@@ -161,7 +165,7 @@ class Resolver {
     this.notes.push(`${plural(Math.min(n, canoes), 'canoe')} overturned`);
   }
   twoDice(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
-    const r = rollDice(this.rng, 2, 'main', { ...ask, seat: this.seat });
+    const r = this.asking(() => rollDice(this.rng, 2, 'main', { ...ask, seat: this.seat }));
     this.rng = r.state;
     r.values.forEach((v) => this.rolls.push({ label, value: v }));
     return r.values[0] + r.values[1];

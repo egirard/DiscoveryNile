@@ -123,6 +123,7 @@ test.describe('022 - Specialties in the field', () => {
       verifications: [
         { spec: 'The rail notes the find and shows one specimen; the study control is gone and the turn is spent', check: async () => {
           await expect(page.getByTestId('specialty-note-bottom-1')).toHaveText('a zoological specimen is found');
+          await expect(page.getByTestId('specialty-needed-bottom-1')).toHaveText('needs 2, 3'); // what the die had to show on the veldt (prompt 56)
           await expect(page.getByTestId('specimens-zoology-bottom-1')).toHaveAttribute('data-count', '1');
           await expect(page.getByTestId('research-zoology-bottom-1')).toHaveCount(0);
           const s = await state(page);

@@ -78,11 +78,15 @@ export function oasisSearchable(m: MappedHex, seat: string): boolean {
   return m.terrain === 'desert' && !m.river && !m.publishedBy && !m.oasisKnownTo.includes(seat as SeatId);
 }
 
-/** One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). */
-export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[] } {
+/**
+ * One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). The line
+ * says what an even roll does without saying whether there is one (prompt 56): that is the first explorer's secret.
+ */
+export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[]; summary: string } {
   const r = d6(rng, 'water', { what: 'for the oasis', hint: 'an even roll finds it, if there is one to find', seat });
   const found = m.oasis && r.value % 2 === 0;
-  return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }] };
+  const summary = found ? `the oasis is found (${r.value} is even)` : `no oasis found (${r.value}; an even roll finds one, if there is one to find)`;
+  return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }], summary };
 }
 
 export interface MoveTarget {
@@ -217,7 +221,8 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const gen = generateTerrain(rng, target, terrainLookup(state.map));
         rng = gen.rng;
         terrain = gen.result.terrain;
-        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain}${gen.result.copiedFrom ? ' (as the neighbour)' : ''}` });
+        // The line tells how the terrain came about (prompt 56): the directions tried, the table, the composite die.
+        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain}: ${gen.result.notes.join('; ')}` });
         // Rivers, oases, cataracts and peaks (rules §7.4–7.5); water may replace the terrain.
         const water = resolveWater(rng, target, terrain, knowledgeOf(state));
         rng = water.rng;
@@ -238,7 +243,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const search = oasisSearch(rng, map[target], explorer.seat);
         rng = search.rng;
         map = { ...map, [target]: search.hex };
-        log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' });
+        log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.summary });
       }
 
       // Terrain conflict (rules §7.1): the hex is mapped and claimed, but the expedition turns back.
@@ -254,7 +259,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         rng = r.state;
         const lostCanoes = Math.min(chart.canoes, Math.max(0, r.value - 3));
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };
-        log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : 'every canoe survives the cataract' });
+        log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${r.value} − 3 = ${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : `every canoe survives the cataract (${r.value}, not over 3)` });
       }
       // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once
       // here, unless the hex is published (then the world knows there are none). A joint expedition rolls once.
@@ -273,10 +278,10 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
               tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
-              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: `natives: ${found.result.warriors} warriors (tribe ${id})` });
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: found.result.summary.replace('a tribe of', `tribe ${id} of`) });
             } else {
               map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, ...seats.filter((s) => !entered.nativesCheckedBy.includes(s))] } };
-              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: 'no natives' });
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: found.result.summary });
             }
           }
         }

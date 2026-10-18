@@ -3,7 +3,7 @@ import type { GameEvent } from '$lib/game/events';
 import type { ExplorerState, GameState, LoggedTurn, Phase, RollOff, RollRecord } from '$lib/game/state';
 import type { Roll } from '$features/map/generate';
 import type { HexId } from '$features/map/hex';
-import { d6, dice, shuffleWith } from '$lib/game/random';
+import { d6, dice, noting, shuffleWith } from '$lib/game/random';
 import { CARD_IDS, card, handValue, isCardId, type CardId } from '$features/cards/deck';
 import { BOARD, PORTS, type PortId } from '$features/map/manifest';
 import { ITEMS, availableAt, cost, type Purchases } from '$features/expedition/prices';
@@ -11,7 +11,7 @@ import type { SeatId } from '$lib/tabletop/seats';
 import { dealDisaster, faceDisaster, inTheField, situationOf } from '$features/disasters/draw';
 import { oasisSearch, oasisSearchable, researchPending, standingHex, terrainOf } from '$features/exploration/reducer';
 import { preach, study, treat, type TreatResult } from '$features/natives/specialties';
-import { hostilities, react, type ReactionResult } from '$features/natives/reaction';
+import { hostilities, react, reactionOutcome, type ReactionResult } from '$features/natives/reaction';
 import { SELLABLE, attemptPoison, giveEverything, offerGifts, tradePrices } from '$features/natives/negotiation';
 import { consequencesOfDefeat, loot, resultsOfVictory, searchVillage } from '$features/natives/aftermath';
 import type { Tribe } from '$lib/game/state';
@@ -76,7 +76,8 @@ function advance(state: GameState): GameState {
     if (i + 1 >= order.length) nextRound++;
     i = (i + 1) % order.length;
     if (roundLimit !== null && nextRound > roundLimit) return endGame(state, 'limit');
-    if (living(order[i])) return beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: nextRound } }, order[i]);
+    // A die asked for as the next turn opens (an oasis, the village, an escape): the ending turn's lines, its hunt among them, go with the ask (prompt 56).
+    if (living(order[i])) return noting(() => beginTurn({ ...state, rollOff: null, turn: { ...state.turn!, round: nextRound } }, order[i]), { state });
   }
   return state; // no living explorer: the players end the game by consensus (G-62)
 }
@@ -187,7 +188,7 @@ export { replaceExplorer };
 export function endTurnAfterLost(state: GameState): GameState {
   const ending = currentExplorer(state);
   if (!ending) return advance(state);
-  if (inTheField(ending, state.map)) return advance(eatAndHunt(state, ending));
+  if (inTheField(ending, state.map)) return advance(noting(() => eatAndHunt(state, ending), { state }));
   // At a port or in the Cape Colony the expedition is provisioned: no hunt, and the lost check's line says so.
   const where = ending.location.kind === 'port' ? `at ${BOARD.ports[ending.location.port].name}` : ending.location.kind === 'hex' ? `at ${PORTS.find((p) => p.hex === (ending.location as { hex: HexId }).hex)?.name ?? 'the Cape Colony'}`.replace('at the Cape Colony', 'in the Cape Colony') : null;
   const log = state.turn!.log;
@@ -209,14 +210,15 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   const meal = feed(explorer.chart!, explorer.sick, camp, h.result.game, crew.length);
   const water = drink(meal.chart, camp, crew.length);
   const hex = (explorer.location as { hex: string }).hex as HexId;
-  // The line explains the meal from the die (prompt 54): the rate a hunter, then what was bagged, eaten and drawn from the stores.
-  const parts = [`${huntRate(h.result, askaris, defensive)}: ${meal.summary}`];
+  // The line explains the meal from the die (prompt 54): the rate per hunter, then what was bagged, eaten and drawn from the stores.
+  const parts = [`${huntRate(h.result, defensive)}: ${meal.summary}`];
   if (water) parts.push(water.summary);
   let sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
   // Starvation, desertion and sickness (rules §11) on the 'sickness' stream.
   const hunger = starve(water?.chart ?? meal.chart, sick, meal.hungryMen);
   if (hunger.summary) parts.push(hunger.summary);
-  const round = sicknessRound(h.rng, hunger.chart, sick, hunger.starving, explorer.specialties.includes('medicine'));
+  // The sickness dice asked for one by one: the meal's line so far goes with each ask (prompt 56).
+  const round = noting(() => sicknessRound(h.rng, hunger.chart, sick, hunger.starving, explorer.specialties.includes('medicine')), { state, making: () => ({ kind: 'hunting', rolls: h.result.rolls, modifiers: h.result.modifiers, total: h.result.total, needed: h.result.needed, outcome: parts.join('; ') }) });
   if (round.summary) parts.push(round.summary);
   sick = round.sick;
   const rolls = [...h.result.rolls, ...round.rolls];
@@ -234,7 +236,7 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
   const m = state.map[hex];
   if (!m || !m.oasis || !oasisSearchable(m, explorer.seat)) return state;
   const search = oasisSearch(state.rng!, m, explorer.seat);
-  const record: RollRecord = { kind: 'water', seat: explorer.seat, hex, rolls: search.rolls, outcome: search.found ? 'the oasis is found' : 'no oasis found' };
+  const record: RollRecord = { kind: 'water', seat: explorer.seat, hex, rolls: search.rolls, outcome: search.summary };
   return { ...state, rng: search.rng, map: { ...state.map, [hex]: search.hex }, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
 }
 
@@ -242,7 +244,7 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
 function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
   const { hex, tribe, had, goodwill } = explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number };
   const r = consequencesOfDefeat(state.rng!, had, -3 + goodwill, explorer.seat);
-  const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? 'still held prisoner' : r.summary };
+  const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? r.summary.replace('the explorer is held prisoner', 'still held prisoner') : r.summary };
   const turn = { ...state.turn!, log: [...state.turn!.log, record], moved: true };
   if (r.fate === 'killed') {
     const t = state.tribes[tribe];
@@ -260,8 +262,8 @@ function villageRetry(state: GameState, explorer: ExplorerState): GameState {
   const id = state.map[hex]?.tribe;
   const tribe = id != null ? state.tribes[id] : undefined;
   if (!tribe?.pending || tribe.pending.by !== explorer.seat) return state;
-  const s = searchVillage(state.rng!, tribe.pending.prisoners, tribe.pending.policy, explorer.seat);
-  const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: s.rolls, outcome: s.found ? 'the village is found' : 'the village cannot be found' };
+  const s = noting(() => searchVillage(state.rng!, tribe.pending!.prisoners, tribe.pending!.policy, explorer.seat), { state });
+  const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: s.rolls, outcome: s.summary };
   const next = { ...state, rng: s.rng, turn: { ...state.turn!, log: [...state.turn!.log, record] } };
   return s.found ? spoilsOrLoot(next, explorer, tribe, tribe.pending.prisoners, tribe.pending.policy, tribe.pending.original) : next;
 }
@@ -277,7 +279,7 @@ function spoilsOrLoot(state: GameState, explorer: ExplorerState, tribe: Tribe, p
 function lootVillage(state: GameState, explorer: ExplorerState, tribe: Tribe): GameState {
   const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
   const camp = situationOf(state, explorer)!;
-  const l = loot(state.rng!, tribe.pending!.original, camp.terrain, camp.river || camp.oasis || camp.terrain === 'lake' || (camp.terrain !== null && camp.terrain.includes('swamp')));
+  const l = noting(() => loot(state.rng!, tribe.pending!.original, camp.terrain, camp.river || camp.oasis || camp.terrain === 'lake' || (camp.terrain !== null && camp.terrain.includes('swamp'))), { state });
   const holder = holderOf(state, explorer);
   const had = holder.chart!;
   const chart = { ...had, food: had.food + l.rations, gifts: had.gifts + l.gifts, camels: had.camels + l.camels, canoes: had.canoes + l.canoes };
@@ -326,7 +328,7 @@ function settle(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: He
   }
   if (result.outcome === 'victory') {
     // Results of victory (rules §8.4): prisoners join as bearers until released; then the village.
-    const v = resultsOfVictory(rng, result.chart.askaris, result.warriors, policy);
+    const v = noting(() => resultsOfVictory(rng, result.chart.askaris, result.warriors, policy), { state: next });
     rng = v.rng;
     log.push({ kind: 'victory', seat: explorer.seat, hex, rolls: v.rolls, outcome: v.summary });
     const chart = { ...result.chart, bearers: result.chart.bearers + v.prisoners, camels: result.chart.camels + (terrainOf(state, hex) === 'desert' ? v.prisoners : 0) };
@@ -346,7 +348,7 @@ function permitTrade(state: GameState, tribe: Tribe): GameState {
   const explorer = currentExplorer(state)!;
   const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
   const camp = situationOf(state, explorer)!;
-  const prices = tradePrices(state.rng!, { desert: camp.terrain === 'desert', water: camp.river || camp.terrain === 'lake' || (camp.terrain !== null && camp.terrain.includes('swamp')) });
+  const prices = noting(() => tradePrices(state.rng!, { desert: camp.terrain === 'desert', water: camp.river || camp.terrain === 'lake' || (camp.terrain !== null && camp.terrain.includes('swamp')) }), { state });
   const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: prices.rolls, outcome: 'the chief permits trade: ' + Object.entries(prices.prices).map(([item, price]) => (item === 'food' ? `${price} rations per gift` : `${item.slice(0, -1)} ${price}`)).join(', ') };
   const negotiatedBy = tribe.negotiatedBy.includes(explorer.seat) ? tribe.negotiatedBy : [...tribe.negotiatedBy, explorer.seat];
   return { ...state, rng: prices.rng, tribes: { ...state.tribes, [tribe.id]: { ...state.tribes[tribe.id], negotiatedBy } }, turn: { ...state.turn!, phase: 'trade', trade: { tribe: tribe.id, prices: prices.prices }, log: [...state.turn!.log, record] } };
@@ -649,9 +651,10 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const result = react(state.rng!, reactionInput(state, explorer, tribe, hex, policy));
       const log: RollRecord[] = [
         ...turn.log,
-        { kind: 'reaction', seat: explorer.seat, hex, rolls: result.reaction.rolls, modifiers: result.reaction.modifiers, total: result.reaction.total, outcome: result.reaction.hostile ? `hostile (${result.reaction.total} over ${result.reaction.target})` : `not hostile (${result.reaction.total} within ${result.reaction.target})` }
+        { kind: 'reaction', seat: explorer.seat, hex, rolls: result.reaction.rolls, modifiers: result.reaction.modifiers, total: result.reaction.total, outcome: reactionOutcome(result.reaction) }
       ];
-      return settle({ ...state, rng: result.rng, turn: { ...turn, log, moved: turn.moved || policy === 1 } }, explorer, tribe, hex, policy, result);
+      const reacted: GameState = { ...state, rng: result.rng, turn: { ...turn, log, moved: turn.moved || policy === 1 } };
+      return noting(() => settle(reacted, explorer, tribe, hex, policy, result), { state: reacted });
     }
     case 'natives/offered': {
       const { seat, gifts, everything, decline } = event.payload as { seat?: string; gifts?: unknown; everything?: unknown; decline?: unknown };
@@ -679,12 +682,13 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const next: GameState = { ...replaceExplorer(state, { ...holder, chart: given }), rng: o.rng, turn: { ...state.turn, log: [...state.turn.log, record] } };
       if (o.satisfied) return permitTrade(next, tribe);
       // Insulted: the chief considers an attack again; too weak, he tries poison (rules §8.5).
-      const h = hostilities(next.rng!, reactionInput(next, currentExplorer(next)!, tribe, hex, state.turn.policy ?? 5));
+      const h = noting(() => hostilities(next.rng!, reactionInput(next, currentExplorer(next)!, tribe, hex, state.turn!.policy ?? 5)), { state: next });
       const afterHostilities = { ...next, rng: h.rng };
-      if (h.outcome !== 'hide') return settle(afterHostilities, currentExplorer(afterHostilities)!, tribe, hex, state.turn.policy ?? 5, h);
+      if (h.outcome !== 'hide') return noting(() => settle(afterHostilities, currentExplorer(afterHostilities)!, tribe, hex, state.turn!.policy ?? 5, h), { state: afterHostilities });
       const e2 = currentExplorer(afterHostilities)!;
-      const poison = attemptPoison(h.rng, e2.poisonBonus);
-      const log: RollRecord[] = [...afterHostilities.turn!.log, { kind: 'combat', seat: e2.seat, hex, rolls: h.combat, outcome: h.summary }, { kind: 'poison', seat: e2.seat, hex, rolls: poison.rolls, outcome: poison.summary }];
+      const hid: GameState = { ...afterHostilities, turn: { ...afterHostilities.turn!, log: [...afterHostilities.turn!.log, { kind: 'combat', seat: e2.seat, hex, rolls: h.combat, outcome: h.summary }] } };
+      const poison = noting(() => attemptPoison(h.rng, e2.poisonBonus), { state: hid });
+      const log: RollRecord[] = [...hid.turn!.log, { kind: 'poison', seat: e2.seat, hex, rolls: poison.rolls, outcome: poison.summary }];
       const turn = { ...afterHostilities.turn!, phase: 'act' as const, log, moved: true };
       if (poison.result === 'dies') return { ...perish(afterHostilities, e2, 'died', `poisoned by the chief of tribe ${tribe.id} at ${hex}`), rng: poison.rng, turn };
       if (poison.result === 'recovers') return { ...replaceExplorer(afterHostilities, { ...e2, poisonBonus: e2.poisonBonus + 1 }), rng: poison.rng, turn };
@@ -766,7 +770,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         const r = study(state.rng!, specialty, camp.terrain!, camp.river, camp.oasis);
         const specimens = { ...explorer.specimens, [specialty]: explorer.specimens[specialty] + (r.found ? 1 : 0) };
         const research = { hex, done: [...explorer.research!.done, specialty as 'zoology' | 'geology'] };
-        const record: RollRecord = { kind: 'specialty', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.summary };
+        const record: RollRecord = { kind: 'specialty', seat: explorer.seat, hex, rolls: r.rolls, needed: r.needed, outcome: r.summary };
         return { ...replaceExplorer(state, { ...explorer, specimens, research }), rng: r.rng, turn: { ...state.turn, moved: true, log: [...state.turn.log, record] } };
       }
       // Evangelism and medicine: with the chief's permission (the trade phase), or in captivity without it.
@@ -789,7 +793,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (t.explorerSick) next = { ...next, sick: { ...next.sick, explorer: true } };
       // The chief's and the witch doctor's poison (rules §9), until one succeeds.
       for (let i = 0; i < work.poisonAttempts; i++) {
-        const poison = attemptPoison(rng, next.poisonBonus);
+        const sofar: GameState = { ...state, tribes, turn: { ...state.turn, log } };
+        const poison = noting(() => attemptPoison(rng, next.poisonBonus), { state: sofar });
         rng = poison.rng;
         log.push({ kind: 'poison', seat: explorer.seat, hex, rolls: poison.rolls, outcome: poison.summary });
         if (poison.result === 'dies') return { ...perish({ ...state, tribes }, next, 'died', `poisoned by tribe ${tribe.id} at ${hex}`), rng, turn: { ...state.turn, log, moved: true } };
@@ -937,7 +942,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const chart = { ...holder.chart };
       if (!gone) for (const [k, n] of Object.entries(cache.contents)) chart[k as Item] += n ?? 0;
       const listed = Object.entries(cache.contents).map(([k, n]) => `${n} ${k}`).join(', ');
-      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [{ label: 'cache', value: r.value }], outcome: gone ? `the cache has disappeared (${listed})` : `the cache is recovered: ${listed}` };
+      const record: RollRecord = { kind: 'cache', seat: explorer.seat, hex, rolls: [{ label: 'cache', value: r.value }], outcome: gone ? `the cache has disappeared on a ${r.value} (1 or 2 and it is gone): ${listed}` : `the cache is recovered on a ${r.value} (1 or 2 and it would be gone): ${listed}` };
       return { ...replaceExplorer(state, { ...holder, chart }), rng: r.state, caches: rest, turn: { ...state.turn, log: [...state.turn.log, record] } };
     }
     case 'water/taken': {

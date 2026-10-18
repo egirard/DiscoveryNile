@@ -68,7 +68,7 @@ describe('specialties in the field (rules §9)', () => {
     const { events } = atTheTribe(script, ['medicine']);
     const treated = reduce([...events, event('specialty/performed', { seat: 'bottom-1', specialty: 'medicine' })]);
     expect(treated.diagnostics).toEqual([]);
-    expect(treated.turn!.log.slice(-3).map((l) => l.outcome)).toEqual(['several major cases treated; the witch doctor tries poison twice (attitude +2)', 'the chief’s poisoning attempt fails', 'poisoned, the explorer recovers (hardened against the next attempt)']);
+    expect(treated.turn!.log.slice(-3).map((l) => l.outcome)).toEqual(['several major cases treated; the witch doctor tries poison twice (attitude +2)', 'the chief’s poisoning attempt fails (4, 4 or more)', 'poisoned, the explorer recovers (3; hardened against the next attempt)']);
     expect(treated.tribes[1]).toMatchObject({ attitude: 2, treatedBy: ['bottom-1'] });
     expect(treated.explorers[0]).toMatchObject({ goodWorks: { evangelism: 0, medicine: 2 }, poisonBonus: 1 });
   });

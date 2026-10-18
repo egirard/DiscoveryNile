@@ -20,7 +20,8 @@ export function offerGifts(rng: RngState, gifts: number, warriors: number): Offe
     rng: two.state,
     rolls: two.values.map((value) => ({ label: 'offer', value })),
     satisfied,
-    summary: `${gifts} gift${gifts === 1 ? '' : 's'} offered: ${satisfied ? 'the chief is satisfied' : 'the chief is insulted'} (${larger} × ${gifts} against ${warriors} warriors)`
+    // The arithmetic in the line (prompt 56): the larger die times the gifts against the warriors.
+    summary: `${gifts} gift${gifts === 1 ? '' : 's'} offered: the larger die ${larger} × ${gifts} = ${larger * gifts}, ${satisfied ? 'reaching' : 'short of'} ${warriors} warriors: the chief is ${satisfied ? 'satisfied' : 'insulted'}`
   };
 }
 
@@ -36,7 +37,8 @@ export function attemptPoison(rng: RngState, bonus: number): { rng: RngState; ro
   const r = d6(rng, 'combat', { what: "for the chief's poison", hint: okayFrom(4 - bonus, 'you shrug it off', 'it takes hold') });
   const total = r.value + bonus;
   const result: PoisonResult = total <= 2 ? 'dies' : total === 3 ? 'recovers' : 'fails';
-  const summary = result === 'dies' ? 'the chief’s poison kills the explorer' : result === 'recovers' ? 'poisoned, the explorer recovers (hardened against the next attempt)' : 'the chief’s poisoning attempt fails';
+  const die = bonus ? `${r.value} + ${bonus} = ${total}` : `${total}`;
+  const summary = result === 'dies' ? `the chief’s poison kills the explorer (${die}, 2 or less)` : result === 'recovers' ? `poisoned, the explorer recovers (${die}; hardened against the next attempt)` : `the chief’s poisoning attempt fails (${die}, 4 or more)`;
   return { rng: r.state, rolls: [{ label: 'poison', value: r.value }], result, summary };
 }
 

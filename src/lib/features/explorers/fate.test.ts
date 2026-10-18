@@ -41,7 +41,7 @@ describe('death (rules §12, Scoring)', () => {
     expect(before.map['c24r12']).toMatchObject({ markers: ['bottom-1'], tribe: 1 });
     expect(Object.values(before.caches)).toHaveLength(1);
     expect(killed.diagnostics).toEqual([]);
-    expect(killed.turn!.log.at(-1)).toMatchObject({ kind: 'defeat', outcome: 'the explorer is killed' });
+    expect(killed.turn!.log.at(-1)).toMatchObject({ kind: 'defeat', outcome: 'defeat 1: the explorer is killed' });
     const e = killed.explorers[0];
     expect(e.location).toEqual({ kind: 'dead' });
     expect(e.fate).toEqual({ kind: 'died', round: 4, cause: 'killed by tribe 1 at c24r12' });

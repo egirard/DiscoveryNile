@@ -188,7 +188,7 @@ describe('movement rates with scripted dice (rules §7.1)', () => {
     expect(targets.find((t) => t.hex === 'c15r32')).toMatchObject({ unknown: true, cost: 2, mode: 'mounted' });
     const s3 = reduce([...events, event('expedition/moved', { seat: 'bottom-1', path: ['c15r32'] })]);
     expect(s3.diagnostics).toEqual([]);
-    expect(rolls(s3).map((l) => l.outcome)).toEqual(['found the way', 'mapped lake', 'lake is impassable mounted: the expedition turns back']);
+    expect(rolls(s3).map((l) => l.outcome)).toEqual(['found the way', 'mapped lake: nothing mapped in direction 1, rolled again; nothing mapped in direction 5 either; 6 on the table: lake', 'lake is impassable mounted: the expedition turns back']);
     expect(s3.map['c15r32']).toMatchObject({ terrain: 'lake', markers: ['bottom-1'] });
     expect(s3.explorers[0].location).toEqual({ kind: 'hex', hex: 'c16r32' });
     expect(s3.turn!.moved).toBe(true);

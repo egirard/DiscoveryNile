@@ -69,7 +69,7 @@
 <div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-have={have.length} data-status={status} data-seen={seen ?? ''} data-stale={stale}>
   <p class="ask" data-testid="dice-ask-{seat}">{prompt}</p>
   {#if sofar.length || pending.length}
-    <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="Already rolled for this action">
+    <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="What the dice have decided so far">
       {#each sofar as r, i (i)}
         <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
       {/each}

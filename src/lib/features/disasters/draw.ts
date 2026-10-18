@@ -4,7 +4,7 @@
 // discarded. Rolls and the outcome go to the turn log for the rail.
 import type { ExplorerState, GameState, Phase, RollRecord } from '$lib/game/state';
 import { card, type CardId } from '$features/cards/deck';
-import { shuffleWith } from '$lib/game/random';
+import { DiceNeeded, shuffleWith } from '$lib/game/random';
 import { coastal } from '$features/exploration/movement';
 import { courseAt, oasisKnownTo, terrainOf } from '$features/exploration/reducer';
 import { inCapeColony } from './cape-colony';
@@ -57,7 +57,14 @@ export function faceDisaster(state: GameState): GameState {
   const situation = e && situationOf(state, e);
   // Nobody in the field to face it (the explorer gone in the meantime): the card is simply discarded.
   if (!e || !situation || !e.chart) return { ...state, deck: { ...state.deck!, discard: [...state.deck!.discard, top] }, turn: { ...turn, phase: then, disaster: null } };
-  const result = resolveDisaster(state.rng!, card(top), situation, { chart: e.chart!, sick: e.sick, specialties: e.specialties }, e.seat);
+  let result: ReturnType<typeof resolveDisaster>;
+  try {
+    result = resolveDisaster(state.rng!, card(top), situation, { chart: e.chart!, sick: e.sick, specialties: e.specialties }, e.seat);
+  } catch (err) {
+    // The card's line in the making names its card, so the ask shows the chip beside the dice so far (prompt 56).
+    if (err instanceof DiceNeeded && err.making) err.making = err.making.map((m) => (m.kind === 'disaster' ? { ...m, card: top } : m));
+    throw err;
+  }
   const hex = (e.location as { hex: string }).hex;
   const record: RollRecord = { kind: 'disaster', seat: e.seat, hex: hex as RollRecord['hex'], card: top, applies: result.applies, rolls: result.rolls, outcome: result.outcome };
   const next: ExplorerState = { ...e, chart: result.chart, sick: result.sick };

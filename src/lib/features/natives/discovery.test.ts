@@ -15,7 +15,7 @@ describe('discovery of natives (rules §7.7)', () => {
   it('rolls two dice on the natives stream, then three for warriors, the greatest capped at the distance to a port', () => {
     expect(distanceToNearestPort('c24r12')).toBe(1); // beside Mombasa
     const r = discoverNatives(rngScripted(1, { natives: [1, 2, 3, 4, 5] }), 'veldt', false, 'c24r12');
-    expect(r.result).toEqual({ rolls: [{ label: 'natives', value: 1 }, { label: 'natives', value: 2 }, { label: 'warriors', value: 3 }, { label: 'warriors', value: 4 }, { label: 'warriors', value: 5 }], needed: '2, 3, 4', found: true, warriors: 12 });
+    expect(r.result).toEqual({ rolls: [{ label: 'natives', value: 1 }, { label: 'natives', value: 2 }, { label: 'warriors', value: 3 }, { label: 'warriors', value: 4 }, { label: 'warriors', value: 5 }], needed: '2, 3, 4', found: true, warriors: 12, summary: 'natives on 3: a tribe of 12 warriors, 3 × 4 × 5, the 5 cut to 1 for the distance to Mombasa' });
     const far = discoverNatives(rngScripted(1, { natives: [2, 2, 3, 4, 5] }), 'veldt', false, 'c15r20');
     expect(far.result.warriors).toBe(60);
     const none = discoverNatives(rngScripted(1, { natives: [3, 3] }), 'veldt', false, 'c24r12');

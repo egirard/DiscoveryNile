@@ -6,7 +6,7 @@ const rng = (combat: number[]) => rngScripted(1, { combat });
 
 describe('negotiation (rules §8.5)', () => {
   it('gifts times the larger die against the warriors', () => {
-    expect(offerGifts(rng([3, 6]), 2, 12)).toMatchObject({ satisfied: true, summary: '2 gifts offered: the chief is satisfied (6 × 2 against 12 warriors)' });
+    expect(offerGifts(rng([3, 6]), 2, 12)).toMatchObject({ satisfied: true, summary: '2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied' });
     expect(offerGifts(rng([5, 5]), 2, 12)).toMatchObject({ satisfied: false });
     expect(offerGifts(rng([6, 6]), 0, 1)).toMatchObject({ satisfied: false });
   });

@@ -48,12 +48,12 @@ describe('water/taken and the desert camp', () => {
     const r3 = reduce([...toDesert, event('turn/ended', { seat: 'bottom-1' })]);
     const e3 = r3.explorers[0];
     expect(e3.chart).toMatchObject({ food: 17, water: 5, bearers: 10, camels: 3 });
-    expect(e3.lastMeal!.outcome).toBe('nothing a hunter: no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
+    expect(e3.lastMeal!.outcome).toBe('nothing per hunter: no game, 13 men ate (13 from the stores); drank 25 water, 5 left');
     const ev4 = [...toDesert, event('turn/ended', { seat: 'bottom-1' })];
     const r4 = reduce([...ev4, ...pass('top-1', r3), event('turn/ended', { seat: 'bottom-1' })]);
     const e4 = r4.explorers[0];
     expect(e4.chart).toMatchObject({ bearers: 2, askaris: 2, camels: 0, water: 0, food: 34 });
-    expect(e4.lastMeal!.outcome).toBe('nothing a hunter: no game, 13 men ate (13 from the stores); drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
+    expect(e4.lastMeal!.outcome).toBe('nothing per hunter: no game, 13 men ate (13 from the stores); drank 5 water, 8 bearers died of thirst, 3 camels shot for want of water (30 rations)');
     expect(e4.sick.explorer).toBe(false);
   });
 });

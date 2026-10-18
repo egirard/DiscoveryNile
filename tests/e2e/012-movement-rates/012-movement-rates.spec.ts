@@ -113,7 +113,7 @@ test.describe('012 - Movement rates', () => {
         { spec: 'The rail shows the lost check, the terrain roll and the turning back, in that order', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');
-            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', 'mapped lake');
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', /^mapped lake: /);
             await expect(page.getByTestId('roll-turned-back-bottom-1').last()).toHaveAttribute('data-outcome', 'lake is impassable mounted: the expedition turns back');
           });
           await expect(page.getByTestId('movement-bottom-1')).toHaveAttribute('data-left', '0');

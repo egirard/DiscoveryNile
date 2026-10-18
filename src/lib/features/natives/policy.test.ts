@@ -37,7 +37,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(s.turn).toMatchObject({ current: 'bottom-1', round: 3, phase: 'natives', policy: null });
     expect(s.map['c24r12']).toMatchObject({ terrain: 'veldt', tribe: 1, markers: ['bottom-1'] });
     expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } });
-    expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'natives', outcome: 'natives: 12 warriors (tribe 1)' });
+    expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'natives', outcome: 'natives on 3: tribe 1 of 12 warriors, 3 × 4 × 5, the 5 cut to 1 for the distance to Mombasa' });
     expect(s.turn!.log.at(-1)!.rolls.map((r) => r.value)).toEqual([1, 2, 3, 4, 5]);
     expect(s.explorers[0].cameFrom).toBe('c25r12');
     const reason = (p: Record<string, unknown>, type = 'natives/policy') => reduce([...events, event(type as 'natives/policy', p)]).diagnostics.at(-1)?.reason;
@@ -62,7 +62,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(s.map['c24r12'].markers).toEqual(['bottom-1']);
     const ignore = reduce([...again, event('natives/policy', { seat: 'bottom-1', policy: 4 })]);
     expect(ignore.turn).toMatchObject({ phase: 'act', policy: 4, moved: false });
-    expect(ignore.turn!.log.at(-1)).toMatchObject({ kind: 'reaction', outcome: 'not hostile (3 within 5)' });
+    expect(ignore.turn!.log.at(-1)).toMatchObject({ kind: 'reaction', outcome: 'not hostile: 3 on the dice, within the target of 5' });
   });
   it('policy 1 holds the expedition in place and forbids hunting; staying in the hex asks again next turn', () => {
     const { events, pass } = intoTheVeldt();

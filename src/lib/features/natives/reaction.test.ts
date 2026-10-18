@@ -34,23 +34,23 @@ describe('combat (rules §8.3)', () => {
     expect(r.combat.map((x) => x.label)).toEqual(['strength', 'surprise', 'surprise', 'driven off?']);
     expect(r).toMatchObject({ outcome: 'victory', warriors: 6 });
     expect(r.chart.askaris).toBe(5);
-    expect(r.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; the volley kills 6; the natives are driven off');
+    expect(r.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 2 × 6 killed = 12, more than the 6 warriors left: the natives are driven off');
   });
   it('a failed morale roll leads to melee: natives strike, the askaris hold, then strike back', () => {
     const r = run([6, 6, 6, 1, 6, 6, 1, 6, 1, 1, 2]);
     expect(r.combat.map((x) => x.label)).toEqual(['strength', 'surprise', 'surprise', 'driven off?', 'natives strike', 'askaris break?', 'askaris strike', 'natives break?']);
     expect(r).toMatchObject({ outcome: 'victory', warriors: 1 });
     expect(r.chart.askaris).toBe(4);
-    expect(r.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; the volley kills 6; they close in; 1 askari falls; 5 warriors fall; the natives are driven off');
+    expect(r.summary).toBe("hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 1 × 6 killed = 6, not more than the 6 warriors left: they close in; the natives strike: 6 warriors ÷ 6 = 1 askari falls; the askaris' nerve 1 × 1 fallen = 1, not over the 5 that stood: the askaris hold; the askaris strike: 4 askaris ÷ 1 + 1 = 5 warriors fall; morale 2 × 5 fallen = 10, more than the 1 warrior left: the natives are driven off");
   });
   it('surprised: no volley; losing every askari or breaking is defeat', () => {
     const wiped = run([6, 6, 6, 1, 1, 1, 2], { warriors: 30 });
     expect(wiped.combat.map((x) => x.label)).toEqual(['strength', 'surprise', 'surprise', 'natives strike']);
     expect(wiped).toMatchObject({ outcome: 'defeat' });
     expect(wiped.chart.askaris).toBe(0);
-    expect(wiped.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 30 warriors: the natives attack; the expedition is surprised; 5 askaris fall; every askari is dead: defeat');
+    expect(wiped.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 30 warriors: the natives attack; surprise 1 + 1 = 2, under policy 3: the expedition is surprised; the natives strike: 30 warriors ÷ 2 = 15, all 5 askaris fall; every askari is dead: defeat');
     const broke = run([6, 6, 6, 1, 1, 1, 5, 6], { warriors: 20 });
-    expect(broke.summary).toBe('hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 20 warriors: the natives attack; the expedition is surprised; 4 askaris fall; the askaris break and run: defeat');
+    expect(broke.summary).toBe("hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 20 warriors: the natives attack; surprise 1 + 1 = 2, under policy 3: the expedition is surprised; the natives strike: 20 warriors ÷ 5 = 4 askaris fall; the askaris' nerve 6 × 4 fallen = 24, over the 5 that stood: the askaris break and run: defeat");
     expect(broke.chart.askaris).toBe(1);
   });
   it('surprise is adjusted for mounted expeditions and the desert', () => {

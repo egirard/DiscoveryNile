@@ -71,7 +71,7 @@ test.describe('019 - Negotiation and trade', () => {
       verifications: [
         { spec: 'The rail tells the offer and the permission with the prices', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('2 gifts offered: the chief is satisfied (6 × 2 against 12 warriors)');
+            await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied');
             await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
           });
           await expect(page.getByTestId('trade-prompt-bottom-1')).toBeVisible();

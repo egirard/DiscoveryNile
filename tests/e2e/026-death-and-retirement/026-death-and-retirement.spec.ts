@@ -69,7 +69,7 @@ test.describe('026 - Death and retirement', () => {
       description: 'The defeat die is a 1: the explorer is killed. His token is gone, c24r12 is blank again with its tribe marker erased, and the rail shows the fight, the obituary and the end-turn control',
       verifications: [
         { spec: 'The defeat note reads killed; the obituary names the tribe and the hex; the turn can still be ended', check: async () => {
-          await expect(page.getByTestId('defeat-note-bottom-1')).toHaveText('the explorer is killed');
+          await expect(page.getByTestId('defeat-note-bottom-1')).toHaveText('defeat 1: the explorer is killed');
           await expect(page.getByTestId('fate-bottom-1')).toHaveText('killed by tribe 1 at c24r12');
           await expect(page.getByTestId('fate-bottom-1')).toHaveAttribute('data-fate', 'died');
           await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();

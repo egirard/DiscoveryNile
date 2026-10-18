@@ -62,7 +62,7 @@ test.describe('011 - Rivers, oases and cataracts', () => {
     await page.getByTestId('confirm-outfit-yes-bottom-1').click();
     await stepWest(page, 'c24r12');
     await withLogOpen(page, 'bottom-1', async () => {
-      await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', 'no river');
+      await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /is odd: no river$/);
     });
     await passTurn(page);
     await passTurn(page);
@@ -104,7 +104,7 @@ test.describe('011 - Rivers, oases and cataracts', () => {
           expect(s.map['c22r13'].peakFeet).toBe(20000);
           expect(s.map['c22r13'].river).toMatchObject({ source: true, out: 5 });
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /a peak of 20,000 ft; a river rises here and flows in direction 5/);
+            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /a peak of 20,000 ft \(.*a record over 15,000\); \d is even: a river rises here and flows in direction 5/);
           });
         } }
       ]

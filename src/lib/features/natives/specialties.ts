@@ -28,11 +28,12 @@ export function geologyFinds(terrain: Terrain, river: boolean): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
-export function study(rng: RngState, specialty: 'zoology' | 'geology', terrain: Terrain, river: boolean, oasis: boolean): { rng: RngState; rolls: Roll[]; found: boolean; summary: string } {
+export function study(rng: RngState, specialty: 'zoology' | 'geology', terrain: Terrain, river: boolean, oasis: boolean): { rng: RngState; rolls: Roll[]; found: boolean; needed: string; summary: string } {
   const finds = specialty === 'zoology' ? zoologyFinds(terrain, river || oasis) : geologyFinds(terrain, river);
   const r = d6(rng, 'specialty', { what: `for a ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen`, hint: finds.length ? `a specimen on ${finds.join(', ')}` : 'nothing to find here' });
   const found = finds.includes(r.value);
-  return { rng: r.state, rolls: [{ label: specialty, value: r.value }], found, summary: found ? `a ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen is found` : `no ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen here` };
+  // What the die needed goes on the line (prompt 56), so the verdict is read against it.
+  return { rng: r.state, rolls: [{ label: specialty, value: r.value }], found, needed: finds.length ? finds.join(', ') : 'none here', summary: found ? `a ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen is found` : `no ${specialty === 'zoology' ? 'zoological' : 'geological'} specimen here` };
 }
 
 export interface PreachResult {

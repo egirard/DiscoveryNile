@@ -76,6 +76,8 @@ export interface TerrainResult {
   rolls: Roll[];
   /** Copied from the neighbour in this direction, or rolled on the random table. */
   copiedFrom: Direction | null;
+  /** How the terrain came about, die by die (prompt 56): "nothing mapped in direction 6, rolled again; veldt copied from the neighbour in direction 2". */
+  notes: string[];
 }
 
 const RANDOM_TABLE: Record<number, 'desert' | 'mountain' | 'swamp' | 'jungle' | 'veldt' | 'lake'> = { 1: 'desert', 2: 'mountain', 3: 'swamp', 4: 'jungle', 5: 'veldt', 6: 'lake' };
@@ -86,6 +88,7 @@ const RANDOM_TABLE: Record<number, 'desert' | 'mountain' | 'swamp' | 'jungle' | 
  */
 export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup): { rng: RngState; result: TerrainResult } {
   const rolls: Roll[] = [];
+  const notes: string[] = [];
   const known = (d: Direction): Terrain | null => {
     const n = neighbour(id, d);
     if (!isLand(n)) return null;
@@ -96,7 +99,11 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
     rng = r.state;
     rolls.push({ label: `direction (try ${attempt})`, value: r.value });
     const t = known(r.value as Direction);
-    if (t) return { rng, result: { terrain: t, rolls, copiedFrom: r.value as Direction } };
+    if (t) {
+      notes.push(`${t} copied from the neighbour in direction ${r.value}`);
+      return { rng, result: { terrain: t, rolls, copiedFrom: r.value as Direction, notes } };
+    }
+    notes.push(attempt === 1 ? `nothing mapped in direction ${r.value}, rolled again` : `nothing mapped in direction ${r.value} either`);
   }
   const neighboursKnown = DIRECTIONS.map(known);
   const anyJungle = neighboursKnown.some((t) => hasPart(t, 'jungle'));
@@ -105,8 +112,10 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
   rng = r.state;
   rolls.push({ label: 'random terrain', value: r.value });
   let basic = RANDOM_TABLE[r.value];
+  const rolled = basic;
   if (basic === 'desert' && anyJungle) basic = 'veldt'; // note A
   if (basic === 'jungle' && anyDesert) basic = 'veldt'; // note B
+  notes.push(basic === rolled ? `${r.value} on the table: ${basic}` : `${r.value} on the table: ${rolled}, but veldt beside ${rolled === 'desert' ? 'jungle' : 'desert'}`);
   let terrain: Terrain = basic;
   if (basic === 'jungle') {
     const c = d6(rng, 'main', { what: 'for what the jungle hides', hint: '2 adds mountain, 3 adds swamp' });
@@ -114,13 +123,15 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
     rolls.push({ label: 'jungle composite', value: c.value });
     if (c.value === 3) terrain = 'jungle-swamp';
     if (c.value === 2) terrain = 'jungle-mountain';
+    notes.push(c.value === 3 ? '3: swamp in the jungle' : c.value === 2 ? '2: mountain in the jungle' : `${c.value}: the jungle hides nothing`);
   } else if ((basic === 'swamp' || basic === 'mountain') && !anyDesert) {
     const c = d6(rng, 'main', { what: `for jungle in the ${basic}`, hint: '4 adds jungle' });
     rng = c.state;
     rolls.push({ label: 'jungle composite', value: c.value });
     if (c.value === 4) terrain = basic === 'swamp' ? 'jungle-swamp' : 'jungle-mountain';
+    notes.push(c.value === 4 ? `4: jungle in the ${basic}` : `${c.value}: no jungle in the ${basic}`);
   }
-  return { rng, result: { terrain, rolls, copiedFrom: null } };
+  return { rng, result: { terrain, rolls, copiedFrom: null, notes } };
 }
 
 /** Terrain of a hex: generated if known, else pre-printed. */

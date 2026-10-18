@@ -65,7 +65,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
       verifications: [
         { spec: 'Tribe marker 1 is on c24r12 and the rail shows the five dice with the note', check: async () => {
           await expect(page.getByTestId('tribe-c24r12')).toHaveAttribute('data-tribe', '1');
-          await expect(page.getByTestId('natives-note-bottom-1')).toHaveText('natives: 12 warriors (tribe 1)');
+          await expect(page.getByTestId('natives-note-bottom-1')).toHaveText('natives on 3: tribe 1 of 12 warriors, 3 × 4 × 5, the 5 cut to 1 for the distance to Mombasa');
           await expect(page.getByTestId('policy-prompt-bottom-1')).toBeVisible();
         } },
         { spec: 'The policy panel lists the five policies and the turn cannot end until one is chosen', check: async () => {
@@ -120,7 +120,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
           await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'act', policy: 4, moved: false });
-          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('not hostile (3 within 5)');
+          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('not hostile: 3 on the dice, within the target of 5');
           expect(s.diagnostics).toEqual([]);
         } }
       ]

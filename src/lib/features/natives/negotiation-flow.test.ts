@@ -39,7 +39,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     expect(s.diagnostics).toEqual([]);
     expect(s.turn!.phase).toBe('trade');
     expect(s.turn!.trade).toEqual({ tribe: 1, prices: { food: 3, bearers: 2, guides: 4, askaris: 1 } });
-    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['2 gifts offered: the chief is satisfied (6 × 2 against 12 warriors)', 'the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1']);
+    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied', 'the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1']);
     expect(s.explorers[0].chart!.gifts).toBe(18);
     expect(s.tribes[1].negotiatedBy).toEqual(['bottom-1']);
     const traded = [...offered, event('natives/traded', { seat: 'bottom-1', item: 'bearers', count: 1, direction: 'buy' }), event('natives/traded', { seat: 'bottom-1', item: 'food', count: 2, direction: 'sell' })];
@@ -72,9 +72,9 @@ describe('negotiation and trade (rules §8.5)', () => {
     const insulted = reduce([...events, event('natives/offered', { seat: 'bottom-1', gifts: 0 })]);
     expect(insulted.diagnostics).toEqual([]);
     expect(insulted.turn!.log.slice(-3).map((l) => l.outcome)).toEqual([
-      '0 gifts offered: the chief is insulted (1 × 0 against 1 warriors)',
+      '0 gifts offered: the larger die 1 × 0 = 0, short of 1 warriors: the chief is insulted',
       'hostile; nerve 6 × 5 askaris ÷ policy 5 = 6, more than 1 warrior: the natives hide',
-      'the chief’s poison kills the explorer'
+      'the chief’s poison kills the explorer (2, 2 or less)'
     ]);
     expect(insulted.explorers[0].location).toEqual({ kind: 'dead' });
     const survives = reduce([...meetTheChief({ ...script, combat: [1, 1, 1, 1, 1, 6, 3] }).events, event('natives/offered', { seat: 'bottom-1', gifts: 0 })]);

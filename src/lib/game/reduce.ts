@@ -1,7 +1,7 @@
 import { REDUCER_VERSION, SCHEMA_VERSION, type GameEvent } from './events';
-import { initialState, type AwaitingDice, type GameState } from './state';
+import { initialState, type AwaitingDice, type GameState, type RollRecord } from './state';
 import { DiceNeeded, generated, settled, withPhysical, withRolled, type DieSource } from './random';
-import { readOf, tagNew, tagRolls } from './sources';
+import { allRecords, readOf, tagNew, tagRolls } from './sources';
 import { askWhat } from '$features/dice/prompt';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
@@ -106,7 +106,11 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     if (!(e instanceof DiceNeeded)) throw e;
     const payloadSeat = (event.payload as { seat?: unknown }).seat;
     const seat = (e.ask.seat ?? (typeof payloadSeat === 'string' ? payloadSeat : undefined) ?? state.turn?.current ?? state.seats[0]?.id) as AwaitingDice['seat'];
-    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at, sofar: e.sofar ?? [] } };
+    // The lines so far (prompts 34 and 56): what the game as the rule last noted it holds beyond `state`, the lines a rule
+    // attached itself, then the lines still in the making, each given the seat whose roll it is.
+    const stood = e.state ? tagRolls(allRecords(e.state).slice(allRecords(state).length), readOf(e.state.rng)) : [];
+    const making = (e.making ?? []).map((m): RollRecord => ({ ...m, seat }));
+    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at, sofar: [...stood, ...(e.sofar ?? []), ...making] } };
   }
 }
 
@@ -134,15 +138,8 @@ function apply(state: GameState, event: GameEvent): GameState {
     if (typeof result === 'string') return reject(state, event, result);
     if (result !== state) {
       // Lost, the expedition can do nothing more this turn: the turn goes straight on to the hunt and passes (prompt 20).
-      if (event.type === 'expedition/moved' && lostNow(state, result)) {
-        try {
-          result = endTurnAfterLost(result);
-        } catch (e) {
-          // The hunt's die is asked for: the lost check already made is shown with the ask (prompt 34).
-          if (e instanceof DiceNeeded) e.sofar = [...(e.sofar ?? []), ...tagRolls(result.turn!.log.slice(state.turn?.log.length ?? 0), readOf(result.rng))];
-          throw e;
-        }
-      }
+      // The hunt's die asked for on the way: the lost check already made goes with the ask (prompts 34 and 56).
+      if (event.type === 'expedition/moved' && lostNow(state, result)) result = endTurnAfterLost(result);
       const seat = (event.payload as { seat?: string }).seat;
       result = cardsSeenByActing(state, result, seat);
       const noted = noteAction(event, state, result);

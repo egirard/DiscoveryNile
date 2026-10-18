@@ -131,7 +131,7 @@ test.describe('039 - Mixed movement', () => {
         { spec: 'The log shows the lost check found the way and the terrain mapped jungle', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');
-            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', 'mapped jungle (as the neighbour)');
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', 'mapped jungle: jungle copied from the neighbour in direction 5');
           });
           await expect(page.getByTestId('hex-c3r6')).toHaveAttribute('data-terrain', 'jungle');
         } },

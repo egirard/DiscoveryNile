@@ -62,7 +62,7 @@ describe('basic terrain generation (rules §7.3)', () => {
     const seed = seedRolling(d);
     const known = { [neighbour(centre, d)]: 'jungle-swamp' as Terrain };
     const r = generateTerrain(rngFromSeed(seed), centre, lookupWith(known));
-    expect(r.result).toEqual({ terrain: 'jungle-swamp', rolls: [{ label: 'direction (try 1)', value: 2 }], copiedFrom: 2 });
+    expect(r.result).toEqual({ terrain: 'jungle-swamp', rolls: [{ label: 'direction (try 1)', value: 2 }], copiedFrom: 2, notes: ['jungle-swamp copied from the neighbour in direction 2'] });
   });
   it('tries a second direction before the random table', () => {
     const seed = seedRolling(5, 1); // second die is 5

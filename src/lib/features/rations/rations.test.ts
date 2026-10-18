@@ -20,7 +20,7 @@ describe('hunting (rules §11, RQ-7)', () => {
   });
   it('rolls one die on the hunting stream and applies it to the explorer and every askari; a zoologist adds one for himself', () => {
     const r = hunt(rngScripted(1, { hunting: [4] }), veldt, 5, false);
-    expect(r.result).toEqual({ rolls: [{ label: 'hunting', value: 4 }], modifiers: [], total: 4, needed: '2 / 4 / 6 for one, two, three a hunter', perHunter: 2, explorerShare: 2, game: 12 });
+    expect(r.result).toEqual({ rolls: [{ label: 'hunting', value: 4 }], modifiers: [], total: 4, needed: '2 / 4 / 6 for one, two, three per hunter', perHunter: 2, explorerShare: 2, game: 12 });
     const zoo = hunt(rngScripted(1, { hunting: [5] }), veldt, 5, true);
     expect(zoo.result.game).toBe(2 * 5 + 3);
     const desert = hunt(rngScripted(1, { hunting: [6] }), { terrain: 'desert', river: false, oasis: false }, 2, false);

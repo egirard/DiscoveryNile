@@ -66,7 +66,7 @@ describe('reorganising the expedition (rules §5)', () => {
     const later = [...ev, ...pass('top-1', reduce(ev))];
     const found = reduce([...later, event('cache/recovered', { seat: 'bottom-1', cacheId: 1 })]);
     expect(found.diagnostics).toEqual([]);
-    expect(found.turn!.log.at(-1)).toMatchObject({ kind: 'cache', outcome: 'the cache is recovered: 20 food', rolls: [{ label: 'cache', value: 5 }] });
+    expect(found.turn!.log.at(-1)).toMatchObject({ kind: 'cache', outcome: 'the cache is recovered on a 5 (1 or 2 and it would be gone): 20 food', rolls: [{ label: 'cache', value: 5 }] });
     expect(found.caches).toEqual({});
     expect(found.explorers[0].chart!.food).toBe(80 - 21 + 20); // 21 men ate the first evening
     expect(reduce([...later, event('cache/recovered', { seat: 'top-1', cacheId: 1 })]).diagnostics.at(-1)?.reason).toBe("it is not top-1's turn");
@@ -74,7 +74,7 @@ describe('reorganising the expedition (rules §5)', () => {
     const gone = reduce([...later, event('cache/recovered', { seat: 'bottom-1', cacheId: 1 }), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 5 }), event('turn/ended', { seat: 'bottom-1' })]);
     const laterStill = [...later, event('cache/recovered', { seat: 'bottom-1', cacheId: 1 }), event('expedition/reorganised', { seat: 'bottom-1', action: 'cache', item: 'food', count: 5 }), event('turn/ended', { seat: 'bottom-1' })];
     const lost = reduce([...laterStill, ...pass('top-1', gone), event('cache/recovered', { seat: 'bottom-1', cacheId: 1 })]);
-    expect(lost.turn!.log.at(-1)).toMatchObject({ outcome: 'the cache has disappeared (5 food)' });
+    expect(lost.turn!.log.at(-1)).toMatchObject({ outcome: 'the cache has disappeared on a 2 (1 or 2 and it is gone): 5 food' });
     expect(lost.caches).toEqual({});
   });
   it('animals are turned loose or eaten for ten rations each', () => {
