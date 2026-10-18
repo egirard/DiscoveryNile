@@ -59,9 +59,10 @@
   import Dicecam from '$features/dice/Dicecam.svelte';
   import RadialMenu from '$features/dice/RadialMenu.svelte';
   import type { Roll } from '$features/map/generate';
-  import { consider, dieAt, gathering, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type Watch } from '$features/dice/dicecam';
+  import { consider, dieAt, gathering, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type SeenDie, type Watch } from '$features/dice/dicecam';
   import type { DockTap } from '$features/dice/Dicecam.svelte';
   import { log as diagLog } from '$lib/diagnostics/diag';
+  import { consumedRecord } from '$lib/diagnostics/dice';
   import { isPhysical, type DieSource } from '$lib/game/random';
 
   const layout = SEAT_LAYOUT;
@@ -385,6 +386,11 @@
   /** The throw last taken, whichever seat threw it, and the tray as the engine last read it. */
   let lastThrow: Lie | null = null;
   let lastReading: Lie | null = null;
+  /**
+   * The engine saw the dice move since the last throw was taken (prompt 57). Every throw consumed is written to the
+   * capture with it, so the offline check (`bun run diag:dice`) can tell a die taken again where it lay from a throw.
+   */
+  let motionSinceTake = false;
   $effect(() => {
     // Each ask watches afresh: what lies in the tray as it opens (the last throw taken, or dice left from before)
     // is not the throw, die by die (prompt 36), and the engine's first reading at the start of the run is the tray as found.
@@ -395,13 +401,14 @@
     if (awaiting) diagLog('dice/asked', { seat: awaiting.seat, count: awaiting.count, have: awaiting.have, prompt: awaiting.prompt, rolled: awaiting.rolled, lying: lastReading?.dice ?? null });
   });
   function onDicecam(m: EngineMessage) {
-    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; if (watch) watch = moved(watch); recheck = null; dockHint = null; diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
+    if (m.type === 'rolling') { dicecamSeen = 0; dicecamStale = false; motionSinceTake = true; if (watch) watch = moved(watch); recheck = null; dockHint = null; diagLog('dicecam/rolling', { asked: Boolean(awaiting) }); }
     else if (m.type === 'removed') { dicecamSeen = m.remaining; dicecamStale = false; }
     else if (m.type === 'error') diagLog('dicecam/error', m.message);
     else if (m.type === 'settled') {
       lastReading = lieOf(m);
       if (recheck) readAgain(m);
       if (!watch || !awaiting) { dicecamSeen = m.dice.length; return; }
+      const ignore = watch.ignore;
       const judged = consider(watch, m);
       watch = judged.watch;
       dicecamSeen = judged.seen;
@@ -412,12 +419,19 @@
       const verdict = (judged.accept ? `taken ${judged.accept.join(' ')}` : judged.stale ? 'lying there already' : judged.watch.pending ? 'read once' : `${judged.seen} of ${awaiting.count - awaiting.have.length} wanted`) + (judged.stale ? '' : lying);
       console.debug('dicecam', m.rollId, lastReading.dice.map((d) => `${d.value}@${d.x.toFixed(2)},${d.y.toFixed(2)}`).join(' '), verdict);
       diagLog('dicecam/reading', { rollId: m.rollId, kind: m.kind, dice: m.dice.map((d) => ({ value: d.value, confidence: Number(d.confidence.toFixed(2)), askew: d.askew ?? false, at: d.normalizedPosition ?? null })), verdict });
-      if (judged.accept) { lastThrow = lastReading; watch = null; recheck = null; dockHint = null; rolled(awaiting.seat, judged.accept, judged.lay ?? undefined); }
+      if (judged.accept) { lastThrow = lastReading; watch = null; recheck = null; dockHint = null; rolled(awaiting.seat, judged.accept, { rollId: m.rollId, dice: m.dice, lay: judged.lay ?? [], ignore }); }
     }
   }
-  /** A throw to the game, with where each die lay when the dicecam read it (prompt 37), so a tap on the picture finds its die. */
-  async function rolled(seat: string, values: number[], lay?: (Point | null)[]) {
-    await game?.append('dice/rolled', lay ? { seat, values, lay } : { seat, values });
+  /**
+   * A throw to the game, with where each die lay when the dicecam read it (prompt 37), so a tap on the picture finds
+   * its die; and to the capture as `dice/consumed` (prompt 57): the faces and places, what else lay in the tray, what
+   * the table ignored, whether anything moved since the last throw, and what the throw is for. Faces tapped (no
+   * reading) are written the same way, without places.
+   */
+  async function rolled(seat: string, values: number[], read?: { rollId: string; dice: SeenDie[]; lay: (Point | null)[]; ignore: Lie[] }) {
+    if (awaiting) diagLog('dice/consumed', consumedRecord(awaiting, seat, values, read ?? null, read ? 'dicecam' : 'tap', motionSinceTake));
+    motionSinceTake = false;
+    await game?.append('dice/rolled', read ? { seat, values, lay: read.lay } : { seat, values });
   }
   // A die in the picture tapped (prompt 37): the die of the game lying there is read again from the readings that
   // follow, and set right when two agree on another face; a second tap on it opens the six faces instead.
@@ -455,6 +469,8 @@
   }
   /** The table rolls the rest of a gathered throw from the generator (prompt 33). */
   async function rolledAuto(seat: string) {
+    if (awaiting) diagLog('dice/consumed', consumedRecord(awaiting, seat, [], null, 'auto', motionSinceTake));
+    motionSinceTake = false;
     await game?.append('dice/rolled', { seat, auto: true });
   }
   async function toggleDice(on: boolean) {

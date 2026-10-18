@@ -3,7 +3,7 @@
   // capture answers, the running build's short git id and date, and an update waiting for a reload (the dev
   // server holds full reloads back, src/lib/dev/reload-prompt.ts). Icons first; each carries its words as a label.
   import { onMount } from 'svelte';
-  import { probeDiagnostics } from '$lib/diagnostics/diag';
+  import { DIAGNOSTICS_CONFIGURED, probeDiagnostics } from '$lib/diagnostics/diag';
   import { installReloadPrompt, onReloadPending } from '$lib/dev/reload-prompt';
 
   interface Props {
@@ -17,9 +17,16 @@
   const version = __GIT_HASH__.slice(0, 7);
   const built = __BUILD_DATE__.slice(0, 10);
   onMount(() => {
-    void probeDiagnostics().then((s) => (diag = s));
+    // Probed at mount and again when the game store configures the capture (it opens the game first, prompt 57).
+    const probe = () => void probeDiagnostics().then((s) => (diag = s));
+    probe();
+    window.addEventListener(DIAGNOSTICS_CONFIGURED, probe);
     installReloadPrompt();
-    return onReloadPending(() => (updateReady = true));
+    const off = onReloadPending(() => (updateReady = true));
+    return () => {
+      window.removeEventListener(DIAGNOSTICS_CONFIGURED, probe);
+      off();
+    };
   });
   const diagWords = $derived(diag === 'up' ? 'Diagnostics capture connected' : diag === 'down' ? 'Diagnostics capture not answering' : diag === 'off' ? 'No diagnostics capture' : 'Checking the diagnostics capture');
 </script>

@@ -22,7 +22,8 @@
     "test:e2e:only": "playwright test",
     "diag": "bun run scripts/diag-server.ts",
     "diag:context": "bun run scripts/diag-context.ts",
-    "diag:reload": "bun run scripts/diag-reload.ts"
+    "diag:reload": "bun run scripts/diag-reload.ts",
+    "diag:dice": "bun run scripts/diag-dice.ts"
   },
   "dependencies": {
     "qrcode": "^1.5.4"

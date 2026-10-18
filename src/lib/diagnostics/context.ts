@@ -4,6 +4,7 @@
 // Pure: `scripts/diag-context.ts` reads the files and prints what these return.
 import type { GameEvent } from '$lib/game/events';
 import type { GameState } from '$lib/game/state';
+import { purposeOf } from './dice';
 
 export interface LogLine {
   /** ISO time the server stamped the line with. */
@@ -59,6 +60,11 @@ export function describeLine(l: LogLine, clock: Clock = utcClock): string {
     case 'dicecam/reading': {
       const dice = Array.isArray(d?.dice) ? (d!.dice as { value: number; confidence: number; at: { x: number; y: number } | null }[]).map((x) => `${x.value}@${x.at ? `${x.at.x.toFixed(2)},${x.at.y.toFixed(2)}` : '?'}(${x.confidence})`).join(' ') : '';
       return `${t}  dicecam ${d?.rollId} ${dice || 'empty'} → ${d?.verdict}`;
+    }
+    case 'dice/consumed': {
+      const dice = Array.isArray(d?.dice) ? (d!.dice as { value: number; x: number | null; y: number | null }[]).map((x) => `${x.value}${x.x === null || x.y === null ? '' : `@${x.x.toFixed(2)},${x.y.toFixed(2)}`}`).join(' ') : '';
+      const f = d?.for as { prompt?: string } | undefined;
+      return `${t}  consumed ${d?.seat}: ${dice || 'the rest from the table'} (${d?.source}${d?.moved ? '' : ', nothing moved'}) ${purposeOf(f?.prompt ?? '')}`;
     }
     case 'dicecam/rolling':
       return `${t}  dicecam rolling${d?.asked ? '' : ' (nothing asked)'}`;

@@ -61,6 +61,7 @@ export function configureDiagnostics(options: DiagnosticsOptions): boolean {
     configured = null;
     commands?.close();
     commands = null;
+    announce();
     return false;
   }
   configured = { url, base: `${url}/diag/${options.session}`, fetchImpl: options.fetchImpl ?? fetch };
@@ -78,7 +79,14 @@ export function configureDiagnostics(options: DiagnosticsOptions): boolean {
     window.addEventListener('error', (e) => log('window/error', { message: e.message, source: e.filename, line: e.lineno }));
     window.addEventListener('unhandledrejection', (e) => log('window/unhandledrejection', { reason: String(e.reason) }));
   }
+  announce();
   return true;
+}
+
+/** The window event sent when the capture is configured or cleared, so the status line (prompt 32) probes again: the game store configures it after the page has mounted. */
+export const DIAGNOSTICS_CONFIGURED = 'diagnostics-configured';
+function announce(): void {
+  if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') window.dispatchEvent(new CustomEvent(DIAGNOSTICS_CONFIGURED));
 }
 
 /** Whether the capture server answers: `off` when none is configured (the status line, prompt 32). */
