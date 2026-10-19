@@ -4,7 +4,8 @@
 // (`bun run diag:dice`, scripts/diag-dice.ts) reads those lines back and tells a die that was consumed twice: a die
 // taken at the place of a die taken before while nothing moved in the tray is the same die, whatever face the
 // engine read this time; the same face at the same place after a throw may be a die that landed on its own spot,
-// and is listed to check. Pure, and free of the app's aliases, so the E2E scenario and the script can import it.
+// and is listed to check. Since prompt 58 the table's judge leaves a resting die's flickering face alone until the
+// engine has seen the dice move, so a RE-USED line from a table on that code is a new finding. Pure, and free of the app's aliases, so the E2E scenario and the script can import it.
 import { MOVED_LESS_THAN } from '../features/dice/dicecam';
 
 export interface Point {

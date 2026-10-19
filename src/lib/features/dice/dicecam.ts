@@ -83,25 +83,37 @@ export function sameLie(reading: Reading, lie: Lie | null): boolean {
  * changed its face or its place) is the throw. A die whose place is unknown rests when the engine still calls the
  * tray by one of the lies' names and the die at its place in that lie showed the same face. Each die of a lie can
  * be claimed by one die of the reading only.
+ *
+ * A die showing another face where a die lay is a throw only when the engine saw the dice move since the last
+ * throw was taken (`motion`, prompt 58): until then it is a resting die misread, its face flickering in the
+ * engine's reading, and it rests, counted as `misread`. That is how the table took a die twice at the user's
+ * table (scenario 041): a 3 read as a 1 and as a 3 again, each change taken as a throw.
  */
-export function thrown(reading: Reading, lies: Lie[]): { thrown: Reading['dice']; resting: number } {
+export function thrown(reading: Reading, lies: Lie[], motion: boolean): { thrown: Reading['dice']; resting: number; misread: number } {
   const places = lies.flatMap((lie) => lie.dice.filter((d) => d.x >= 0));
   const claimed = new Set<number>();
-  const values: Reading['dice'] = [];
-  let resting = 0;
-  reading.dice.forEach((d, i) => {
-    let rests: boolean;
-    if (!d.normalizedPosition) rests = lies.some((lie) => lie.rollId === reading.rollId && lie.dice.length === reading.dice.length && lie.dice[i].value === d.value);
-    else {
-      const p = d.normalizedPosition;
-      const at = places.findIndex((t, j) => !claimed.has(j) && t.value === d.value && Math.abs(p.x - t.x) < MOVED_LESS_THAN && Math.abs(p.y - t.y) < MOVED_LESS_THAN);
-      rests = at >= 0;
-      if (rests) claimed.add(at);
-    }
-    if (rests) resting++;
-    else values.push(d);
+  const near = (p: Point, t: { x: number; y: number }) => Math.abs(p.x - t.x) < MOVED_LESS_THAN && Math.abs(p.y - t.y) < MOVED_LESS_THAN;
+  const byName = (d: Reading['dice'][number], i: number, sameFace: boolean) => lies.some((lie) => lie.rollId === reading.rollId && lie.dice.length === reading.dice.length && (!sameFace || lie.dice[i].value === d.value));
+  // First the dice resting with the face they showed, then, while nothing has moved, the dice resting under another face.
+  const rests = reading.dice.map((d, i) => {
+    if (!d.normalizedPosition) return byName(d, i, true);
+    const at = places.findIndex((t, j) => !claimed.has(j) && t.value === d.value && near(d.normalizedPosition!, t));
+    if (at >= 0) claimed.add(at);
+    return at >= 0;
   });
-  return { thrown: values, resting };
+  let misread = 0;
+  if (!motion) reading.dice.forEach((d, i) => {
+    if (rests[i]) return;
+    let at = -1;
+    if (!d.normalizedPosition) rests[i] = byName(d, i, false);
+    else {
+      at = places.findIndex((t, j) => !claimed.has(j) && near(d.normalizedPosition!, t));
+      if (at >= 0) { claimed.add(at); rests[i] = true; }
+    }
+    if (rests[i]) misread++;
+  });
+  const values = reading.dice.filter((_, i) => !rests[i]);
+  return { thrown: values, resting: reading.dice.length - values.length, misread };
 }
 
 export function lieOf(reading: Reading): Lie {
@@ -149,6 +161,11 @@ export interface Watch {
   ignore: Lie[];
   /** No reading is known yet (the start of the run): the first to come is the tray as found, not a throw. */
   firstIsLie: boolean;
+  /**
+   * The engine saw the dice move (`rolling`) since the last throw was taken (prompt 58). Until it has, a die
+   * showing another face where a die lay is a resting die misread, not a throw.
+   */
+  motion: boolean;
   /** The last good reading of the current throw, waiting for another that agrees. */
   pending: { rollId: string; values: number[]; agreed: number } | null;
 }
@@ -161,12 +178,15 @@ export function watching(count: number, ...lies: (Lie | null)[]): Watch {
 /** Watch for the rest of a throw of `count` dice of which `have` are in (prompt 33), ignoring the lies given. */
 export function gathering(count: number, have: number, ...lies: (Lie | null)[]): Watch {
   const ignore = lies.filter((l): l is Lie => l !== null);
-  return { count: count - have, gathered: count > DICE_AT_HAND, ignore, firstIsLie: ignore.length === 0, pending: null };
+  return { count: count - have, gathered: count > DICE_AT_HAND, ignore, firstIsLie: ignore.length === 0, motion: false, pending: null };
 }
 
-/** The engine saw the dice roll: the next reading is a throw even when none was known before. */
+/**
+ * The engine saw the dice roll: the next reading is a throw even when none was known before, and a die showing
+ * another face where a die lay is a throw, not a misread (prompt 58).
+ */
 export function moved(watch: Watch): Watch {
-  return watch.firstIsLie ? { ...watch, firstIsLie: false } : watch;
+  return { ...watch, firstIsLie: false, motion: true };
 }
 
 export interface Considered {
@@ -179,6 +199,8 @@ export interface Considered {
   seen: number;
   /** How many dice rest where they lay, for the console's line. */
   resting: number;
+  /** How many of those rest under another face than they showed, read as a flicker and not a throw since nothing moved (prompt 58). */
+  misread: number;
   /** The reading is the tray as it already lay, not a throw. */
   stale: boolean;
 }
@@ -188,24 +210,25 @@ export interface Considered {
  * dice resting where they lay are not the throw, the rest are. A throw the tray holds whole is taken when the dice
  * thrown are the count asked for (three lying and a fourth tossed in is a throw of one), or when the tray shows
  * exactly the count and anything in it moved (four thrown again, one of them landing where it lay). A throw
- * gathered in parts takes the dice thrown, one or more, up to what is still wanted.
+ * gathered in parts takes the dice thrown, one or more, up to what is still wanted. Until the engine has seen the
+ * dice move since the last throw was taken, a die read with another face where a die lay rests (prompt 58).
  */
 export function consider(watch: Watch, reading: Reading): Considered {
-  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, lay: null, seen: 0, resting: reading.dice.length, stale: true };
-  const t = thrown(reading, watch.ignore);
+  if (watch.firstIsLie) return { watch: { ...watch, ignore: [lieOf(reading)], firstIsLie: false, pending: null }, accept: null, lay: null, seen: 0, resting: reading.dice.length, misread: 0, stale: true };
+  const t = thrown(reading, watch.ignore, watch.motion);
   const seen = t.thrown.length;
-  const resting = t.resting;
-  if (seen === 0) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, stale: true };
+  const { resting, misread } = t;
+  if (seen === 0) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, misread, stale: true };
   const whole = !watch.gathered && seen < watch.count && reading.dice.length === watch.count;
   const dice = whole ? reading.dice : t.thrown;
   const fits = whole || seen === watch.count || (watch.gathered && seen < watch.count);
   const good = fits && dice.every((d) => d.confidence >= SURE && !d.askew);
-  if (!good) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, stale: false };
+  if (!good) return { watch: { ...watch, pending: null }, accept: null, lay: null, seen, resting, misread, stale: false };
   const values = dice.map((d) => d.value);
   const same = watch.pending && watch.pending.rollId === reading.rollId && watch.pending.values.length === values.length && watch.pending.values.every((v, i) => v === values[i]);
   const agreed = same ? watch.pending!.agreed + 1 : 1;
-  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, lay: dice.map((d) => d.normalizedPosition ?? null), seen, resting, stale: false };
-  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, lay: null, seen, resting, stale: false };
+  if (agreed >= AGREEING_READINGS) return { watch: { ...watch, pending: null }, accept: values, lay: dice.map((d) => d.normalizedPosition ?? null), seen, resting, misread, stale: false };
+  return { watch: { ...watch, pending: { rollId: reading.rollId, values, agreed } }, accept: null, lay: null, seen, resting, misread, stale: false };
 }
 
 // ---- A die in the picture tapped (PROMPTS.md, prompt 37) ---------------------------------------------------------

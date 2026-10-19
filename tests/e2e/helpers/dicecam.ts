@@ -31,11 +31,13 @@ export function settled(rollId: string, values: number[]) {
   return { type: 'settled', rollId, kind: 'initial', timestamp: 0, frameNumber: ++frameNumber, frame: { width: TRAY.width, height: TRAY.height }, processingTimeMs: 420, activePath: 'cpu', dice: values.map((v, i) => seenDie(i, v)) };
 }
 /**
- * A throw as the dicecam reads it: every die sure, read twice over so the two readings agree. `thrown` is how many
- * of the tray's dice the table should take for the throw, the rest resting where they lay (prompt 36); all of them
- * unless said.
+ * A throw as the dicecam reads it: the engine sees the dice move (`rolling`, as it does for a throw at the table;
+ * `moved: false` when the toss goes unseen, prompt 21), then every die sure, read twice over so the two readings
+ * agree. `thrown` is how many of the tray's dice the table should take for the throw, the rest resting where they
+ * lay (prompt 36); all of them unless said.
  */
-export async function dicecamReads(page: Page, rollId: string, values: number[], thrown = values.length) {
+export async function dicecamReads(page: Page, rollId: string, values: number[], thrown = values.length, { moved = true } = {}) {
+  if (moved) await dicecamSays(page, { type: 'rolling' });
   await dicecamSays(page, settled(rollId, values));
   await expect(page.locator('[data-testid^="dice-prompt-"]')).toHaveAttribute('data-seen', String(thrown));
   await dicecamSays(page, settled(rollId, values));

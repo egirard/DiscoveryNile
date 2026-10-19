@@ -132,6 +132,8 @@ test.describe('037 - Physical dice', () => {
       ]
     });
 
+    // The dice are thrown: the engine sees them move, then reads the settled tray.
+    await dicecamSays(page, { type: 'rolling' });
     await dicecamSays(page, settled('throw-1', [6, 6, 6, 6]));
     await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'false');
 
@@ -443,7 +445,7 @@ test.describe('037 - Physical dice', () => {
     // A second die is tossed in from outside the picture beside the lost die, which stays where it lay, and the
     // engine misses the motion: it still calls the tray by the lost die's name. The table judges each die on its
     // own (prompt 36): the one resting where it lay is not the throw, the five beside it is.
-    await dicecamReads(page, 'throw-6', [1, 5], 1);
+    await dicecamReads(page, 'throw-6', [1, 5], 1, { moved: false });
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('hunt-explained', {

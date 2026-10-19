@@ -8,6 +8,8 @@ const lying = (rollId: string, values: number[], dx = 0): Reading => ({ rollId, 
 const at = (rollId: string, dice: [number, number, number][]): Reading => ({ rollId, dice: dice.map(([value, x, y]) => ({ value, confidence: 0.9, askew: false, normalizedPosition: { x, y } })) });
 /** Two agreeing readings of the same tray. */
 const twice = (w: ReturnType<typeof watching>, r: Reading) => consider(consider(w, r).watch, r);
+/** The same watch, the lie's places unknown (the engine's name decides). */
+const reading_noPlace = (w: ReturnType<typeof watching>) => ({ ...w, ignore: w.ignore.map((l) => ({ ...l, dice: l.dice.map((d) => ({ ...d, x: -1, y: -1 })) })) });
 
 describe('reading the dicecam', () => {
   it('takes a throw once two readings of it agree, and never the same throw twice', () => {
@@ -44,7 +46,9 @@ describe('reading the dicecam', () => {
     expect(c.accept).toBeNull();
     expect(c.seen).toBe(0);
     expect(c.resting).toBe(4);
-    c = consider(consider(c.watch, lying('r3', [1, 1, 1, 1], 0.05)).watch, lying('r3', [1, 1, 1, 1], 0.05));
+    // New faces a nudge from where the sixes lay: a throw once the engine has seen the dice move (prompt 58).
+    expect(consider(c.watch, lying('r3', [1, 1, 1, 1], 0.05))).toMatchObject({ stale: true, resting: 4, misread: 4 });
+    c = consider(consider(moved(c.watch), lying('r3', [1, 1, 1, 1], 0.05)).watch, lying('r3', [1, 1, 1, 1], 0.05));
     expect(c.accept).toEqual([1, 1, 1, 1]);
     expect(lieOf(reading('r4', [2])).dice).toEqual([{ value: 2, x: -1, y: -1 }]);
     expect(statusText('active', 1, 1, true, true)).toBe('Waiting for a D6 roll');
@@ -60,10 +64,10 @@ describe('reading the dicecam', () => {
     expect(w.count).toBe(8);
     c = consider(w, lying('r2', [1, 2, 3, 4]));
     expect(c.stale).toBe(true);
-    c = consider(consider(w, lying('r2', [5, 5, 5])).watch, lying('r2', [5, 5, 5]));
+    c = consider(consider(moved(w), lying('r2', [5, 5, 5])).watch, lying('r2', [5, 5, 5]));
     expect(c.accept).toEqual([5, 5, 5]);
     w = gathering(12, 11, lieOf(lying('r2', [5, 5, 5])));
-    c = consider(w, lying('r3', [6, 6]));
+    c = consider(moved(w), lying('r3', [6, 6]));
     expect(c.accept).toBeNull();
     expect(c.seen).toBe(2);
     expect(statusText('active', 1, 2, true, false, true)).toBe('2 dice thrown, only 1 more die wanted');
@@ -83,7 +87,7 @@ describe('reading the dicecam', () => {
     let c = consider(w, at('r1', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5]]));
     expect(c).toMatchObject({ stale: true, seen: 0, resting: 3, accept: null });
     const four = at('r1', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5], [6, 0.8, 0.6]]);
-    expect(thrown(four, [three])).toEqual({ thrown: [four.dice[3]], resting: 3 });
+    expect(thrown(four, [three], false)).toEqual({ thrown: [four.dice[3]], resting: 3, misread: 0 });
     c = consider(w, four);
     expect(c).toMatchObject({ stale: false, seen: 1, resting: 3, accept: null });
     c = consider(c.watch, four);
@@ -91,8 +95,8 @@ describe('reading the dicecam', () => {
     // The next ask opens on all four lying there: none of them is a throw, until one is picked up and rolled.
     const w2 = watching(1, lieOf(four), lieOf(four));
     expect(consider(w2, four)).toMatchObject({ stale: true, seen: 0, resting: 4 });
-    // Picked up and rolled again: a new face where it lay, or the same face a die's width away.
-    expect(twice(w2, at('r1', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5], [1, 0.8, 0.6]])).accept).toEqual([1]);
+    // Picked up and rolled again: a new face where it lay (once the engine has seen the dice move, prompt 58), or the same face a die's width away.
+    expect(twice(moved(w2), at('r1', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5], [1, 0.8, 0.6]])).accept).toEqual([1]);
     expect(twice(w2, at('r1', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5], [6, 0.7, 0.75]])).accept).toEqual([6]);
     // Picked up and rolled, landing where it lay with the same face up: nothing moved that the table can see.
     expect(consider(w2, at('r2', [[2, 0.2, 0.5], [5, 0.4, 0.5], [3, 0.6, 0.5], [6, 0.82, 0.58]])).stale).toBe(true);
@@ -150,14 +154,43 @@ describe('reading the dicecam', () => {
     expect(statusText('active', 2, 3, true, false, true)).toBe('3 dice thrown, only 2 more dice wanted');
     expect(statusText('active', 2, 1, true, false, true)).toBe('One die thrown, reading the face…');
   });
+  it('leaves a resting die alone when its face flickers, and reads a new face where it lay once the dice were seen to move (prompt 58)', () => {
+    // bottom-1's four dice are taken, 6 6 6 6, with the engine having seen them roll; top-1's ask opens on them lying there.
+    const sixes = lieOf(lying('r1', [6, 6, 6, 6]));
+    let w = watching(4, sixes, sixes);
+    expect(w.motion).toBe(false);
+    // The first die's face flickers to a 1 in the engine's reading, twice over: nothing moved, so it rests, misread, and nothing is taken.
+    let c = twice(w, lying('r1', [1, 6, 6, 6]));
+    expect(c).toMatchObject({ accept: null, stale: true, seen: 0, resting: 4, misread: 1 });
+    expect(c.watch.pending).toBeNull();
+    // Flickering back is no throw either, and a flicker under a new name is none.
+    expect(twice(c.watch, lying('r1', [6, 6, 6, 6]))).toMatchObject({ stale: true, misread: 0 });
+    expect(twice(c.watch, lying('r2', [3, 6, 6, 6]))).toMatchObject({ stale: true, misread: 1 });
+    // One die is picked up and thrown: the engine sees the dice move, and the die lands on its own spot with a new face: a throw of one wanted four, so the tray of four is the throw.
+    w = moved(c.watch);
+    expect(w.motion).toBe(true);
+    c = twice(w, lying('r2', [1, 6, 6, 6]));
+    expect(c).toMatchObject({ accept: [1, 6, 6, 6], seen: 1, resting: 3, misread: 0 });
+    // A single die asked for: the flicker rests; the die thrown and landing on its spot with a new face is taken once motion was seen.
+    const one = lieOf(lying('r3', [3]));
+    expect(twice(watching(1, one, one), lying('r3', [1]))).toMatchObject({ accept: null, stale: true, misread: 1 });
+    expect(twice(moved(watching(1, one, one)), lying('r3', [1]))).toMatchObject({ accept: [1], misread: 0 });
+    // A die tossed in elsewhere is a throw whether or not the engine saw it move; the flickering die beside it still rests.
+    expect(twice(watching(1, one, one), at('r3', [[1, 0.2, 0.5], [5, 0.6, 0.5]]))).toMatchObject({ accept: [5], seen: 1, resting: 1, misread: 1 });
+    // The ask opened after the engine saw motion carries it: the table opens the watch moved.
+    expect(moved(gathering(12, 4, one)).motion).toBe(true);
+  });
   it('reads a throw the engine still calls by the last one\'s name: a die tossed in without the motion being seen', () => {
     // The lost die, a one, was taken as r1; the hunt's die lands as a five, the engine having missed the toss (prompt 21).
     const w = watching(1, lieOf(lying('r1', [1])));
     expect(consider(w, lying('r1', [1])).stale).toBe(true);
-    let c = consider(w, lying('r1', [5]));
+    let c = consider(w, lying('r1', [5], 0.1));
     expect(c.stale).toBe(false);
-    c = consider(c.watch, lying('r1', [5]));
+    c = consider(c.watch, lying('r1', [5], 0.1));
     expect(c.accept).toEqual([5]);
+    // Landing where the lost die lay with another face, the toss unseen, it cannot be told from a flicker (prompt 58): it rests.
+    expect(consider(w, lying('r1', [5]))).toMatchObject({ stale: true, resting: 1, misread: 1 });
+    expect(consider(reading_noPlace(w), { rollId: 'r1', dice: [{ value: 5, confidence: 0.9 }] })).toMatchObject({ stale: true, misread: 1 });
     // The same face landing a die\'s width away is a throw too.
     c = consider(consider(w, lying('r1', [1], 0.08)).watch, lying('r1', [1], 0.08));
     expect(c.accept).toEqual([1]);
@@ -169,13 +202,14 @@ describe('reading the dicecam', () => {
     expect(c.watch.ignore).toEqual([lieOf(lying('r1', [2, 2, 2, 2]))]);
     c = consider(c.watch, lying('r1', [2, 2, 2, 2]));
     expect(c.stale).toBe(true);
-    c = consider(consider(c.watch, lying('r1', [6, 6, 6, 6])).watch, lying('r1', [6, 6, 6, 6]));
+    // The dice thrown, the engine seeing them roll, land on the twos' places with new faces: the throw.
+    c = consider(consider(moved(c.watch), lying('r1', [6, 6, 6, 6])).watch, lying('r1', [6, 6, 6, 6]));
     expect(c.accept).toEqual([6, 6, 6, 6]);
     // Unless the engine saw the dice roll first: then the first reading is the throw.
     c = consider(moved(watching(1)), lying('r1', [3]));
     expect(c.stale).toBe(false);
     expect(consider(c.watch, lying('r1', [3])).accept).toEqual([3]);
-    expect(moved(c.watch)).toBe(c.watch);
+    expect(moved(c.watch)).toEqual(c.watch);
     // An ask opening on a nudged tray ignores the throw taken and the tray as it lies, and reads what differs.
     const w = watching(1, lieOf(lying('r1', [4])), lieOf(lying('r2', [4], 0.03)));
     expect(w.firstIsLie).toBe(false);
