@@ -3,7 +3,8 @@
   // disaster card is: the hand dealt at the start of the game, and later the card each turn in Europe draws or a hex
   // published earns. Each card shows its donation face large (the money, or the free ticket and its port) with the
   // disaster it would be in Africa beneath; one control, a check mark, takes the cards, and acting takes them too. The
-  // panel is as wide as the cards it holds, three to a row at most (PROMPTS.md, prompt 47): one card, one column.
+  // panel is as wide as the cards it holds, three to a row at most (PROMPTS.md, prompt 47): one card, one column. The cards
+  // are three targets wide with the disaster's text a quarter larger than first drawn, to be read at the table (prompt 62).
   import { card as lookup, type CardId } from './deck';
   import { BOARD } from '$features/map/manifest';
 
@@ -76,7 +77,7 @@
     padding: 0;
     list-style: none;
     display: grid;
-    grid-template-columns: repeat(var(--columns, 3), calc(var(--target) * 2.6));
+    grid-template-columns: repeat(var(--columns, 3), calc(var(--target) * 3));
     gap: calc(var(--gap) * 0.6);
   }
   .card {
@@ -84,7 +85,7 @@
     display: grid;
     grid-template-rows: auto 1fr auto;
     gap: calc(var(--gap) * 0.3);
-    min-height: calc(var(--target) * 3.4);
+    min-height: calc(var(--target) * 3.9);
     padding: calc(var(--gap) * 0.5);
     border: 2px solid var(--ink);
     border-radius: 8px;
@@ -113,7 +114,7 @@
   .note,
   .port,
   .none {
-    font-size: calc(var(--target) * 0.22);
+    font-size: calc(var(--target) * 0.275);
     line-height: 1.2;
   }
   .port {
@@ -134,7 +135,7 @@
     gap: 1px;
     padding-top: calc(var(--gap) * 0.3);
     border-top: 1px solid rgba(28, 42, 46, 0.3);
-    font-size: calc(var(--target) * 0.17);
+    font-size: calc(var(--target) * 0.2125); /* a quarter larger than first drawn, the card widened to hold it (prompt 62) */
     line-height: 1.2;
   }
   .type {

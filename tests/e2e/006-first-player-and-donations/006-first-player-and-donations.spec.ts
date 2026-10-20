@@ -76,6 +76,12 @@ test.describe('006 - First player and donations', () => {
     await steps.step('started', {
       description: 'Play begins: the stations clear, and the roll is one line in every seat\'s log, each seat\'s four dice and total and who goes first: the seat that waits has it as its latest line, the high roller has already drawn and keeps it behind that line; each rail shows five face-up cards; the piles are on the board',
       verifications: [
+        { spec: 'The cards waiting are three targets wide and their disaster text a quarter larger than first drawn (prompt 62): readable at the table', check: async () => {
+          const card = page.locator('[data-testid^="donation-card-"][data-testid$="-bottom-1"]').first();
+          const target = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('[style*="--target"]')!).getPropertyValue('--target')));
+          expect((await card.boundingBox())!.width).toBeCloseTo(target * 3, 0);
+          expect(await card.locator('.text').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(target * 0.2125, 0);
+        } },
         { spec: 'The same roll line is the first of each seat\'s log, both seats\' dice and totals and the winner named, at the rail for the waiting seat and behind the draw for the first player', check: async () => {
           const s = await page.evaluate(() => window.__TABLETOP__!.getState());
           expect(s.starting).toBeNull();

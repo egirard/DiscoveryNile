@@ -1,7 +1,8 @@
 <script lang="ts">
   // The turn's disaster card, shown in full at the player's edge before anything happens (PROMPTS.md, prompt 34):
   // the card's number, the kind of disaster, where it applies and its text; one control applies it, or discards
-  // it when its context is not where the expedition is camped. The dice it needs are asked for after the tap.
+  // it when its context is not where the expedition is camped. The dice it needs are asked for after the tap. The card's
+  // text is a quarter larger than first drawn and the panel a target wider, to be read at the table (prompt 62).
   import { card as lookup, type CardId } from '$features/cards/deck';
 
   interface Props {
@@ -34,7 +35,7 @@
   .disaster {
     display: grid;
     gap: calc(var(--gap) * 0.6);
-    width: calc(var(--target) * 8);
+    width: calc(var(--target) * 9); /* widened a little for the larger text (prompt 62) */
     font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     color: var(--ink);
   }
@@ -73,18 +74,18 @@
     gap: 0.15em;
   }
   .type {
-    font-size: calc(var(--target) * 0.36);
+    font-size: calc(var(--target) * 0.45);
     font-weight: 700;
   }
   .context {
-    font-size: calc(var(--target) * 0.24);
+    font-size: calc(var(--target) * 0.3);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     opacity: 0.8;
   }
   .text {
     margin: 0;
-    font-size: calc(var(--target) * 0.32);
+    font-size: calc(var(--target) * 0.4); /* a quarter larger than first drawn (prompt 62) */
     line-height: 1.3;
   }
   .face {

@@ -408,3 +408,4 @@ your analysis is good, except that I'd also like you to keep track of the amount
 
 when expanding the log, please include a background shade to ensure the text is readable; donation and effects cards need to be slightly larger (allow the detail text to be 25% larger);
 
+`Outcome: Two slices. 036 (G-180, commit 59a1982): the open log box is shaded with the rail's ink (rgba(28, 42, 46, 0.9)), the collapsed pill an outline still; 036 and 037 baselines. 006/013 (G-181): the donation cards waiting at the edge are three targets wide (2.6) with the disaster text a quarter larger (0.2125 targets, was 0.17) and the note, port and no-donation lines likewise; the disaster card panel nine targets wide (8) with its text at 0.4 (0.32), type 0.45, context 0.3; the rail's small hand cards unchanged; 38 baselines across 16 scenarios, all in the panels. The full verifier ran once before the second commit, so both commit hooks were light and the push skipped.`

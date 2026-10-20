@@ -83,6 +83,9 @@ test.describe('013 - Disaster cards', () => {
           await expect(page.getByTestId('disaster-context-bottom-1')).toHaveText('VELDT');
           await expect(page.getByTestId('disaster-text-bottom-1')).toHaveText('One of your ASKARIS is killed by a buffalo, while hunting on the VELDT.');
           await expect(page.getByTestId('face-disaster-bottom-1')).toHaveText('Apply it');
+          const target = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('[style*="--target"]')!).getPropertyValue('--target')));
+          expect((await panel.boundingBox())!.width).toBeCloseTo(target * 9, 0); // a target wider, its text a quarter larger than first drawn (prompt 62)
+          expect(await page.getByTestId('disaster-text-bottom-1').evaluate((el) => parseFloat(getComputedStyle(el).fontSize))).toBeCloseTo(target * 0.4, 0);
           await expect(page.getByTestId('disaster-prompt-bottom-1')).toBeVisible();
           await expect(page.getByTestId('end-turn-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '5');
