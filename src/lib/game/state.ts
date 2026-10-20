@@ -82,6 +82,13 @@ export interface ExplorerState {
   transit: Transit | null;
   /** The joint expedition this explorer travels with (rules §13), by id. */
   party: number | null;
+  /**
+   * Water rations poured away for want of room and not yet drawn again (PROMPTS.md, prompt 61): wherever there is water
+   * the chart's water is settled to the room left by the rest of the load, so when goods are taken on or carriers lost
+   * the water over the room goes; this counts it, so the camp can say how much was brought and what to cache to carry it
+   * again. Drawn down as water is settled upwards; never below zero.
+   */
+  waterShed: number;
 }
 
 /** A joint expedition (rules §13): its chart is held by the leader; it moves on the turn of its last member in order. */

@@ -33,11 +33,11 @@ async function outfit(page: Page, seat: string, purchases: Record<string, number
 }
 
 test.describe('015 - Water in the desert', () => {
-  test('water is carried of itself wherever there is water, drunk each evening in the dry desert, and its lack kills', async ({ page }, testInfo) => {
+  test('water is carried of itself wherever there is water, told when poured away for want of room, drunk each evening in the dry desert, and its lack kills', async ({ page }, testInfo) => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Water in the desert',
-      'Water is free wherever there is water, and the expedition carries as much of it as its bearers and animals have room for, of itself, wherever it stands by water (prompt 60); each ration weighs four food rations, so the water is the slack of the load, drawn again as the load lightens and poured away as the carriers go. In a dry desert hex nothing is drawn, and the camp panel offers to pour water out to lighten the load. In a desert hex with neither river nor known oasis the evening costs one water ration per man and four per horse or camel. When the water runs short the guides, then bearers, then askaris go without and die; thirsty animals are shot for their meat.'
+      'Water is free wherever there is water, and the expedition carries as much of it as its bearers and animals have room for, of itself, wherever it stands by water (prompt 60); each ration weighs four food rations, so the water is the slack of the load, drawn again as the load lightens and poured away as the carriers go. Goods taken on crowd the water out, and the camp panel then says how much was brought and what to cache to carry it all again, so the player may keep the water and leave other things instead (prompt 61). In a dry desert hex nothing is drawn, and the camp panel offers to pour water out to lighten the load. In a desert hex with neither river nor known oasis the evening costs one water ration per man and four per horse or camel. When the water runs short the guides, then bearers, then askaris go without and die; thirsty animals are shot for their meat.'
     );
 
     // Seed 2 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first) and hunting 1,1 (no game in the
@@ -81,6 +81,52 @@ test.describe('015 - Water in the desert', () => {
       ]
     });
 
+    // Goods taken on crowd water out (prompt 61): ten rations cached make room for two more water; taken back, the two
+    // are poured away, and the panel says what was brought and what to cache to carry it all again.
+    await page.getByTestId('reorganise-step-bottom-1').click(); // ×10
+    await page.getByTestId('cache-food-bottom-1').click();
+    await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '32');
+    await page.getByTestId('take-food-1-bottom-1').click();
+    await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '30');
+
+    await steps.step('water-poured-for-want-of-room', {
+      description: 'Ten rations cached at Khartoum made room for two more water, drawn at once; taken back out of the cache, the rations crowd the two water out again, and the water row says that two of the thirty-two were poured away for want of room and that eight units of goods cached would bring them back',
+      verifications: [
+        { spec: 'The panel shows 30 water, the note of 2 of 32 poured away, and the cache this turn empty', check: async () => {
+          await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '30');
+          await expect(page.getByTestId('water-shed-bottom-1')).toHaveText('2 of 32 poured away for want of room: cache 8 units of goods and it is drawn again');
+          await expect(page.getByTestId('water-shed-bottom-1')).toHaveAttribute('data-brought', '32');
+          await expect(page.getByTestId('water-auto-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('cache-item-food-1-bottom-1')).toHaveCount(0);
+          const s = await state(page);
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!).toMatchObject({ waterShed: 2, chart: { water: 30, food: 30 } });
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.getByTestId('cache-food-bottom-1').click();
+    await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '32');
+
+    await steps.step('water-kept-by-caching', {
+      description: 'The player chooses to cache the ten rations rather than lose the water: the two water are drawn again, the note is gone, and the cache column holds the rations',
+      verifications: [
+        { spec: 'The panel shows 32 water with the plain note again and 10 food cached; nothing poured away', check: async () => {
+          await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '32');
+          await expect(page.getByTestId('water-shed-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('water-auto-bottom-1')).toHaveText('as much as can be carried');
+          await expect(page.getByTestId('cache-item-food-1-bottom-1')).toHaveAttribute('data-count', '10');
+          const s = await state(page);
+          expect(s.explorers.find((e) => e.seat === 'bottom-1')!).toMatchObject({ waterShed: 0, chart: { water: 32, food: 20 } });
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    // The rations back in hand for the desert (30 food, 30 water, two poured away again), ×1 again, and the camp closed.
+    await page.getByTestId('take-food-1-bottom-1').click();
+    await expect(page.getByTestId('camp-water-bottom-1')).toHaveAttribute('data-count', '30');
+    await page.getByTestId('reorganise-step-bottom-1').click(); // ×1
     await page.getByTestId('reorganise-close-bottom-1').click();
     await page.getByTestId('move-target-c21r1').click();
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c21r1');

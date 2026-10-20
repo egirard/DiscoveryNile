@@ -390,14 +390,18 @@ export const WATER_STEP = 10;
  * Wherever there is water the expedition carries as much as it can (PROMPTS.md, prompt 60): after every event each
  * chart standing at a port or in a hex with water holds the water its carriers have room for beside the rest of the
  * load (`waterToCarry`), topped up or poured away as the load and the carriers change. In a dry desert hex the water
- * carried stays as it is, to be drunk or poured out at the camp. Nothing is logged: the camp panel shows the count.
+ * carried stays as it is, to be drunk or poured out at the camp. Nothing is logged: the camp panel shows the count,
+ * and the water poured away for want of room is kept in `waterShed` (prompt 61) until it is drawn again, so the camp
+ * can say what was brought and what to cache to carry it all once more.
  */
 export function settleWater(state: GameState): GameState {
   for (const e of state.explorers) {
     if (!e.chart || !waterAvailable(state, e)) continue;
     const specimens = members(state, e).reduce((sum, m) => sum + m.specimens.zoology + m.specimens.geology, 0);
     const water = waterToCarry(e.chart, e.sick, specimens);
-    if (water !== e.chart.water) state = replaceExplorer(state, { ...e, chart: { ...e.chart, water } });
+    if (water === e.chart.water) continue;
+    const waterShed = Math.max(0, e.waterShed + e.chart.water - water);
+    state = replaceExplorer(state, { ...e, waterShed, chart: { ...e.chart, water } });
   }
   return state;
 }

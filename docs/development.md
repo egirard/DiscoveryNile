@@ -108,9 +108,14 @@ bun run test:e2e
 bun run build
 ```
 
-It re-executes itself inside the Nix shell if it is not already there. It runs the full E2E suite, not just the changed scenario, because a slice may change a baseline it did not intend to.
+It re-executes itself inside the Nix shell if it is not already there. It runs the full E2E suite, not just the changed scenario, because a slice may change a baseline it did not intend to. When it passes with nothing unstaged or untracked it appends the index's tree hash (`git write-tree`) to `.git/verified-trees`: the record that this exact tree passed.
 
-`.husky/pre-commit` and `.husky/pre-push` both contain `bun run verify:change`. Do not bypass them with `--no-verify`.
+The hooks (PROMPTS.md, prompt 61) split the work so that a commit costs a minute and a push the full run once:
+
+- `.husky/pre-commit` runs `scripts/verify-commit.sh`: the staged whitespace check, `bun run check`, the unit tests, the rules tests if any, and then only the scenarios with a staged file under `tests/e2e/NNN-*/` (none staged, none run). It does not build, and it does not record a verified tree.
+- `.husky/pre-push` runs `scripts/verify-push.sh`: for each ref pushed it looks up the tip commit's tree; when every tip's tree is in `.git/verified-trees` it says so and skips, otherwise it runs `bun run verify:change`. A commit's tree is exactly what a full run verified, so an amend, a rebase or a batch of light commits whose tip was never fully run gets the full run at push. CI runs the full verifier on every push regardless.
+
+So the cheap path is: `bun run verify:change` once with everything staged, then commit (a light run) and push (skipped). Several commits may be batched into one push at the cost of one full run. Do not bypass the hooks with `--no-verify`.
 
 ## Environment variables
 

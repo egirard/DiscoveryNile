@@ -13,3 +13,9 @@ bun run test:unit
 if [[ -f firebase.json ]]; then bun run test:rules; fi
 bun run test:e2e
 bun run build
+
+# Passed with nothing unstaged or untracked: the index is the tree verified. Recorded so that the push hook
+# (scripts/verify-push.sh) need not run this again for a commit of it (prompt 61).
+if [[ -z "$(git status --porcelain | grep -v '^[MADRC]  ')" ]]; then
+  git write-tree >> "$(git rev-parse --git-dir)/verified-trees"
+fi

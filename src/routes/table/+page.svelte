@@ -261,7 +261,9 @@
     if (!seat || !explorer || !chart || !hex || explorer.location.kind === 'captive') return null;
     // One's own caches, and anyone's in a published hex (RQ-3); this turn's shown with its goods to take back (prompt 34).
     const caches = Object.values(gameState.caches).filter((c) => c.hex === hex && (c.seat === seat.id || !!gameState.map[hex]?.publishedBy));
-    return { seat, explorer: { ...explorer, chart }, caches, waterHere: waterAvailable(gameState, explorer) };
+    // The water poured away for want of room is the chart holder's count (prompt 61): the leader's in a joint expedition.
+    const waterShed = gameState.explorers.find((e) => e.chart === chart)?.waterShed ?? 0;
+    return { seat, explorer: { ...explorer, chart }, caches, waterHere: waterAvailable(gameState, explorer), waterShed };
   });
   // Publishing: the current seat, in Europe, opens the claim on the board; a tap on a marker hex publishes it.
   let publishingSeat = $state<string | null>(null);
@@ -763,7 +765,7 @@
 
   {#if reorganising}
     <EdgePanel seat={reorganising.seat} {viewport} inset={railDepth + target * 0.4} testid="reorganise-edge-{reorganising.seat.id}">
-      <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches} round={gameState.turn!.round} waterHere={reorganising.waterHere} waterStep={WATER_STEP}
+      <ReorganisePanel seat={reorganising.seat.id} chart={reorganising.explorer.chart!} caches={reorganising.caches} round={gameState.turn!.round} waterHere={reorganising.waterHere} waterShed={reorganising.waterShed} waterStep={WATER_STEP}
         onaction={(action, item, count) => game?.append('expedition/reorganised', { seat: reorganising!.seat.id, action, item, count })}
         ontake={(cacheId, item, count) => game?.append('expedition/reorganised', { seat: reorganising!.seat.id, action: 'take', item, count, cacheId })}
         onrecover={(cacheId) => game?.append('cache/recovered', { seat: reorganising!.seat.id, cacheId })}

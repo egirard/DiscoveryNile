@@ -1,1 +1,1 @@
-bun run verify:change
+bash scripts/verify-commit.sh

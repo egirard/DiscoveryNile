@@ -17,10 +17,12 @@ The canonical layout of a project built from this template. Directories arrive s
 │       ├── ci-and-deploy.yml       # verify, build, deploy main + retained PR previews
 │       └── agent-setup-steps.yml   # environment prep for the coding agent (name per agent)
 ├── .husky/
-│   ├── pre-commit                  # bun run verify:change
-│   └── pre-push                    # bun run verify:change
+│   ├── pre-commit                  # bash scripts/verify-commit.sh
+│   └── pre-push                    # bash scripts/verify-push.sh
 ├── scripts/
-│   ├── verify-change.sh            # the single verification entry point
+│   ├── verify-change.sh            # the single verification entry point (full; records the tree it passed)
+│   ├── verify-commit.sh            # the commit's run: check, unit, the staged scenarios only
+│   ├── verify-push.sh              # the push's run: the full verifier unless the tip's tree is recorded
 │   ├── relay.ts                    # minimal WebSocket relay for phones (dev and E2E)
 │   └── diag-server.ts              # diagnostics capture server (dev only, see docs/diagnostics.md)
 ├── docs/

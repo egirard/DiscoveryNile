@@ -1,6 +1,7 @@
 <script lang="ts">
   // The camp panel (rules §5; PROMPTS.md, prompts 23, 34 and 38): reorganise the expedition on any turn: cache goods
-  // here, dismiss men, turn animals loose or eat them; pour out water in a dry desert hex (it is carried of itself wherever there is water, prompt 60); see how the expedition as
+  // here, dismiss men, turn animals loose or eat them; pour out water in a dry desert hex (it is carried of itself wherever there is water, prompt 60, and
+  // the water that went for want of room is told, so caching other goods can keep it, prompt 61); see how the expedition as
   // it now stands could move, as the outfitting screen shows it; and the caches on this hex with what each holds.
   // The goods cached this turn stand in a column to the right of the expedition's, item by item, with the control
   // that takes them back between the two columns; an earlier cache is listed below, to be dug up with a die first.
@@ -18,6 +19,8 @@
     round: number;
     /** Water is free here (anywhere but a dry desert hex). */
     waterHere: boolean;
+    /** Water poured away for want of room and not drawn again (prompt 61): what caching other goods would bring back. */
+    waterShed?: number;
     waterStep?: number;
     onaction: (action: 'cache' | 'dismiss' | 'release' | 'eat', item: Item, count: number) => void;
     /** Goods back out of a cache made this round. */
@@ -27,7 +30,7 @@
     onwater: (rations: number) => void;
     onclose: () => void;
   }
-  let { seat, chart, caches, round, waterHere, waterStep = 10, onaction, ontake, onrecover, onwater, onclose }: Props = $props();
+  let { seat, chart, caches, round, waterHere, waterShed = 0, waterStep = 10, onaction, ontake, onrecover, onwater, onclose }: Props = $props();
   let step = $state(1);
   const MEN: Item[] = ['guides', 'bearers', 'askaris'];
   const ANIMALS: Item[] = ['camels', 'horses'];
@@ -87,7 +90,10 @@
   <div class="row water" class:cached={open} data-testid="reorganise-row-water-{seat}" data-available={waterHere}>
     <span class="icon" aria-label="water"><Icon name="water" /></span>
     <span class="have" data-testid="camp-water-{seat}" data-count={chart.water}>{chart.water}</span>
-    {#if waterHere}
+    {#if waterHere && waterShed > 0}
+      <!-- Water went for want of room (prompt 61): what was brought, and what to cache or dismiss to carry it all again. -->
+      <span class="note" data-testid="water-shed-{seat}" data-shed={waterShed} data-brought={chart.water + waterShed}>{waterShed} of {chart.water + waterShed} poured away for want of room: cache {4 * waterShed} units of goods and it is drawn again</span>
+    {:else if waterHere}
       <!-- Water is carried of itself wherever there is water (prompt 60): as much as the carriers have room for. -->
       <span class="note" data-testid="water-auto-{seat}">as much as can be carried</span>
     {:else}

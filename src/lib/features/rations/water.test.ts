@@ -46,6 +46,28 @@ describe('water/taken and the desert camp', () => {
     expect(reason({ seat: 'bottom-1', rations: -40 })).toBe('only 30 water rations to pour out');
     expect(reason({ seat: 'bottom-1', rations: 0 })).toBe('water/taken needs a whole number of rations');
   });
+  it('counts the water poured away for want of room until other goods make room for it again (prompt 61)', () => {
+    const { events } = atKhartoum();
+    const camp = (action: string, count: number, cacheId?: number) => event('expedition/reorganised', { seat: 'bottom-1', action, item: 'food', count, ...(cacheId ? { cacheId } : {}) });
+    expect(reduce(events).explorers[0].waterShed).toBe(0);
+    // Ten rations cached make room for two more water; taking them back crowds the two out, and the count says so.
+    let s = reduce([...events, camp('cache', 10)]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers[0].chart!.water).toBe(32);
+    expect(s.explorers[0].waterShed).toBe(0);
+    s = reduce([...events, camp('cache', 10), camp('take', 10, 1)]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers[0].chart!.water).toBe(30);
+    expect(s.explorers[0].waterShed).toBe(2);
+    // Cached again, the water is drawn again and the count is cleared; a bearer dismissed loses a bearer's load of it.
+    s = reduce([...events, camp('cache', 10), camp('take', 10, 1), camp('cache', 10)]);
+    expect(s.explorers[0].chart!.water).toBe(32);
+    expect(s.explorers[0].waterShed).toBe(0);
+    s = reduce([...events, event('expedition/reorganised', { seat: 'bottom-1', action: 'dismiss', item: 'bearers', count: 1 })]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers[0].chart!.water).toBe(27); // 9 bearers: 8 at 10 and one leading the camels, 140 carried less 30 food
+    expect(s.explorers[0].waterShed).toBe(3);
+  });
   it('in a dry desert hex the evening costs water; without enough, men and animals die', () => {
     const { events, pass } = atKhartoum();
     const toDesert = [...events, ...Array(3).fill(0).map(() => event('water/taken', { seat: 'bottom-1', rations: 10 })), event('expedition/moved', { seat: 'bottom-1', path: ['c21r1'] })];

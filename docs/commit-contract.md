@@ -11,7 +11,7 @@ Every implementation commit in a Tabletop project contains all of the following 
 5. **Every existing scenario still passes.** If a baseline changed, the change is intentional, reviewed, and explained in the commit message.
 6. **Accessible, touch-sized, orientation-correct UI** for every affected state, per [tabletop-ux.md](tabletop-ux.md).
 7. **Documentation updates** for any changed rule, event, invariant, or screen design.
-8. **`bun run verify:change` passes** from a clean checkout of the commit.
+8. **`bun run verify:change` passes** from a clean checkout of the commit. (The pre-commit hook runs only the commit's scenarios; the push and CI run it all. See [development.md](development.md).)
 
 A commit that satisfies only some of these is split until each part satisfies all of them, or is not landed.
 
