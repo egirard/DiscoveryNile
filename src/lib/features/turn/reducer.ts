@@ -21,7 +21,7 @@ import { modeFor } from '$features/exploration/movement';
 import { logCamp, type CampAction } from '$features/expedition/camp';
 import { logTrade, type Trade } from '$features/natives/trades';
 import { directionTo } from '$features/map/hex';
-import { drink, dryDesert, feed, hunt, huntRate, sicknessRound, starve } from '$features/rations/rations';
+import { drink, dryDesert, feed, hunt, huntRate, sicknessRound, starve, waterToCarry } from '$features/rations/rations';
 import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
 import type { GameEnd } from '$lib/game/state';
 import { fmtPoints } from '$features/scoring/transits';
@@ -385,6 +385,22 @@ export function waterAvailable(state: GameState, explorer: ExplorerState): boole
 }
 
 export const WATER_STEP = 10;
+
+/**
+ * Wherever there is water the expedition carries as much as it can (PROMPTS.md, prompt 60): after every event each
+ * chart standing at a port or in a hex with water holds the water its carriers have room for beside the rest of the
+ * load (`waterToCarry`), topped up or poured away as the load and the carriers change. In a dry desert hex the water
+ * carried stays as it is, to be drunk or poured out at the camp. Nothing is logged: the camp panel shows the count.
+ */
+export function settleWater(state: GameState): GameState {
+  for (const e of state.explorers) {
+    if (!e.chart || !waterAvailable(state, e)) continue;
+    const specimens = members(state, e).reduce((sum, m) => sum + m.specimens.zoology + m.specimens.geology, 0);
+    const water = waterToCarry(e.chart, e.sick, specimens);
+    if (water !== e.chart.water) state = replaceExplorer(state, { ...e, chart: { ...e.chart, water } });
+  }
+  return state;
+}
 
 /**
  * An action of the turn that faces the disaster card first when the card is still to be read (prompt 34): the table
@@ -946,6 +962,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       return { ...replaceExplorer(state, { ...holder, chart }), rng: r.state, caches: rest, turn: { ...state.turn, log: [...state.turn.log, record] } };
     }
     case 'water/taken': {
+      // Since prompt 60 water is carried of itself wherever there is water (settleWater): a take there changes nothing
+      // once settled (streams from before still replay), and pouring out is for a dry desert hex, to lighten the load.
       const { seat, rations } = event.payload as { seat?: string; rations?: unknown };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;

@@ -1,5 +1,5 @@
 // Hunting and the adjustment of rations at the end of an African turn (rules §11), as pure functions.
-import type { Chart } from '$features/expedition/prices';
+import { load, mountedCarry, overlandCarry, type Chart } from '$features/expedition/prices';
 import type { Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
 import { hasPart, type Modifier, type Roll } from '$features/map/generate';
@@ -20,6 +20,29 @@ export function dryDesert(camp: Camp): boolean {
 /** Water rations one turn in the dry desert costs: one per man, four per horse or camel (G-48). */
 export function waterPerTurn(chart: Chart, explorers = 1): number {
   return explorers + chart.guides + chart.bearers + chart.askaris + 4 * (chart.horses + chart.camels);
+}
+
+/**
+ * The water an expedition carries wherever there is water (PROMPTS.md, prompt 60): as much as its carriers have room
+ * for beside the rest of the load (food, gifts, muskets, specimens a ration each), four units a ration. The room is
+ * the mount's when everyone rides and the rest of the load fits on the animals (rules §5: a ridden animal carries 5,
+ * a led one 20), so water never puts a mounted expedition on foot; else it is what the bearers and animals carry
+ * overland, less the sick (twenty each, RQ-18); none when the bearers cannot even carry the canoes. Water is the
+ * slack of the load: it fills the room left and is poured away when the room shrinks, so it never stops a move.
+ */
+export function waterToCarry(chart: Chart, sick: Sickness, specimens = 0): number {
+  const rest = load(chart) - 4 * chart.water + specimens;
+  const mounted = mountedCarry(chart);
+  let room: number;
+  if (mounted !== null && rest <= mounted) room = mounted - rest;
+  else {
+    const able = { ...chart, bearers: Math.max(0, chart.bearers - sick.bearers) };
+    const carry = overlandCarry(able);
+    if (carry === null) return 0;
+    const sickMen = sick.guides + sick.bearers + sick.askaris + (sick.explorer ? 1 : 0);
+    room = carry - 20 * sickMen - rest;
+  }
+  return Math.max(0, Math.floor(room / 4));
 }
 
 export interface DrinkResult {

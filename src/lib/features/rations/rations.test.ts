@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
 import { NO_SICKNESS } from '$lib/game/state';
 import { rngScripted } from '$lib/game/random';
-import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, sickCarried, sicknessRound, starve, waterPerTurn, type Camp } from './rations';
+import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, sickCarried, sicknessRound, starve, waterPerTurn, waterToCarry, type Camp } from './rations';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
 const veldt: Camp = { terrain: 'veldt', river: false, oasis: false };
@@ -127,5 +127,33 @@ describe('sickness rolls', () => {
     expect(sickCarried(chart({ bearers: 6 }), { ...NO_SICKNESS, bearers: 2 })).toMatchObject({ carriers: 2, halted: false });
     expect(sickCarried(chart({ horses: 3 }), { ...NO_SICKNESS, askaris: 2, explorer: true })).toMatchObject({ sickMen: 3, carriers: 3, halted: false });
     expect(sickCarried(chart({ canoes: 1 }), { ...NO_SICKNESS, bearers: 5 }).halted).toBe(false);
+  });
+});
+
+describe('the water carried wherever there is water (prompt 60)', () => {
+  const chart = (c: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...c } as Chart);
+  it('is the slack of the load, four units a ration, counting specimens and the sick', () => {
+    // Ten bearers, three camels (one bearer leads them): nine at 10 and three at 20 carry 150; 30 rations leave 120, 30 water.
+    expect(waterToCarry(chart({ bearers: 10, askaris: 2, camels: 3, food: 30 }), NO_SICKNESS)).toBe(30);
+    expect(waterToCarry(chart({ bearers: 10, camels: 3, food: 30, gifts: 10, muskets: 2 }), NO_SICKNESS)).toBe(27);
+    expect(waterToCarry(chart({ bearers: 10, camels: 3, food: 30 }), NO_SICKNESS, 6)).toBe(28); // specimens a ration each
+    expect(waterToCarry(chart({ bearers: 10, camels: 3, food: 30 }), { ...NO_SICKNESS, bearers: 1 })).toBe(22); // a sick bearer carries nothing (140 carried) and is carried (20): 120 − 30 = 90
+    expect(waterToCarry(chart({ bearers: 10, camels: 3, food: 30 }), { ...NO_SICKNESS, explorer: true })).toBe(25);
+    expect(waterToCarry(chart({ bearers: 10, camels: 3, food: 30, water: 99 }), NO_SICKNESS)).toBe(30); // whatever was carried before
+    // Rounded down to whole rations; never below none.
+    expect(waterToCarry(chart({ bearers: 1, food: 7 }), NO_SICKNESS)).toBe(0);
+    expect(waterToCarry(chart({ bearers: 1, food: 6 }), NO_SICKNESS)).toBe(1);
+    expect(waterToCarry(chart({ bearers: 1, food: 20 }), NO_SICKNESS)).toBe(0);
+  });
+  it('keeps a mounted expedition mounted: the room is the animals\' when everyone rides', () => {
+    // The explorer and two bearers on three camels, two more camels led: 3 × 5 + 2 × 20 = 55 units; 15 rations leave 40, ten water.
+    const riders = chart({ bearers: 2, camels: 5, food: 15 });
+    expect(waterToCarry(riders, NO_SICKNESS)).toBe(10);
+    // Too much food to ride with: the expedition walks, and the water fills what the bearers and led camels carry on foot.
+    expect(waterToCarry(chart({ bearers: 2, camels: 5, food: 60 }), NO_SICKNESS)).toBe(10); // on foot the two bearers lead the five camels, 100 units: 60 food leave 40
+  });
+  it('is none when the bearers cannot even carry the canoes overland', () => {
+    expect(waterToCarry(chart({ bearers: 5, canoes: 1 }), NO_SICKNESS)).toBe(0);
+    expect(waterToCarry(chart({ bearers: 9, canoes: 1 }), NO_SICKNESS)).toBe(2); // one free bearer: 10 units
   });
 });

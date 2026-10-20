@@ -867,7 +867,7 @@
                 </button>
               {/if}
               {#if chartOf(gameState, explorer) && gameState.turn.phase === 'act' && explorer.location.kind !== 'captive' && standingHex(explorer)}
-                <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="The camp: reorganise the expedition, take water, use the caches here" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
+                <button class="reorganise" data-testid="reorganise-{seat.id}" aria-label="The camp: reorganise the expedition, use the caches here" aria-pressed={reorganisingSeat === seat.id} onclick={() => (reorganisingSeat = reorganisingSeat === seat.id ? null : seat.id)}>
                   <Icon name="cache" size="60%" />
                 </button>
               {/if}

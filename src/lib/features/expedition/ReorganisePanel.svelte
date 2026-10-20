@@ -1,6 +1,6 @@
 <script lang="ts">
   // The camp panel (rules §5; PROMPTS.md, prompts 23, 34 and 38): reorganise the expedition on any turn: cache goods
-  // here, dismiss men, turn animals loose or eat them; take water where there is water; see how the expedition as
+  // here, dismiss men, turn animals loose or eat them; pour out water in a dry desert hex (it is carried of itself wherever there is water, prompt 60); see how the expedition as
   // it now stands could move, as the outfitting screen shows it; and the caches on this hex with what each holds.
   // The goods cached this turn stand in a column to the right of the expedition's, item by item, with the control
   // that takes them back between the two columns; an earlier cache is listed below, to be dug up with a die first.
@@ -43,7 +43,7 @@
   const listedCaches = $derived(caches.filter((c) => c !== open));
 </script>
 
-<div class="panel" data-testid="reorganise-panel-{seat}" role="group" aria-label="The camp: reorganise the expedition, take water, use the caches here">
+<div class="panel" data-testid="reorganise-panel-{seat}" role="group" aria-label="The camp: reorganise the expedition, use the caches here">
   <div class="head">
     <strong>Camp</strong>
     <button class="step" data-testid="reorganise-step-{seat}" aria-label="{step} at a time; tap to switch" aria-pressed={step === 10} onclick={() => (step = step === 1 ? 10 : 1)}>×{step}</button>
@@ -88,14 +88,15 @@
     <span class="icon" aria-label="water"><Icon name="water" /></span>
     <span class="have" data-testid="camp-water-{seat}" data-count={chart.water}>{chart.water}</span>
     {#if waterHere}
-      <span class="water-controls" data-testid="water-controls-{seat}">
-        <button data-testid="take-water-{seat}" aria-label="Take {waterStep} water rations" onclick={() => onwater(waterStep)}>+{waterStep}</button>
-        {#if chart.water > 0}
-          <button data-testid="pour-water-{seat}" aria-label="Pour out {Math.min(waterStep, chart.water)} water rations" onclick={() => onwater(-Math.min(waterStep, chart.water))}>−{Math.min(waterStep, chart.water)}</button>
-        {/if}
-      </span>
+      <!-- Water is carried of itself wherever there is water (prompt 60): as much as the carriers have room for. -->
+      <span class="note" data-testid="water-auto-{seat}">as much as can be carried</span>
     {:else}
       <span class="note" data-testid="no-water-{seat}">no water here</span>
+      {#if chart.water > 0}
+        <span class="water-controls" data-testid="water-controls-{seat}">
+          <button data-testid="pour-water-{seat}" aria-label="Pour out {Math.min(waterStep, chart.water)} water rations" onclick={() => onwater(-Math.min(waterStep, chart.water))}>−{Math.min(waterStep, chart.water)}</button>
+        </span>
+      {/if}
     {/if}
   </div>
   {#each listedCaches as c (c.id)}

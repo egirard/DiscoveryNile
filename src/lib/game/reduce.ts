@@ -5,7 +5,7 @@ import { allRecords, readOf, tagNew, tagRolls } from './sources';
 import { askWhat } from '$features/dice/prompt';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
-import { endTurnAfterLost, facesTheCardFirst, reduceTurn } from '$features/turn/reducer';
+import { endTurnAfterLost, facesTheCardFirst, reduceTurn, settleWater } from '$features/turn/reducer';
 import { reduceExploration } from '$features/exploration/reducer';
 import { noteAction } from '$features/turn/actions';
 import { promptText } from '$features/dice/prompt';
@@ -142,6 +142,8 @@ function apply(state: GameState, event: GameEvent): GameState {
       if (event.type === 'expedition/moved' && lostNow(state, result)) result = endTurnAfterLost(result);
       const seat = (event.payload as { seat?: string }).seat;
       result = cardsSeenByActing(state, result, seat);
+      // Wherever there is water the expedition carries as much as it can (prompt 60): water is the slack of the load.
+      result = settleWater(result);
       const noted = noteAction(event, state, result);
       return { ...noted, undo: seat && undoable(state, noted, event) ? { eventId: event.id, seat: seat as GameState['seats'][number]['id'], type: event.type, before: { ...state, undo: null } } : null };
     }

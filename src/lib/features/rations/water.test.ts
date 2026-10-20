@@ -28,14 +28,22 @@ function atKhartoum() {
 }
 
 describe('water/taken and the desert camp', () => {
-  it('takes water for nothing where there is water, never below zero, and only on the player\'s turn', () => {
+  it('carries as much water as the caravan has room for wherever there is water, without being asked (prompt 60)', () => {
     const { events } = atKhartoum();
-    const s = reduce([...events, event('water/taken', { seat: 'bottom-1', rations: 10 }), event('water/taken', { seat: 'bottom-1', rations: 10 }), event('water/taken', { seat: 'bottom-1', rations: 10 })]);
+    // Outfitted at Khartoum, on the Nile: 30 rations fill 30 of the 150 units carried, and water fills the other 120, four a ration.
+    let s = reduce(events);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers[0].chart!.water).toBe(30);
+    // A take changes nothing once settled; water poured out where there is water is drawn again at once.
+    s = reduce([...events, event('water/taken', { seat: 'bottom-1', rations: 10 })]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.explorers[0].chart!.water).toBe(30);
+    s = reduce([...events, event('water/taken', { seat: 'bottom-1', rations: -10 })]);
     expect(s.diagnostics).toEqual([]);
     expect(s.explorers[0].chart!.water).toBe(30);
     const reason = (payload: Record<string, unknown>) => reduce([...events, event('water/taken', payload)]).diagnostics.at(-1)?.reason;
     expect(reason({ seat: 'top-1', rations: 10 })).toBe("it is not top-1's turn");
-    expect(reason({ seat: 'bottom-1', rations: -10 })).toBe('only 0 water rations to pour out');
+    expect(reason({ seat: 'bottom-1', rations: -40 })).toBe('only 30 water rations to pour out');
     expect(reason({ seat: 'bottom-1', rations: 0 })).toBe('water/taken needs a whole number of rations');
   });
   it('in a dry desert hex the evening costs water; without enough, men and animals die', () => {
