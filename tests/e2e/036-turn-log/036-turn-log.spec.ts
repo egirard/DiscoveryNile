@@ -163,6 +163,9 @@ test.describe('036 - The log', () => {
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveCount(1);
           await expectLogOpenInTheBox(page, 'bottom-1');
         } },
+        { spec: 'The open box is shaded with the rail\'s ink behind the lines, which reach over the board (prompt 62)', check: async () => {
+          expect(await page.getByTestId('log-box-bottom-1').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(28, 42, 46, 0.9)');
+        } },
         { spec: 'The list is a few lines, a scrollable region kept at its end', check: async () => {
           const entries = page.getByTestId('turn-log-entries-bottom-1');
           expect(await entries.evaluate((el) => getComputedStyle(el).overflowY)).toBe('auto');
@@ -180,6 +183,7 @@ test.describe('036 - The log', () => {
           await expect(page.getByTestId('turn-log-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('log-expand-bottom-1')).toHaveText('+');
           await expect(page.getByTestId('log-box-bottom-1')).toHaveAttribute('data-expanded', 'false');
+          expect(await page.getByTestId('log-box-bottom-1').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)'); // the pill is outlined only
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
           await expectTwoSections(page, 'bottom-1');
         } }

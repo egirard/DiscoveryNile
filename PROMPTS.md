@@ -402,3 +402,9 @@ Thanks for reviewing the desert rules.  I don't want to change any of the rules 
 
 your analysis is good, except that I'd also like you to keep track of the amount of water that the expedition brought into the hex when offloading surplus water; that way the player can go to the cache interface and choose to discard other things (gifts, food, weapons) so that they can keep some of the water they would otherwise have discarded.  Also agree to your decisions on verification.
 
+`Outcome: One slice (015, G-179, commit 613914d): ExplorerState.waterShed counts the water settleWater pours away for want of room (drawn down again as water settles upwards), and the camp's water row by water says "N of M poured away for want of room: cache 4N units of goods and it is drawn again" in place of the plain note, so the player can cache food, gifts or muskets, or dismiss men, and keep the water; in a dry desert hex the count is kept but not shown. Scenario 015 gained water-poured-for-want-of-room and water-kept-by-caching; 023's cached, taken-back and recovered steps now show the note. Hooks as agreed: pre-commit runs scripts/verify-commit.sh (check, unit, only the staged scenarios), pre-push runs scripts/verify-push.sh (skips when every pushed tip's tree is in .git/verified-trees, written by a passing verify:change with nothing unstaged or untracked); this commit's hook ran three scenarios and the push skipped.`
+
+## 62. 2026-10-20
+
+when expanding the log, please include a background shade to ensure the text is readable; donation and effects cards need to be slightly larger (allow the detail text to be 25% larger);
+

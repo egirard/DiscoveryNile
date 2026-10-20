@@ -3,7 +3,8 @@
   // status row holding the log's latest line, the lost mark when the expedition was lost in its latest turn (a
   // lost check ends the turn there and then, so the mark outlives the turn until the seat's next), and the "+"
   // that opens the rest of the log inside the box, which grows inward to hold a few lines above the latest;
-  // the "−" in the "+"'s place collapses it again.
+  // the "−" in the "+"'s place collapses it again. Open, the box is shaded with the rail's ink, since it reaches over
+  // the board and the lines were unreadable on the map (prompt 62).
   import type { LoggedTurn } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
   import LogLine from './LogLine.svelte';
@@ -65,7 +66,9 @@
     color: var(--paper);
   }
   .box.expanded {
+    /* Open, the box reaches over the board: the rail's ink behind the lines keeps them readable (prompt 62). */
     padding-top: calc(var(--gap) * 0.5);
+    background: rgba(28, 42, 46, 0.9);
   }
   .latest {
     display: flex;
