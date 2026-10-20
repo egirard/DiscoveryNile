@@ -102,7 +102,9 @@
 
 <style>
   .options {
+    /* Above every scrim and panel, as the gears are (prompt 59). */
     position: absolute;
+    z-index: 9;
     left: 50%;
     top: 50%;
     translate: -50% -50%;

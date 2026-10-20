@@ -15,10 +15,10 @@ test.describe('035 - Options', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Options',
-      'What is not part of play lives on the options screen, opened from a gear at the north-west or the south-east corner of the board so that a player at any edge can reach one; it opens turned toward the corner that opened it. It sets the screen size, with the outline of a bank card to check it against, offers every seat\'s QR code for joining or rejoining from a phone, and ends the game by agreement of the players at the table.'
+      'What is not part of play lives on the options screen, opened from a gear at the north-west or the south-east corner of the board so that a player at any edge can reach one; it opens turned toward the corner that opened it. It sets the screen size, with the outline of a bank card to check it against, offers every seat\'s QR code for joining or rejoining from a phone, and ends the game by agreement of the players at the table. The gears and the options stand above every scrim and panel (prompt 59), so the options, and ending the game, are reachable while the table is held for dice, a card or the roll for first player.'
     );
 
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=1234&first-player-pause=hold');
     await expect(page.getByTestId('hex-grid')).toBeVisible();
     await page.getByTestId('options-se').click();
 
@@ -74,6 +74,31 @@ test.describe('035 - Options', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
+    // The first player is decided and the table is held under a scrim until the game begins (the scenario holds it): a
+    // moment at which nothing of the game can be tapped. The gears stay above every scrim and panel (prompt 59).
+    await expect(page.getByTestId('first-player-scrim')).toBeVisible();
+    await page.getByTestId('options-se').click();
+    await expect(page.getByTestId('options-panel')).toBeVisible();
+
+    await steps.step('options-over-the-held-table', {
+      description: 'The table is held while the roll for first player is read, a scrim over everything of the game; the gear in the corner is still reachable and opens the options above the scrim, with "End this game" offered, so a game can be left from any moment of play',
+      verifications: [
+        { spec: 'The scrim still holds the table, the options are open above it and offer to end the game', check: async () => {
+          await expect(page.getByTestId('first-player-scrim')).toBeVisible();
+          await expect(page.getByTestId('options-panel')).toHaveAttribute('data-rotation', '0');
+          await expect(page.getByTestId('end-game')).toBeVisible();
+          const [gear, panel, scrim] = await Promise.all(['options-se', 'options-panel', 'first-player-scrim'].map((id) => page.getByTestId(id).evaluate((el) => Number(getComputedStyle(el).zIndex))));
+          expect(gear).toBeGreaterThan(scrim);
+          expect(panel).toBeGreaterThan(scrim);
+          expect((await state(page)).starting).toMatch(/^(bottom|top)-1$/);
+        } }
+      ]
+    });
+
+    await page.getByTestId('options-close').click();
+    await expect(page.getByTestId('options-panel')).toHaveCount(0);
+    await page.evaluate(() => window.__TABLETOP__!.append('game/begun', {}));
+    await expect(page.getByTestId('first-player-scrim')).toHaveCount(0);
     await takeCards(page); // the hands dealt wait in full at the edges (prompt 44)
     await expect(page.locator('[data-testid^="turn-marker-"][data-current="true"]')).toHaveCount(1);
     await page.getByTestId('options-nw').click();

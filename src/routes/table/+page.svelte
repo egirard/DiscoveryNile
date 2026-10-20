@@ -1220,7 +1220,9 @@
     z-index: 6;
   }
   .gear {
+    /* Above every scrim and panel (prompt 59): the options, and ending the game, are reachable while the table is held. */
     position: absolute;
+    z-index: 9;
     width: var(--target);
     height: var(--target);
     border-radius: 50%;

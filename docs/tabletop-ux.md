@@ -24,7 +24,7 @@ The screen has **no single "up"**. Players occupy **seats** along the edges, and
 
 The application cannot know the physical size of the screen it is on. The **screen diagonal in inches** is a local configuration value:
 
-- Set once with `?diag=<inches>` or on the options screen (the gear at the north-west or south-east corner), persisted in `localStorage`, defaulting to 55.
+- Set once with `?diag=<inches>` or on the options screen (the gear at the north-west or south-east corner), persisted in `localStorage`, defaulting to 55. The gears and the options screen stand above every scrim (prompt 59): the options, and ending the game, are reachable while the table is held for dice, a result, a card or the roll for first player.
 - Used to derive millimetres per CSS pixel, so touch targets, pieces, and QR codes are sized physically rather than in pixels, and so the 27" and 55" experiences come from one layout.
 - Offered with a calibration affordance: draw an ISO ID-1 outline (85.6 × 54.0 mm) and let the user hold a bank card against it.
 - Passed to any attached phone or AR viewer that needs to know the table's geometry (viewport pixels and physical width).
