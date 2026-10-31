@@ -98,22 +98,24 @@ test.describe('030 - Game end and continuation', () => {
     });
 
     await page.getByTestId('continue-game').click();
-    await expect(page.getByTestId('explorer-setup-bottom-1')).toBeVisible();
-    await page.getByTestId('commission-bottom-1').click(); // the seat is still taken: only the explorer is new
-    await expect(page.getByTestId('explorer-token-bottom-1')).toBeVisible();
+    // The players of the game that ended have left the table (prompt 63): every seat is free, and the bottom seat is taken afresh.
+    await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(6);
+    await commission(page, 'bottom-1');
 
     await steps.step('continued', {
-      description: 'A tap continues on the same map: the standings are gone, c24r12 stays published, the scores are cleared, the seats commission new explorers and the start control is back',
+      description: 'A tap continues on the same map: the standings are gone, c24r12 stays published, the scores are cleared and every seat is free again; the bottom seat is taken afresh and commissions a new explorer, and the start control is back',
       verifications: [
-        { spec: 'No standings, no scores; the published hex remains; a new explorer is commissioned and the game can start', check: async () => {
+        { spec: 'No standings, no scores; the published hex remains; the seats were cleared, one is taken again with a new explorer, and the game can start', check: async () => {
           await expect(page.getByTestId('game-over')).toHaveCount(0);
           await expect(page.getByTestId('score-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('fate-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('hex-c24r12')).toHaveAttribute('data-published', 'bottom-1');
           await expect(page.getByTestId('start-game')).toBeVisible();
-          await expect(page.getByTestId('explorer-setup-top-1')).toBeVisible();
+          await expect(page.getByTestId('seat-join-top-1')).toBeVisible();
+          await expect(page.getByTestId('explorer-setup-top-1')).toHaveCount(0);
           const s = await state(page);
           expect(s).toMatchObject({ turn: null, ended: null, scores: {}, games: 1 });
+          expect(s.seats.filter((x) => x.uid).map((x) => x.id)).toEqual(['bottom-1']);
           expect(s.explorers.map((e) => [e.seat, e.location.kind])).toEqual([['bottom-1', 'europe']]);
           expect(s.diagnostics).toEqual([]);
         } }

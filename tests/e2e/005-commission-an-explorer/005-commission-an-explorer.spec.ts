@@ -76,6 +76,25 @@ test.describe('005 - Commission an explorer', () => {
       ]
     });
 
+    await page.getByTestId('seat-cancel-top-1').click();
+
+    await steps.step('explorer-withdrawn', {
+      description: 'The cancel beside the top seat\'s player icon gives the seat up before the start, and its explorer goes with it (prompt 63): the top rail offers the seat again and the bottom explorer alone remains, so the game can still start',
+      verifications: [
+        { spec: 'The top seat is free again with no explorer; the bottom explorer and the start control remain', check: async () => {
+          await expect(page.getByTestId('seat-rail-top-1')).toHaveAttribute('data-taken', 'false');
+          await expect(page.getByTestId('seat-join-top-1')).toBeVisible();
+          await expect(page.getByTestId('explorer-token-top-1')).toHaveCount(0);
+          await expect(page.getByTestId('explorer-token-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('start-game')).toBeVisible();
+          const state = await page.evaluate(() => window.__TABLETOP__!.getState());
+          expect(state.explorers.map((e) => e.seat)).toEqual(['bottom-1']);
+          expect(state.seats.find((s) => s.id === 'top-1')!.uid).toBeNull();
+          expect(state.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
     steps.generateDocs();
   });
 });

@@ -103,6 +103,11 @@
   async function join(seat: Seat) {
     await game?.append('seat/taken', { seat: seat.id, uid: `table:${seat.id}` });
   }
+  /** Before the start a seat is given up from its rail (prompt 63): the occupant leaves, a phone's player too, and the commission goes with it. */
+  async function leave(seat: Seat) {
+    const uid = seatState(seat).uid;
+    if (uid) await game?.append('seat/left', { uid });
+  }
 
   async function commission(seat: Seat, specialties: Specialty[]) {
     await game?.append('explorer/commissioned', { seat: seat.id, specialties });
@@ -782,7 +787,7 @@
 
   <!-- A seat's span: its share of the edge, less the gap at each end along the long edges and less a rail's depth at each end along the short ones, so the corners belong to the long edges' rails; an even number of pixels keeps the centred content on whole pixels. -->
   {#each shownSeats as seat (seat.id)}
-    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} current={gameState.turn?.current === seat.id} span={seat.edge === 'bottom' || seat.edge === 'top' ? viewport.w / seat.count - 2 * target : 2 * Math.floor((viewport.h / seat.count - 2 * railDepth) / 2)}>
+    <SeatRail {seat} state={seatState(seat)} qrImage={qr[seat.id]?.image} qrUrl={qr[seat.id]?.url} onjoin={join} onleave={gameState.turn || gameState.ended ? null : leave} current={gameState.turn?.current === seat.id} span={seat.edge === 'bottom' || seat.edge === 'top' ? viewport.w / seat.count - 2 * target : 2 * Math.floor((viewport.h / seat.count - 2 * railDepth) / 2)}>
       {#snippet content()}
         {@const explorer = explorerAt(gameState, seat.id)}
         {#if explorer}

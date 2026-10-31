@@ -78,14 +78,21 @@ describe('the game\'s end (rules: Description of Game; RQ-10)', () => {
     expect(over.ended).toMatchObject({ round: 5, reason: 'consensus', winners: ['bottom-1'] });
     expect(reduceOne(reduce([created('ABCDE', LAYOUT, 26)]), event('game/ended', { seat: 'top-1' })).diagnostics.at(-1)?.reason).toBe('game not started');
   });
+  it('keeps the explorer of a seat left once the game is under way (prompt 63): a phone may leave and return', () => {
+    const { r5 } = fiveRounds();
+    const left = reduceOne(r5, event('seat/left', { uid: 'table:top-1' }));
+    expect(left.diagnostics).toEqual([]);
+    expect(left.seats.find((s) => s.id === 'top-1')!.uid).toBeNull();
+    expect(left.explorers.map((e) => e.seat)).toEqual(['bottom-1', 'top-1']);
+  });
   it('continues on the same map: published hexes and records stay, scores and explorers start afresh', () => {
     const { over } = fiveRounds();
     const next = reduceOne(over, event('game/continued', {}));
     expect(next.diagnostics).toEqual([]);
     expect(next).toMatchObject({ turn: null, ended: null, scores: {}, explorers: [], games: 1, deck: null });
     expect(next.map['c24r12']).toMatchObject({ publishedBy: 'bottom-1' });
-    expect(next.seats.filter((s) => s.uid)).toHaveLength(2);
-    const again = reduce([...fiveRounds().events, event('game/continued', {}), event('explorer/commissioned', { seat: 'bottom-1', specialties: ['medicine'] }), event('game/started', {})]);
+    expect(next.seats.filter((s) => s.uid)).toHaveLength(0); // the players have left the table (prompt 63): seats are taken afresh
+    const again = reduce([...fiveRounds().events, event('game/continued', {}), event('seat/taken', { seat: 'bottom-1', uid: 'table:bottom-1' }), event('explorer/commissioned', { seat: 'bottom-1', specialties: ['medicine'] }), event('game/started', {})]);
     expect(again.diagnostics).toEqual([]);
     expect(again.turn).toMatchObject({ current: 'bottom-1', round: 1, roundLimit: null });
     expect(again.explorers[0].hand).toHaveLength(6); // five dealt and one drawn, like any first turn

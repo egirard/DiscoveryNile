@@ -54,6 +54,12 @@ describe('seat/left', () => {
     const s = reduce([created(), event('seat/taken', { seat: 'left-1' }, 'p1'), event('seat/left', {}, 'p1')]);
     expect(s.seats.find((x) => x.id === 'left-1')).toEqual({ id: 'left-1', uid: null, name: null });
   });
+  it('before the start takes the seat\'s explorer with it (prompt 63)', () => {
+    const s = reduce([created(), event('seat/taken', { seat: 'left-1' }, 'p1'), event('explorer/commissioned', { seat: 'left-1', specialties: ['zoology'] }), event('seat/left', {}, 'p1')]);
+    expect(s.diagnostics).toEqual([]);
+    expect(s.seats.find((x) => x.id === 'left-1')).toEqual({ id: 'left-1', uid: null, name: null });
+    expect(s.explorers).toEqual([]);
+  });
   it('rejects leaving when not seated', () => {
     expect(reduce([created(), event('seat/left', {}, 'p1')]).diagnostics[0].reason).toBe('occupant is not seated');
   });

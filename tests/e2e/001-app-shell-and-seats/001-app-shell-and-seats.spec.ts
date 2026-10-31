@@ -6,7 +6,7 @@ test.describe('001 - App shell and seats', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'App shell and seats',
-      'The table opens with six seats: two on each long edge, one on each short edge. A player at the bottom edge takes a seat; the rail shows them, faces them, and is still there after the table reloads.'
+      'The table opens with six seats: two on each long edge, one on each short edge. A player at the bottom edge takes a seat; the rail shows them, faces them, and is still there after the table reloads. Before the game starts the player icon gives the seat up again, as does the cancel beside it (prompt 63).'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1234');
@@ -59,6 +59,37 @@ test.describe('001 - App shell and seats', () => {
       ]
     });
 
+    // Before the start the player icon gives the seat up again, as does the cancel beside it (prompt 63).
+    await page.getByTestId('seat-name-bottom-1').click();
+    await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'false');
+    await page.getByTestId('seat-join-bottom-1').click();
+    await expect(page.getByTestId('seat-cancel-bottom-1')).toBeVisible();
+
+    await steps.step('seat-taken-again', {
+      description: 'A tap on the player icon gives the seat up, and a tap on the join control takes it again: beside the player icon stands a cancel that gives it up too',
+      verifications: [
+        { spec: 'The seat was given up and taken again: the stream reads taken, left, taken', check: async () => {
+          await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'true');
+          const events = await page.evaluate(() => window.__TABLETOP__!.getEvents());
+          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken', 'seat/left', 'seat/taken']);
+        } },
+        { spec: 'The player icon is a control that gives the seat up, with a touch-sized cancel to its right', check: async () => {
+          await expect(page.getByTestId('seat-name-bottom-1')).toHaveAttribute('aria-label', 'Give up seat bottom-1');
+          const icon = (await page.getByTestId('seat-name-bottom-1').boundingBox())!;
+          const cancel = (await page.getByTestId('seat-cancel-bottom-1').boundingBox())!;
+          expect(cancel.x).toBeGreaterThan(icon.x + icon.width - 1);
+          const target = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector('[style*="--target"]')!).getPropertyValue('--target')));
+          expect(Math.min(cancel.width, cancel.height)).toBeGreaterThanOrEqual(target - 1);
+        } }
+      ]
+    });
+
+    await page.getByTestId('seat-cancel-bottom-1').click();
+    await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'false');
+    await expect(page.locator('[data-testid^="seat-join-"]')).toHaveCount(6);
+    await page.getByTestId('seat-join-bottom-1').click();
+    await expect(page.getByTestId('seat-rail-bottom-1')).toHaveAttribute('data-taken', 'true');
+
     await page.reload();
 
     await steps.step('persists-after-reload', {
@@ -73,7 +104,7 @@ test.describe('001 - App shell and seats', () => {
         } },
         { spec: 'The event stream was replayed, not recreated', check: async () => {
           const events = await page.evaluate(() => window.__TABLETOP__!.getEvents());
-          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken']);
+          expect(events.map((e) => e.type)).toEqual(['game/created', 'seat/taken', 'seat/left', 'seat/taken', 'seat/left', 'seat/taken']);
         } }
       ]
     });

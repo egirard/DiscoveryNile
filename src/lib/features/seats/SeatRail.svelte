@@ -10,6 +10,8 @@
     qrImage?: string | null;
     qrUrl?: string | null;
     onjoin: (seat: Seat) => void;
+    /** Set before the game starts (prompt 63): the player icon and the cancel beside it give the seat up, explorer and all. */
+    onleave?: ((seat: Seat) => void) | null;
     /** What the taken rail shows beside the player in its status row: the explorer setup, the explorer, later the chart. */
     content?: Snippet;
     /** The rail's second section (prompt 35): the seat's log in its outlined box, inward of the status row, growing inward when opened. */
@@ -19,7 +21,7 @@
     /** The seat's span of its edge in px: the rail's content wraps rather than reach into the next seat's. */
     span?: number | null;
   }
-  let { seat, state: seatState, qrImage = null, qrUrl = null, onjoin, content, log, current = false, span = null }: Props = $props();
+  let { seat, state: seatState, qrImage = null, qrUrl = null, onjoin, onleave = null, content, log, current = false, span = null }: Props = $props();
 
   const taken = $derived(Boolean(seatState.uid));
   const rotation = $derived(rotationFor(seat.edge));
@@ -51,7 +53,17 @@
        Two sections (prompt 35): the status row at the edge (the player, the explorer, the hand, the expedition, the controls) and the log inward of it. -->
   <div class="face">
     <div class="status" data-testid="rail-status-{seat.id}">
-      {#if taken}
+      {#if taken && onleave}
+        <!-- Before the start (prompt 63) the player icon is a control: a tap gives the seat up again, as does the cancel beside it. -->
+        <button class="who leave" data-testid="seat-name-{seat.id}" aria-label={`Give up seat ${seat.id}${seatState.name ? `, ${seatState.name}'s` : ''}`} onclick={() => onleave(seat)}>
+          <Icon name="player" />
+          {#if seatState.name}<span class="name">{seatState.name}</span>{/if}
+        </button>
+        <button class="cancel" data-testid="seat-cancel-{seat.id}" aria-label={`Remove the player from seat ${seat.id}`} onclick={() => onleave(seat)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+        {@render content?.()}
+      {:else if taken}
         <span class="who" data-testid="seat-name-{seat.id}" aria-label={`Seat ${seat.id} taken by ${seatState.name ?? 'a player'}`}>
           <Icon name="player" />
           {#if seatState.name}<span class="name">{seatState.name}</span>{/if}
@@ -151,6 +163,35 @@
     gap: 0.5em;
     color: var(--paper);
     font-size: calc(var(--target) * 0.4);
+  }
+  .who.leave {
+    min-width: var(--target);
+    min-height: var(--target);
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+  }
+  .cancel {
+    width: var(--target);
+    height: var(--target);
+    margin-left: calc(var(--gap) * -0.5);
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid var(--paper);
+    background: transparent;
+    color: var(--paper);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+  .cancel svg {
+    width: 50%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
   }
   .qr {
     display: block;

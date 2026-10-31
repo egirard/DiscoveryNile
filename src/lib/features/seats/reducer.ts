@@ -44,7 +44,10 @@ export function reduceSeats(state: GameState, event: GameEvent): GameState | str
       const occupant = uid ?? event.actorUid;
       const target = state.seats.find((s) => s.uid === occupant);
       if (!target) return 'occupant is not seated';
-      return { ...state, seats: state.seats.map((s) => (s.id === target.id ? { ...s, uid: null, name: null } : s)) };
+      // Before the game starts a seat given up takes its explorer with it (PROMPTS.md, prompt 63): the player left the
+      // table. Once play has begun the explorer stays, since a phone may leave and come back.
+      const explorers = state.turn ? state.explorers : state.explorers.filter((e) => e.seat !== target.id);
+      return { ...state, seats: state.seats.map((s) => (s.id === target.id ? { ...s, uid: null, name: null } : s)), explorers };
     }
     default:
       return state;

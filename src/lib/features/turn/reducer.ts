@@ -435,9 +435,11 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
     }
     case 'game/continued': {
       // A new game on the same map (rules: Description of Game): what was published stays known, with its tribes and the
-      // records to beat; the scores start afresh and every seat commissions a new explorer.
+      // records to beat; the scores start afresh. The seats are cleared too (prompt 63): the players of the game that
+      // ended have left the table, and whoever plays next takes a seat afresh and commissions a new explorer.
       if (!state.ended) return 'the game has not ended';
-      return { ...state, explorers: [], turn: null, deck: null, rollOff: null, history: [], scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
+      const seats = state.seats.map((s) => ({ ...s, uid: null, name: null }));
+      return { ...state, seats, explorers: [], turn: null, deck: null, rollOff: null, history: [], scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
     }
     case 'game/started': {
       if (state.turn) return 'game already started';
