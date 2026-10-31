@@ -30,6 +30,9 @@ export async function faceDisasterIfDrawn(page: Page, after: number) {
     return t ? { phase: t.phase, current: t.current } : null;
   });
   if (turn?.phase !== 'disaster') return;
+  // With one player the hunt's result lingers at the same seat and the card waits for it (prompt 64): carry on first.
+  const result = page.getByTestId(`dice-result-ok-${turn.current}`);
+  if (await result.count()) await result.click();
   await page.getByTestId(`face-disaster-${turn.current}`).click();
   await expect(page.getByTestId(`face-disaster-${turn.current}`)).toHaveCount(0);
 }

@@ -360,6 +360,10 @@
     const t = setTimeout(() => (lingering = null), DICE_RESULT_MS);
     return () => clearTimeout(t);
   });
+  /** The disaster card shown: not while a result lingers at the same seat (prompt 64). With one player at the table the
+   *  next turn is the same seat's, and its card would cover the hunt's result the moment the die was in; the card waits
+   *  the result's two seconds, or the tap on Carry on. Another seat's card stands at its own edge and waits for nothing. */
+  const disasterShown = $derived(facingDisaster && lingering?.seat.id !== facingDisaster.seat.id ? facingDisaster : null);
   /** How long the decided roll is shown before play begins: `?first-player-pause=<ms>` (`hold` never begins by itself), else the build's, else three seconds. */
   const FIRST_PLAYER_PAUSE_MS: number | null = (() => {
     const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('first-player-pause');
@@ -735,10 +739,10 @@
     </EdgePanel>
   {/if}
 
-  {#if facingDisaster}
+  {#if disasterShown}
     <div class="scrim" data-testid="disaster-scrim" aria-hidden="true"></div>
-    <EdgePanel seat={facingDisaster.seat} {viewport} inset={railDepth + target * 0.4} testid="disaster-edge-{facingDisaster.seat.id}" raised>
-      <DisasterCard seat={facingDisaster.seat.id} card={facingDisaster.card} applies={facingDisaster.applies} onface={() => game?.append('disaster/faced', { seat: facingDisaster!.seat.id })} />
+    <EdgePanel seat={disasterShown.seat} {viewport} inset={railDepth + target * 0.4} testid="disaster-edge-{disasterShown.seat.id}" raised>
+      <DisasterCard seat={disasterShown.seat.id} card={disasterShown.card} applies={disasterShown.applies} onface={() => game?.append('disaster/faced', { seat: disasterShown!.seat.id })} />
     </EdgePanel>
   {/if}
   {#if facingNatives}
