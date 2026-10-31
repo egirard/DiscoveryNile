@@ -36,7 +36,7 @@ test.describe('030 - Game end and continuation', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Game end and continuation',
-      'A game runs to an agreed number of rounds, chosen beside the start control, or ends when every seat with an explorer votes for it on the retire panel. At the end every explorer in Europe publishes all he can, every explorer retires, and the standings appear in the middle of the table with the winner marked. A tap starts a new game on the same map: what was published stays known, with its tribes and the records to beat, while scores, explorers and the deck start afresh.'
+      'A game runs to an agreed number of rounds, a hundred unless changed with the chooser under the start control (which offers no limit too), or ends when every seat with an explorer votes for it on the retire panel. At the end every explorer in Europe publishes all he can, every explorer retires, and the standings appear in the middle of the table with the winner marked. A tap starts a new game on the same map: what was published stays known, with its tribes and the records to beat, while scores, explorers and the deck start afresh.'
     );
 
     // Seed 26 as in scenario 025: bottom-1 ($727) pays passage to Mombasa, maps c24r12 (veldt where a river rises) and is
@@ -44,13 +44,40 @@ test.describe('030 - Game end and continuation', () => {
     await page.goto('/table/?new=1&gameId=ABCDE&seed=26&dice=6,6,6,6,1,1,1,1&dice-natives=6,6,6,6,6,6');
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
+    // The length of the game is a button under the start control reading "100 rounds" (prompt 63); a tap opens the chooser.
+    await expect(page.getByTestId('round-limit')).toHaveText('100 rounds');
+    await expect(page.getByTestId('round-limit-popup')).toHaveCount(0);
+    await page.getByTestId('round-limit').click();
+
+    await steps.step('round-limit-offered', {
+      description: 'Under the start control a button reads the length of the game, a hundred rounds unless changed; a tap opens the chooser beside it: five or one round fewer or more, no limit at all, and a check to close it',
+      verifications: [
+        { spec: 'The button reads 100 rounds and the chooser is open with its six controls, the count at 100', check: async () => {
+          await expect(page.getByTestId('round-limit')).toHaveAttribute('data-rounds', '100');
+          await expect(page.getByTestId('round-limit')).toHaveAttribute('aria-expanded', 'true');
+          const popup = page.getByTestId('round-limit-popup');
+          await expect(popup).toBeVisible();
+          for (const id of ['round-limit-less5', 'round-limit-less', 'round-limit-more', 'round-limit-more5', 'round-limit-none', 'round-limit-done']) await expect(page.getByTestId(id)).toBeVisible();
+          await expect(page.getByTestId('round-limit-count')).toHaveText('100');
+          await expect(page.getByTestId('start-game')).toHaveAttribute('aria-label', 'Start the game of 100 rounds');
+        } }
+      ]
+    });
+
+    // No limit, then five rounds more: a limit of five, as the chooser counts up from none.
+    await page.getByTestId('round-limit-none').click();
+    await expect(page.getByTestId('round-limit-count')).toHaveText('∞');
+    await expect(page.getByTestId('start-game')).toHaveAttribute('aria-label', 'Start the game');
     await page.getByTestId('round-limit-more5').click();
+    await page.getByTestId('round-limit-done').click();
 
     await steps.step('round-limit', {
-      description: 'Before the start the table offers a round limit beside the start control: five rounds are chosen',
+      description: 'No limit was chosen, then five rounds more: the chooser closed, the button reads 5 rounds and the start control says so',
       verifications: [
-        { spec: 'The limit reads 5 and the start control says so', check: async () => {
+        { spec: 'The limit reads 5, the chooser is closed and the start control says so', check: async () => {
           await expect(page.getByTestId('round-limit')).toHaveAttribute('data-rounds', '5');
+          await expect(page.getByTestId('round-limit')).toHaveText('5 rounds');
+          await expect(page.getByTestId('round-limit-popup')).toHaveCount(0);
           await expect(page.getByTestId('start-game')).toHaveAttribute('aria-label', 'Start the game of 5 rounds');
         } }
       ]

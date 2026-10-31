@@ -93,12 +93,15 @@ test.describe('032 - Responsive pass at 27" and 55"', () => {
         { spec: 'Every seat shows its explorer', check: async () => {
           await expect(page.locator('[data-testid^="explorer-token-"]')).toHaveCount(6);
         } },
-        { spec: 'The start control and the round-limit buttons are at least the touch target', check: async () => {
+        { spec: 'The start control, the round-limit button and the chooser\'s buttons are at least the touch target', check: async () => {
           const g = await geometry(page);
-          for (const id of ['start-game', 'round-limit-less', 'round-limit-more', 'round-limit-more5']) {
+          await page.getByTestId('round-limit').click(); // the chooser opens beside the button (prompt 63)
+          for (const id of ['start-game', 'round-limit', 'round-limit-less5', 'round-limit-less', 'round-limit-more', 'round-limit-more5', 'round-limit-none', 'round-limit-done']) {
             const box = (await page.getByTestId(id).boundingBox())!;
             expect(Math.min(box.width, box.height), id).toBeGreaterThanOrEqual(g.target - 1);
           }
+          await page.getByTestId('round-limit-done').click();
+          await expect(page.getByTestId('round-limit-popup')).toHaveCount(0);
         } }
       ]
     });

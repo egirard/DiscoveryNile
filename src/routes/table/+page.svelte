@@ -113,8 +113,10 @@
     await game?.append('explorer/commissioned', { seat: seat.id, specialties });
   }
 
-  // The agreed length of the game (RQ-10): chosen beside the start control; null ends by consensus.
-  let roundLimit = $state<number | null>(null);
+  // The agreed length of the game (RQ-10): a hundred rounds unless changed (prompt 63; the default may move), read on a
+  // button under the start control whose tap opens the chooser; null is no limit, the game ending by consensus.
+  let roundLimit = $state<number | null>(100);
+  let limitOpen = $state(false);
   function limitBy(by: number) {
     const next = (roundLimit ?? 0) + by;
     roundLimit = next <= 0 ? null : next;
@@ -652,12 +654,19 @@
     <button class="start" data-testid="start-game" aria-label="Start the game{roundLimit ? ` of ${roundLimit} rounds` : ''}" onclick={start}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
     </button>
-    <span class="limit" data-testid="round-limit" data-rounds={roundLimit ?? ''} data-e2e-fit>
-      <button data-testid="round-limit-less" aria-label="Fewer rounds" onclick={() => limitBy(-1)}>−</button>
-      <span class="rounds" aria-label={roundLimit ? `${roundLimit} rounds` : 'No round limit: the game ends by consensus'}>{roundLimit ?? '∞'}</span>
-      <button data-testid="round-limit-more" aria-label="One round more" onclick={() => limitBy(1)}>+</button>
-      <button data-testid="round-limit-more5" aria-label="Five rounds more" onclick={() => limitBy(5)}>+5</button>
-    </span>
+    <!-- The length of the game (prompt 63): a button that reads it; its tap opens the chooser beneath, with no limit among the choices. -->
+    <button class="limit" data-testid="round-limit" data-rounds={roundLimit ?? ''} aria-expanded={limitOpen} aria-label={roundLimit ? `The game is ${roundLimit} rounds long: tap to change it` : 'No round limit, the game ends by consensus: tap to change it'} onclick={() => (limitOpen = !limitOpen)} data-e2e-fit>{roundLimit ? `${roundLimit} rounds` : 'no limit'}</button>
+    {#if limitOpen}
+      <span class="limit-chooser" data-testid="round-limit-popup" role="group" aria-label="The length of the game" data-e2e-fit>
+        <button data-testid="round-limit-less5" aria-label="Five rounds fewer" onclick={() => limitBy(-5)}>−5</button>
+        <button data-testid="round-limit-less" aria-label="One round fewer" onclick={() => limitBy(-1)}>−</button>
+        <span class="rounds" data-testid="round-limit-count" aria-label={roundLimit ? `${roundLimit} rounds` : 'No round limit: the game ends by consensus'}>{roundLimit ?? '∞'}</span>
+        <button data-testid="round-limit-more" aria-label="One round more" onclick={() => limitBy(1)}>+</button>
+        <button data-testid="round-limit-more5" aria-label="Five rounds more" onclick={() => limitBy(5)}>+5</button>
+        <button class="none" data-testid="round-limit-none" aria-pressed={roundLimit === null} aria-label="No limit: the game ends by consensus" onclick={() => (roundLimit = null)}>∞</button>
+        <button class="done" data-testid="round-limit-done" aria-label="Done" onclick={() => (limitOpen = false)}>✓</button>
+      </span>
+    {/if}
   {/if}
 
   {#if gameState.ended}
@@ -984,10 +993,10 @@
     width: 60%;
     fill: currentColor;
   }
-  .limit {
+  .limit,
+  .limit-chooser {
     position: absolute;
     left: 50%;
-    top: calc(50% + var(--target) * 1.4);
     translate: -50% 0;
     display: inline-flex;
     align-items: center;
@@ -1001,7 +1010,21 @@
     font-weight: 700;
     font-size: calc(var(--target) * 0.36);
   }
-  .limit button {
+  .limit {
+    /* The button under the start control reads the length of the game (prompt 63); the chooser opens beneath it. */
+    top: calc(50% + var(--target) * 1.4);
+    min-height: var(--target);
+    padding: 0 var(--gap);
+    cursor: pointer;
+  }
+  .limit[aria-expanded='true'] {
+    background: var(--accent);
+    color: var(--ink);
+  }
+  .limit-chooser {
+    top: calc(50% + var(--target) * 2.7);
+  }
+  .limit-chooser button {
     min-width: var(--target);
     height: var(--target);
     border-radius: 999px;
@@ -1011,7 +1034,11 @@
     font: inherit;
     cursor: pointer;
   }
-  .limit .rounds {
+  .limit-chooser .none[aria-pressed='true'],
+  .limit-chooser .done {
+    background: var(--accent);
+  }
+  .limit-chooser .rounds {
     min-width: 1.6em;
     text-align: center;
   }
