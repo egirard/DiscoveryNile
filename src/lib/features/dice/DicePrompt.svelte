@@ -4,7 +4,8 @@
   // table without a camera or a reading the camera misses. Shown at the rolling seat's edge, facing him.
   // A throw of more dice than the tray holds (the loot of a village, a die a warrior) is gathered over several
   // throws (prompt 33): the dice in so far are shown, each throw or tapped face adds to them, and a button has
-  // the table roll the rest.
+  // the table roll the rest. What the dice have already decided for the action stands at the foot of the panel
+  // (prompt 65), below the ask and the faces, each line with its verdict.
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import LogLine from '$features/exploration/LogLine.svelte';
   import type { RollRecord } from '$lib/game/state';
@@ -68,16 +69,6 @@
 
 <div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-have={have.length} data-status={status} data-seen={seen ?? ''} data-stale={stale}>
   <p class="ask" data-testid="dice-ask-{seat}">{prompt}</p>
-  {#if sofar.length || pending.length}
-    <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="What the dice have decided so far">
-      {#each sofar as r, i (i)}
-        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
-      {/each}
-      {#each pending as r, i (i)}
-        <li><span class="what">{what(r.prompt)}</span> <DiceRoll values={r.values} label={what(r.prompt)} size="calc(var(--target) * 0.45)" /></li>
-      {/each}
-    </ul>
-  {/if}
   {#if gathered}
     <div class="gathered" data-testid="dice-gathered-{seat}" data-have={have.length} aria-label="{have.length} of {count} dice in">
       <span class="tally">{have.length} of {count} in</span>
@@ -107,6 +98,17 @@
       </button>
     {/if}
   </div>
+  {#if sofar.length || pending.length}
+    <!-- What the dice have decided so far stands at the foot of the panel (prompt 65), the ask and the faces above it. -->
+    <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="What the dice have decided so far">
+      {#each sofar as r, i (i)}
+        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
+      {/each}
+      {#each pending as r, i (i)}
+        <li><span class="what">{what(r.prompt)}</span> <DiceRoll values={r.values} label={what(r.prompt)} size="calc(var(--target) * 0.45)" /></li>
+      {/each}
+    </ul>
+  {/if}
 </div>
 
 <style>

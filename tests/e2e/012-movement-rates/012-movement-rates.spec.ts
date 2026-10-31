@@ -50,7 +50,7 @@ test.describe('012 - Movement rates', () => {
       'The expedition\'s mode of travel is fixed by its first step each turn and sets a budget of movement points shown as pips at the rail: two on foot, four mounted, up to four by canoe with eight paddlers per canoe. A known hex costs one point; an unknown hex costs the mode\'s unknown rate (two mounted). A hex that turns out to be impassable for the mode is mapped and claimed, but the expedition turns back. Canoes must follow rivers, lakes, swamps or the coast. Walking two known hexes is proven by the unit tests.'
     );
 
-    // Seed 1573 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first) then 6 (lost check: found the way),
+    // Seed 1573 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first) then 6 (lost check: not lost),
     // 1 and 5 (both neighbours blank) and 6 (random terrain table: lake). The shuffle is not scripted: with this
     // seed bottom-1's hand pays passage and the mounted sample; top-1 holds a free ticket to Brass and the canoe sample.
     await page.goto('/table/?new=1&gameId=ABCDE&seed=1573&dice=6,6,6,6,1,1,1,1,6,1,5,6');

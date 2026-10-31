@@ -3,6 +3,8 @@
   // or of a fight is in, the ask stays at the seat's edge for a moment with the lines it made, every number in them
   // (the die and its modifiers, the rate a hunter, the rations and the stores; the nerve against the warriors), so the
   // result is read before the table moves on. "Carry on" dismisses it sooner. The dice can be tapped to be set right.
+  // A hex explored with moves left (prompt 65) keeps its result instead: "Explored a jungle hex; pick a new hex to
+  // explore, or end turn", with an End control, the lines at the foot; the next step on the board takes it away.
   import LogLine from '$features/exploration/LogLine.svelte';
   import type { RollRecord } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
@@ -13,20 +15,35 @@
     /** The ask the last throw answered. */
     prompt: string;
     lines: RollRecord[];
+    /** A hex explored with moves left (prompt 65): the result stays, offering the next step or the end of the turn. */
+    explored?: { hex: string; terrain: string | null } | null;
     ondone: () => void;
+    /** End the turn from the panel (an explored hex). */
+    onend?: () => void;
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, lines, ondone, oncorrect }: Props = $props();
+  let { seat, prompt, lines, explored = null, ondone, onend, oncorrect }: Props = $props();
+  const terrainWords = $derived(explored?.terrain ? explored.terrain.replace(/-/g, ' ') : 'new');
+  const heading = $derived(explored ? `Explored a ${terrainWords} hex` : resultTitle(prompt));
 </script>
 
-<div class="result" data-testid="dice-result-{seat}" data-lines={lines.length} role="status" aria-label="{resultTitle(prompt)}: what the dice decided">
-  <p class="title" data-testid="dice-result-title-{seat}">{resultTitle(prompt)}</p>
+<div class="result" data-testid="dice-result-{seat}" data-lines={lines.length} data-explored={explored?.hex ?? ''} role="status" aria-label="{heading}: what the dice decided">
+  <p class="title" data-testid="dice-result-title-{seat}">{heading}</p>
+  {#if explored}
+    <!-- The hex is explored and moves are left (prompt 65): the next step is picked on the board, or the turn ends here. -->
+    <p class="next" data-testid="dice-result-next-{seat}">
+      <span>Pick a new hex to explore, or end turn</span>
+      <button type="button" class="end" data-testid="dice-result-end-{seat}" aria-label="End the turn" onclick={onend}>End</button>
+    </p>
+  {/if}
   <ul class="lines" aria-label="What the dice decided">
     {#each lines as r, i (i)}
       <li><LogLine record={r} {seat} idPrefix="result-" {oncorrect} /></li>
     {/each}
   </ul>
-  <button type="button" class="carry-on" data-testid="dice-result-ok-{seat}" onclick={ondone}>Carry on</button>
+  {#if !explored}
+    <button type="button" class="carry-on" data-testid="dice-result-ok-{seat}" onclick={ondone}>Carry on</button>
+  {/if}
 </div>
 
 <style>
@@ -48,6 +65,26 @@
     list-style: none;
     display: grid;
     gap: calc(var(--gap) * 0.4);
+  }
+  .next {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--gap);
+    font-size: calc(var(--target) * 0.3);
+  }
+  .next .end {
+    height: var(--target);
+    padding: 0 calc(var(--gap) * 1.2);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    background: var(--accent);
+    color: var(--ink);
+    font: inherit;
+    font-size: calc(var(--target) * 0.3);
+    font-weight: 700;
+    cursor: pointer;
   }
   .carry-on {
     justify-self: end;

@@ -38,7 +38,7 @@ describe('each die in the log knows its throw', () => {
   it('tags the dice of the lines an event writes with the dice/rolled they came from, in order, a die rolled and not logged skipped', () => {
     const read = [{ value: 4, from: { eventId: 'a', index: 0 } }, { value: 2, from: { eventId: 'b', index: 0 } }, { value: 3, from: null }, { value: 3, from: { eventId: 'c', index: 1 } }];
     const lines: RollRecord[] = [
-      { kind: 'lost-check', seat: 'bottom-1', rolls: [{ label: 'lost check', value: 4 }], outcome: 'found the way' },
+      { kind: 'lost-check', seat: 'bottom-1', rolls: [{ label: 'lost check', value: 4 }], outcome: 'not lost' },
       { kind: 'action', seat: 'bottom-1', rolls: [], outcome: 'nothing' },
       { kind: 'natives', seat: 'bottom-1', rolls: [{ label: 'natives', value: 3 }, { label: 'natives', value: 3 }], outcome: 'no natives' }
     ];

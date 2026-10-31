@@ -320,13 +320,13 @@ test.describe('037 - Physical dice', () => {
     await steps.step('terrain-asked', {
       description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled, its verdict on the same line, and the compass on the board to read the direction from',
       verifications: [
-        { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line as a log line: the die and "found the way"', check: async () => {
+        { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line as a log line: the die and "not lost"', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [4] }] });
-          expect(s.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way' })]);
+          expect(s.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'not lost' })]);
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
-          await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-outcome', 'found the way');
-          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('found the way');
+          await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-outcome', 'not lost');
+          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('not lost');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
         } },
         { spec: 'The compass on the board gives the six directions as the die names them, 1 at the north-east round to 6 at the north-west', check: async () => {
@@ -355,7 +355,7 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
           await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('Natives');
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '4');
-          await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('found the way');
+          await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('not lost');
           await expect(page.getByTestId('result-terrain-note-bottom-1')).toHaveText('mapped veldt: veldt copied from the neighbour in direction 2');
           await expect(page.getByTestId('result-water-note-bottom-1')).toHaveText('1 is odd: no river');
           await expect(page.getByTestId('result-natives-note-bottom-1')).toHaveText('no natives (3 + 3 = 6)');

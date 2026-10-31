@@ -209,7 +209,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(holder, from), ailing: false });
         rng = check.rng;
         const { result } = check;
-        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? 'lost' : 'found the way', lost: result.lost });
+        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? 'lost' : 'not lost', lost: result.lost }); // "not lost" after the die, in the player's words (prompt 65)
         if (result.lost) return finish(state, { ...movement, halted: true });
       }
 

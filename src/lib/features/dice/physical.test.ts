@@ -160,13 +160,13 @@ describe('the reducer with physical dice', () => {
     const asked = reduce(landed);
     expect(asked.diagnostics).toEqual([]);
     expect(asked.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 1, prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", rolled: [] });
-    // The lines so far go with the next ask (prompt 34): found the way, the terrain die is asked with the lost check's
+    // The lines so far go with the next ask (prompt 34): not lost, the terrain die is asked with the lost check's
     // line, its verdict on it. (Lost at the port there is no hunt to ask for; scenario 037 reads the hunt's ask in the field.)
     const four = event('dice/rolled', { seat: 'bottom-1', values: [4] });
     const found = reduce([...landed, four]);
     expect(found.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ values: [4] }] });
     // The line's die knows its throw (prompt 37), so a tap on it can set it right.
-    expect(found.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'found the way', rolls: [{ label: 'lost check', value: 4, from: { eventId: four.id, index: 0 } }] })]);
+    expect(found.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'not lost', rolls: [{ label: 'lost check', value: 4, from: { eventId: four.id, index: 0 } }] })]);
     expect(uncovered(found.awaiting!.rolled, found.awaiting!.sofar)).toEqual([]);
     const lost = reduce([...landed, event('dice/rolled', { seat: 'bottom-1', values: [1] })]);
     expect(lost.awaiting).toBeNull();

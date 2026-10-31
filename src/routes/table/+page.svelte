@@ -335,7 +335,7 @@
   });
   /** What the dice just decided (prompts 54 and 55): the hunt's meal, the natives' nerve or the fight, kept at the seat's
    *  edge for a moment after the last die is in, so the result is read before the table goes on. */
-  let lingering = $state<{ seat: Seat; prompt: string; lines: RollRecord[] } | null>(null);
+  let lingering = $state<{ seat: Seat; prompt: string; lines: RollRecord[]; explored: { hex: HexId; terrain: string | null } | null } | null>(null);
   /** How long: `?dice-result=<ms>` (`hold` keeps it until tapped), else the build's, else two seconds. */
   const DICE_RESULT_MS: number | null = (() => {
     const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dice-result');
@@ -349,14 +349,31 @@
     const now = gameState;
     const before = lastSeen;
     lastSeen = now;
-    if (!before) return;
+    if (!before || before === now) return;
     const lines = lingerLines(before, now);
-    if (!lines) return;
+    if (!lines) {
+      // Another event came: an explored hex's result, kept until the next step, goes with it (prompt 65).
+      if (lingering?.explored) lingering = null;
+      return;
+    }
     const seat = seats.find((s) => s.id === before.awaiting!.seat);
-    if (seat) lingering = { seat, prompt: before.awaiting!.prompt, lines };
+    if (seat) lingering = { seat, prompt: before.awaiting!.prompt, lines, explored: exploredBy(before.awaiting!.event.type, seat, lines, now) };
   });
+  /**
+   * A step into a hex whose dice are all in, the turn still the seat's with moves left (prompt 65): the result does not
+   * go by itself but stays at the edge, reading "Explored a jungle hex; pick a new hex to explore, or end turn", the
+   * board open to the next step and an End control in the panel; a step lost ends the turn and lingers like any throw.
+   */
+  function exploredBy(type: string, seat: Seat, lines: RollRecord[], now: GameState): { hex: HexId; terrain: string | null } | null {
+    if (type !== 'expedition/moved' || lines.some((r) => r.lost)) return null;
+    if (now.turn?.current !== seat.id || now.turn.phase !== 'act' || now.awaiting) return null;
+    const explorer = explorerAt(now, seat.id);
+    if (!explorer || moveTargets(now, explorer).length === 0) return null;
+    const hex = (lines.find((r) => r.kind === 'terrain') ?? lines.at(-1))?.hex;
+    return hex ? { hex, terrain: now.map[hex]?.terrain ?? null } : null;
+  }
   $effect(() => {
-    if (!lingering || DICE_RESULT_MS === null) return;
+    if (!lingering || lingering.explored || DICE_RESULT_MS === null) return;
     const t = setTimeout(() => (lingering = null), DICE_RESULT_MS);
     return () => clearTimeout(t);
   });
@@ -684,10 +701,13 @@
       <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
-    <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read. -->
-    <div class="scrim" data-testid="dice-result-scrim" aria-hidden="true"></div>
+    <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read.
+         A hex explored with moves left keeps its result until the next step or the End in the panel, the board open (prompt 65). -->
+    {#if !lingering.explored}
+      <div class="scrim" data-testid="dice-result-scrim" aria-hidden="true"></div>
+    {/if}
     <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised>
-      <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} ondone={() => (lingering = null)} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
+      <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} explored={lingering.explored} ondone={() => (lingering = null)} onend={() => { const seat = lingering!.seat; lingering = null; void endTurn(seat); }} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
     </EdgePanel>
   {/if}
   {#if starting}

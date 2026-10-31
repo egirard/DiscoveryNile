@@ -49,7 +49,7 @@ test.describe('039 - Mixed movement', () => {
     );
 
     // Seed 60 with the dice script 6,6,6,6 1,1,1,1 (roll-off: bottom-1 first), then, on the round-4 step into the blank
-    // Benue hex, 6 (lost check following the river upstream: found the way), 5 (the direction to copy: c2r6, jungle) and
+    // Benue hex, 6 (lost check following the river upstream: not lost), 5 (the direction to copy: c2r6, jungle) and
     // 1 (the jungle hides nothing). The natives' dice 6,6 find no natives there. With this seed bottom-1 holds a free
     // ticket to Brass and $1000 for the canoes.
     await page.goto('/table/?new=1&gameId=ABCDE&seed=60&dice=6,6,6,6,1,1,1,1,6,5,1&dice-natives=6,6');
@@ -128,7 +128,7 @@ test.describe('039 - Mixed movement', () => {
     await steps.step('unknown-then-known', {
       description: 'The canoes enter the blank hex up the Benue: the lost check following the river upstream finds the way, the hex is mapped as jungle like its neighbour, two of the three points are spent, and the known junction hex behind is offered for the one point left',
       verifications: [
-        { spec: 'The log shows the lost check found the way and the terrain mapped jungle', check: async () => {
+        { spec: 'The log shows the lost check not lost and the terrain mapped jungle', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toHaveAttribute('data-lost', 'false');
             await expect(page.getByTestId('roll-terrain-bottom-1').last()).toHaveAttribute('data-outcome', 'mapped jungle: jungle copied from the neighbour in direction 5');
