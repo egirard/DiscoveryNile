@@ -56,6 +56,7 @@
   import type { RollRecord } from '$lib/game/state';
   import DiceResult from '$features/dice/DiceResult.svelte';
   import { lingerLines } from '$features/dice/linger';
+  import { endsItself, outOfMoves } from '$features/turn/auto-end';
   import { emptyDirection, emptyText, phasesOf, provisionalTerrain, revealSteps, type RevealPhase, type RevealStep } from '$features/map/reveal';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
@@ -398,6 +399,22 @@
     const empty = emptyDirection(gameState);
     return empty ? emptyText(empty) : null;
   });
+  // A turn that ends itself (prompt 70): an expedition in the field that has just spent its movement has only the
+  // hunt left, so the table ends its turn without waiting for the end-turn control, once what the last step's dice
+  // decided has had its moment at the edge and the board has finished showing the terrain's direction.
+  /** `?auto-end=0|1`, else the build's (`VITE_AUTO_END_TURN=false` in the E2E build, whose scenarios end their turns by the control), else on. */
+  const AUTO_END_TURN: boolean = (() => {
+    const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('auto-end');
+    if (q !== null && q !== '') return q !== '0' && q !== 'false' && q !== 'off';
+    return import.meta.env.VITE_AUTO_END_TURN !== 'false';
+  })();
+  let endingItself = $state<string | null>(null);
+  $effect(() => {
+    if (!endingItself || lingering || reveal || revealQueue.length || gameState.awaiting) return;
+    const seat = seats.find((s) => s.id === endingItself);
+    endingItself = null;
+    if (seat && outOfMoves(gameState) === seat.id) void endTurn(seat);
+  });
   let lastSeen: GameState | null = null;
   $effect(() => {
     const now = gameState;
@@ -405,6 +422,11 @@
     lastSeen = now;
     if (!before || before === now) return;
     playReveal(revealSteps(before, now));
+    if (AUTO_END_TURN) {
+      const spent = endsItself(before, now, gameEvents.at(-1)?.type);
+      if (spent) endingItself = spent;
+      else if (endingItself && outOfMoves(now) !== endingItself) endingItself = null;
+    }
     const lines = lingerLines(before, now);
     if (!lines) {
       // Another event came: an explored hex's result, kept until the next step, goes with it (prompt 65).

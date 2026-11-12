@@ -455,3 +455,10 @@ Let's create a screen-mockups.md with a suite of images of the screen layout (fo
 
 `Outcome: docs/screen-mockups.md with nine pictures in docs/screen-mockups/: the start screen, every seat ready to start, and a game under way (six explorers, bottom-1 outfitted at Mombasa), each at 17", 27" (both 1920 × 1080) and 55" (3840 × 2160). bun run docs:mockups (tests/mockups/screen-mockups.spec.ts, playwright.mockups.config.ts) builds the E2E client, takes the pictures and writes the document, which says when to regenerate; AGENTS.md carries the same rule. Tooling and documents only, no player-visible change. Found while taking them: at 17" with six seats the dealt-hand panels lie over one another.`
 
+
+## 70. 2026-11-12
+
+if the party is out of moves then just advance to the hunt roll; don't wait for the player to hit "end of turn".
+
+`Outcome: One slice (046, G-189): when a step leaves the expedition out of moves in the field, the table ends the turn itself (the same turn/ended the control sends) after the step's result has lingered and any terrain reveal has played, so the hunt follows at once. Not at a port, not after an undo, not on reload. Cost: the camp can no longer be reached after the last step of a turn. ?auto-end=0|1; the E2E build keeps it off so existing scenarios end turns by the control, new scenario 046 has it on (a-move-left, turn-ended-itself).`
+
