@@ -73,6 +73,7 @@ Without direnv: prefix commands with `nix develop --command`, or enter the shell
 | `bun run diag:reload` | Reload every table playing the latest captured session, so the game replays from its events on the code as it now is |
 | `bun run diag:dice` | The health of the dice in the latest captured session (`--all` every session): the throws consumed and every die that looks consumed twice (see [diagnostics.md](diagnostics.md)); exits 1 when a die was re-used |
 | `bun run verify:change` | Everything the hooks and CI run. See below. |
+| `bun run docs:mockups` | Retake the pictures of [screen-mockups.md](screen-mockups.md) (start and game screens at 17", 27" and 55") and rewrite that file. Run it when the screen layout changes; not part of the verifier. |
 
 When the project uses Firebase, `test:e2e` and `test:rules` wrap their command in `firebase emulators:exec --project <project>-e2e --only auth,firestore "…"`.
 

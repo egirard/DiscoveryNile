@@ -448,3 +448,10 @@ when rolling for terrain based on a direction, let's add an animation after the 
 
 `Outcome: One slice (045, G-188): after each direction die the board plays it out, 700 ms a phase: the digit glows on the compass, the neighbour that way glows, then its terrain slides into the hex explored (blank until then), or an empty neighbour glows red and fades and the dice panel then says "Hex in direction n is empty; roll again". The table is held but not dimmed meanwhile and the dice panel and the dicecam's picture go faint so nothing covers the hexes. With the table's own dice both tries play in turn; the log's line is unchanged. A step held for later dice keeps the terrain drawn. ?terrain-reveal=<ms>|0|hold; the E2E build plays nothing, new scenario 045 holds each phase (digit-glows, neighbour-glows, empty-glows-red, roll-again, terrain-copied).`
 
+
+## 69. 2026-11-12
+
+Let's create a screen-mockups.md with a suite of images of the screen layout (for the start screen, and for the game screen at 17,27,55").  Add instructions to regenerate these any time the screen layout changes. The mockup and images can be in the docs directory.
+
+`Outcome: docs/screen-mockups.md with nine pictures in docs/screen-mockups/: the start screen, every seat ready to start, and a game under way (six explorers, bottom-1 outfitted at Mombasa), each at 17", 27" (both 1920 × 1080) and 55" (3840 × 2160). bun run docs:mockups (tests/mockups/screen-mockups.spec.ts, playwright.mockups.config.ts) builds the E2E client, takes the pictures and writes the document, which says when to regenerate; AGENTS.md carries the same rule. Tooling and documents only, no player-visible change. Found while taking them: at 17" with six seats the dealt-hand panels lie over one another.`
+
