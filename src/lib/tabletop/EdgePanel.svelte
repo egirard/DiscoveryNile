@@ -14,9 +14,11 @@
     raised?: boolean;
     /** A rectangle of the page the panel opens clear of (the manual dice tray, prompt 67): it stands aside along its edge. */
     clear?: { x: number; y: number; w: number; h: number } | null;
+    /** Stood down for a moment so the board beneath can be watched (the terrain's direction played out, prompt 68): faint, and not in the way of a tap. */
+    faded?: boolean;
     children: Snippet;
   }
-  let { seat, viewport, inset, testid, raised = false, clear = null, children }: Props = $props();
+  let { seat, viewport, inset, testid, raised = false, clear = null, faded = false, children }: Props = $props();
   // The panel can be dragged about by any part of it that is not a control (PROMPTS.md, prompt 45), with no
   // affordance; the offset is the component's own, so it is forgotten when the panel closes and the next opens in
   // its place. The panel is kept inside the viewport.
@@ -86,7 +88,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="panel" class:raised bind:this={el} data-testid={testid} data-seat={seat.id} data-moved={dx !== 0 || dy !== 0} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg; --dx:{dx}px; --dy:{dy}px" onpointerdown={grab}>
+<div class="panel" class:raised class:faded data-faded={faded} bind:this={el} data-testid={testid} data-seat={seat.id} data-moved={dx !== 0 || dy !== 0} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg; --dx:{dx}px; --dy:{dy}px" onpointerdown={grab}>
   {@render children()}
 </div>
 
@@ -102,6 +104,13 @@
     border-radius: 12px;
     padding: calc(var(--gap) * 1.2);
     box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  }
+  .panel {
+    transition: opacity 200ms;
+  }
+  .faded {
+    opacity: 0.08;
+    pointer-events: none;
   }
   .raised {
     z-index: 6;

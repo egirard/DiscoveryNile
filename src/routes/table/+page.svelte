@@ -56,6 +56,7 @@
   import type { RollRecord } from '$lib/game/state';
   import DiceResult from '$features/dice/DiceResult.svelte';
   import { lingerLines } from '$features/dice/linger';
+  import { emptyDirection, emptyText, phasesOf, provisionalTerrain, revealSteps, type RevealPhase, type RevealStep } from '$features/map/reveal';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
@@ -355,12 +356,55 @@
     const env = import.meta.env.VITE_DICE_RESULT_MS;
     return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : 2000;
   })();
+  // The terrain's direction played out on the board (prompt 68): after each direction die, the digit rolled glows on
+  // the compass, then the neighbour that way, then its terrain is copied into the hex explored, or an empty neighbour
+  // glows red and fades. One phase at a time, a step after another; the hex keeps its blank face until its copy.
+  /** How long each phase stands: `?terrain-reveal=<ms>` (`hold` waits for a `terrain-reveal:next` event on the window; 0 plays nothing), else the build's, else 700 ms. */
+  const TERRAIN_REVEAL_MS: number | null = (() => {
+    const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('terrain-reveal');
+    if (q === 'hold') return null;
+    if (q !== null && q !== '' && Number.isFinite(Number(q))) return Number(q);
+    const env = import.meta.env.VITE_TERRAIN_REVEAL_MS;
+    return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : 700;
+  })();
+  let reveal = $state<{ step: RevealStep; phase: RevealPhase; ms: number } | null>(null);
+  let revealQueue = $state<RevealStep[]>([]);
+  let revealTimer: ReturnType<typeof setTimeout> | null = null;
+  function playReveal(steps: RevealStep[]) {
+    if (TERRAIN_REVEAL_MS === 0 || steps.length === 0) return;
+    revealQueue = [...revealQueue, ...steps];
+    if (!reveal) nextReveal();
+  }
+  /** The next phase of the step being played, or the next step, or the end. */
+  function nextReveal() {
+    if (revealTimer) clearTimeout(revealTimer);
+    revealTimer = null;
+    const phases = reveal ? phasesOf(reveal.step) : [];
+    const at = reveal ? phases.indexOf(reveal.phase) : -1;
+    if (reveal && at < phases.length - 1) reveal = { ...reveal, phase: phases[at + 1] };
+    else if (revealQueue.length) {
+      const [step, ...rest] = revealQueue;
+      revealQueue = rest;
+      reveal = { step, phase: 'digit', ms: TERRAIN_REVEAL_MS ?? 0 };
+    } else reveal = null;
+    if (reveal && TERRAIN_REVEAL_MS !== null) revealTimer = setTimeout(nextReveal, TERRAIN_REVEAL_MS);
+  }
+  /** The hex whose terrain is not drawn yet: its direction is still being played out (until the copy, or the last empty try). */
+  // While the copy slides in the hex stays blank beneath it; a held picture of the copy (no motion) shows the terrain arrived.
+  const veiledHex = $derived(reveal && (reveal.phase !== 'copy' || reveal.ms > 0) ? reveal.step.hex : null);
+  /** The direction just rolled found nothing and another die is asked: said in the dice panel once the red glow has faded. */
+  const emptyNote = $derived.by(() => {
+    if (reveal || revealQueue.length) return null;
+    const empty = emptyDirection(gameState);
+    return empty ? emptyText(empty) : null;
+  });
   let lastSeen: GameState | null = null;
   $effect(() => {
     const now = gameState;
     const before = lastSeen;
     lastSeen = now;
     if (!before || before === now) return;
+    playReveal(revealSteps(before, now));
     const lines = lingerLines(before, now);
     if (!lines) {
       // Another event came: an explored hex's result, kept until the next step, goes with it (prompt 65).
@@ -647,6 +691,9 @@
       opened?.publishGeometry(screenGeometry(diagonal, viewport.w, viewport.h));
     };
     addEventListener('resize', onResize);
+    // A scenario holding the terrain's reveal (`?terrain-reveal=hold`) steps it on with this event.
+    const onRevealNext = () => nextReveal();
+    addEventListener('terrain-reveal:next', onRevealNext);
     const detachTooltips = attachTooltips(document.body);
     let opened: Game | null = null;
     openGame({
@@ -678,6 +725,7 @@
     });
     return () => {
       removeEventListener('resize', onResize);
+      removeEventListener('terrain-reveal:next', onRevealNext);
       detachTooltips();
       opened?.close();
     };
@@ -693,7 +741,7 @@
   data-mm-per-px={k}
 >
   <div class="board" data-testid="board" data-e2e-fit style="inset: {inset.top}px {inset.right}px {inset.bottom}px {inset.left}px">
-    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={choosePort} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} />
+    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={choosePort} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} {reveal} veiled={veiledHex} provisional={provisionalTerrain(awaiting)} />
   </div>
 
   {#if canStart}
@@ -721,17 +769,17 @@
 
   {#if awaiting && awaitingSeat}
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
-    <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
-    <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised clear={trayRect}>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
+    <div class="scrim" class:clear={Boolean(reveal)} data-testid="dice-scrim" aria-hidden="true"></div>
+    <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised clear={trayRect} faded={Boolean(reveal)}>
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} note={emptyNote} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
     <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read.
          A hex explored with moves left keeps its result until the next step or the End in the panel, the board open (prompt 65). -->
     {#if !lingering.explored}
-      <div class="scrim" data-testid="dice-result-scrim" aria-hidden="true"></div>
+      <div class="scrim" class:clear={Boolean(reveal)} data-testid="dice-result-scrim" aria-hidden="true"></div>
     {/if}
-    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised clear={trayRect}>
+    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised clear={trayRect} faded={Boolean(reveal)}>
       <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} explored={lingering.explored} ondone={() => (lingering = null)} onend={() => { const seat = lingering!.seat; lingering = null; void endTurn(seat); }} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
     </EdgePanel>
   {/if}
@@ -754,7 +802,7 @@
     </EdgePanel>
   {/each}
   {#if physical && diceTray}
-    <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} data-raised={dockPlace.centred || (manual && Boolean(awaiting))} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
+    <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} data-raised={dockPlace.centred || (manual && Boolean(awaiting))} data-faded={Boolean(reveal) && dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
       {#if manual}
         <!-- The tray speaks for the engine (prompt 66): its throws come through the same judge as a camera's readings. -->
         <ManualDice wanted={awaiting ? awaiting.count - awaiting.have.length : 0} ask={awaiting ? `${awaiting.event.id}:${awaiting.rolled.length}:${awaiting.have.length}` : ''} seed={manualSeed} lying={lyingDice} onmessage={onDicecam} />
@@ -1259,6 +1307,11 @@
     inset: 0;
     z-index: 5;
     background: rgba(28, 42, 46, 0.35);
+    transition: background 200ms;
+  }
+  /* While a direction is played out on the board (prompt 68) the table is still held but not dimmed. */
+  .scrim.clear {
+    background: transparent;
   }
   .dock-area {
     /* Parked, it sits under the seats' panels (the outfitting chart reaches the corner); centred, above the scrim. */
@@ -1303,6 +1356,14 @@
     font-size: calc(var(--target) * 0.3);
     font-weight: 700;
     cursor: pointer;
+  }
+  /* The dicecam's picture in the middle stands down while the board plays out a direction (prompt 68). */
+  .dock-area {
+    transition: opacity 200ms;
+  }
+  .dock-area[data-faded='true'] {
+    opacity: 0.08;
+    pointer-events: none;
   }
   .dock-area[data-raised='true'] {
     z-index: 6;

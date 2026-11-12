@@ -34,13 +34,15 @@
     configured: boolean;
     /** The tray is the table's own, rolled at a tap (prompt 66). */
     manual?: boolean;
+    /** What the board has just shown of the last die (prompt 68): "Hex in direction 3 is empty; roll again". */
+    note?: string | null;
     onroll: (values: number[]) => void;
     /** The table rolls the rest of a gathered throw. */
     onauto?: () => void;
     /** A die in the lines so far was tapped, to set its face (prompt 37). */
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, onroll, onauto, oncorrect }: Props = $props();
+  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, note = null, onroll, onauto, oncorrect }: Props = $props();
   const gathered = $derived(count > DICE_AT_HAND);
   const pending = $derived(uncovered(rolled, sofar));
   const remaining = $derived(count - have.length);
@@ -71,6 +73,9 @@
 </script>
 
 <div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-have={have.length} data-status={status} data-seen={seen ?? ''} data-stale={stale}>
+  {#if note}
+    <p class="note" data-testid="dice-note-{seat}">{note}</p>
+  {/if}
   <p class="ask" data-testid="dice-ask-{seat}">{prompt}</p>
   {#if gathered}
     <div class="gathered" data-testid="dice-gathered-{seat}" data-have={have.length} aria-label="{have.length} of {count} dice in">
@@ -126,6 +131,12 @@
     font-size: calc(var(--target) * 0.42);
     font-weight: 700;
     line-height: 1.2;
+  }
+  .note {
+    margin: 0;
+    font-size: calc(var(--target) * 0.32);
+    font-weight: 700;
+    color: #a8372a;
   }
   .so-far {
     margin: 0;

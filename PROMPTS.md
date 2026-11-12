@@ -441,3 +441,10 @@ don't jump the manual dice box after a roll - let's leave it in the corner all t
 
 `Outcome: Two slices. 044 (G-186, commit e0bff02): the manual dice tray stays in the south-west corner all the time, above the scrim while an ask is open; the dice prompt, result and first-player panels open clear of it, standing aside along their edge (EdgePanel clear). The dicecam's picture still comes to the middle. 019 (G-187): until Done trading is pressed, − hands back anything bought from the chief this turn for what it cost (bearers, guides and askaris too, the askari's musket with it) and + takes back what was sold; the trading's line nets, an exchange taken back in full leaving no line. New step taken-back in 019; its later screenshots renumbered.`
 
+
+## 68. 2026-11-12
+
+when rolling for terrain based on a direction, let's add an animation after the die is rolled.  First, the digit in the direction legend will glow to show what was rolled, then the adjacent hex in question will glow, then if there is terrain there the terrain will get copied into the current hex; if the hex is empty it will glow red for a moment, and as the glow fades the text "hex in direction n is empty; roll again" appears in the turn display.
+
+`Outcome: One slice (045, G-188): after each direction die the board plays it out, 700 ms a phase: the digit glows on the compass, the neighbour that way glows, then its terrain slides into the hex explored (blank until then), or an empty neighbour glows red and fades and the dice panel then says "Hex in direction n is empty; roll again". The table is held but not dimmed meanwhile and the dice panel and the dicecam's picture go faint so nothing covers the hexes. With the table's own dice both tries play in turn; the log's line is unchanged. A step held for later dice keeps the terrain drawn. ?terrain-reveal=<ms>|0|hold; the E2E build plays nothing, new scenario 045 holds each phase (digit-glows, neighbour-glows, empty-glows-red, roll-again, terrain-copied).`
+

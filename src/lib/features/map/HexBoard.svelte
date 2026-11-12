@@ -16,6 +16,8 @@
   import { colourFor } from '$features/explorers/colours';
   import type { MappedHex, Cache } from '$lib/game/state';
   import type { MoveTarget } from '$features/exploration/reducer';
+  import type { RevealPhase, RevealStep } from './reveal';
+  import type { Terrain } from './manifest';
 
   export interface BoardToken {
     seat: string;
@@ -48,9 +50,15 @@
     /** Hexes the explorer in Europe may publish now (rules §12): a tap claims one. */
     publishable?: HexId[];
     onpublish?: (hex: HexId) => void;
+    /** The direction die being played out (prompt 68): the digit glowing on the compass, the neighbour that way, then the copy or the empty hex. */
+    reveal?: { step: RevealStep; phase: RevealPhase; ms: number } | null;
+    /** A hex whose terrain is not drawn yet: its direction die is still being played out. */
+    veiled?: HexId | null;
+    /** The terrain a step held for more dice has already given its hex, drawn until the step is applied. */
+    provisional?: { hex: HexId; terrain: Terrain } | null;
   }
-  let { width, height, touch = 44, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish }: Props = $props();
-  const terrainFor = (h: BoardHex) => mapped[h.id]?.terrain ?? h.terrain;
+  let { width, height, touch = 44, tokens = [], portChoices = null, onport, mapped = {}, targets = [], caches = [], onhex, publishable = [], onpublish, reveal = null, veiled = null, provisional = null }: Props = $props();
+  const terrainFor = (h: BoardHex) => (h.id === veiled ? h.terrain : (mapped[h.id]?.terrain ?? (provisional?.hex === h.id ? provisional.terrain : h.terrain)));
 
   /** The window shown: the land's bounding box with an unmarked margin around it for the names at the coast (prompt 53). */
   const extents = extentsOf(LAND_HEXES);
@@ -259,9 +267,25 @@
       <polygon class="rose" points={hexPoints(0, 0, radius * 1.1)} />
       {#each DIRECTIONS as d (d)}
         <line class="spoke" x1={Math.cos(bearing(d)) * radius * 0.5} y1={Math.sin(bearing(d)) * radius * 0.5} x2={Math.cos(bearing(d)) * radius * 1.35} y2={Math.sin(bearing(d)) * radius * 1.35} />
-        <text class="direction" data-testid="compass-{d}" transform="translate({Math.cos(bearing(d)) * radius * 1.95} {Math.sin(bearing(d)) * radius * 1.95}) {upright}" font-size={radius * 0.85}>{d}</text>
+        {#if reveal?.step.direction === d}
+          <circle class="rolled-halo" data-testid="compass-rolled" data-direction={d} cx={Math.cos(bearing(d)) * radius * 1.95} cy={Math.sin(bearing(d)) * radius * 1.95} r={radius * 0.75} />
+        {/if}
+        <text class="direction" class:rolled={reveal?.step.direction === d} data-testid="compass-{d}" data-rolled={reveal?.step.direction === d} transform="translate({Math.cos(bearing(d)) * radius * 1.95} {Math.sin(bearing(d)) * radius * 1.95}) {upright}" font-size={radius * 0.85}>{d}</text>
       {/each}
     </g>
+    {#if reveal && reveal.phase !== 'digit'}
+      <!-- The direction rolled, played out (prompt 68): the neighbour that way glows; its terrain slides into the hex
+           explored, which glows as it takes it; a neighbour with nothing mapped glows red and fades. -->
+      {@const n = centre(reveal.step.neighbour)}
+      {@const c = centre(reveal.step.hex)}
+      <g class="reveal" data-testid="terrain-reveal" data-phase={reveal.phase} data-direction={reveal.step.direction} data-hex={reveal.step.hex} data-neighbour={reveal.step.neighbour} data-terrain={reveal.step.terrain ?? 'empty'} data-timed={reveal.ms > 0} style="--ms:{reveal.ms}ms; --dx:{n.x - c.x}px; --dy:{n.y - c.y}px">
+        <polygon class="glow" class:empty={reveal.phase === 'empty'} data-testid="reveal-neighbour" points={hexPoints(n.x, n.y, radius * 0.96)} />
+        {#if reveal.phase === 'copy'}
+          <polygon class="hex ghost {reveal.step.terrain}" points={hexPoints(c.x, c.y, radius * 0.96)} />
+          <polygon class="glow copied" data-testid="reveal-copied" points={hexPoints(c.x, c.y, radius * 0.96)} />
+        {/if}
+      </g>
+    {/if}
     {#each tokens as t (t.seat)}
       {@const c = centre(t.hex)}
       {@const sharing = tokens.filter((o) => o.hex === t.hex)}
@@ -455,6 +479,47 @@
     stroke-width: calc(var(--r) * 0.08);
     stroke-linecap: round;
     opacity: 0.7;
+  }
+  .compass .direction.rolled {
+    fill: #1c2a2e;
+  }
+  .compass .rolled-halo {
+    fill: #f2c94c;
+    stroke: #fff6d6;
+    stroke-width: calc(var(--r) * 0.12);
+    filter: drop-shadow(0 0 calc(var(--r) * 0.5) #f2c94c);
+  }
+  /* The direction played out (prompt 68). Each glow is a finite animation that ends as it began or faded, so a still
+     picture of a phase (the scenarios hold each) shows the glow in full. */
+  .reveal {
+    pointer-events: none;
+  }
+  .reveal .glow {
+    fill: rgba(242, 201, 76, 0.45);
+    stroke: #f2c94c;
+    stroke-width: calc(var(--r) * 0.18);
+    filter: drop-shadow(0 0 calc(var(--r) * 0.6) #f2c94c);
+  }
+  .reveal .glow.empty {
+    fill: rgba(214, 48, 49, 0.6);
+    stroke: #d63031;
+    filter: drop-shadow(0 0 calc(var(--r) * 0.6) #d63031);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal[data-timed='true'] .glow.empty {
+      animation: reveal-fade var(--ms) ease-in forwards;
+    }
+    .reveal[data-timed='true'] .ghost {
+      animation: reveal-slide var(--ms) ease-in-out forwards;
+    }
+  }
+  @keyframes reveal-fade {
+    0%, 35% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes reveal-slide {
+    0% { transform: translate(var(--dx), var(--dy)); }
+    75%, 100% { transform: translate(0, 0); }
   }
   .compass .direction {
     fill: #efe6cc;
