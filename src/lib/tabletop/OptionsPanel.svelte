@@ -14,14 +14,17 @@
     running: boolean;
     /** The dice are rolled at the table and read by the dicecam (PROMPTS.md, prompt 18). */
     physical: boolean;
+    /** The dice are thrown by a tap on a tray the table draws, in the dicecam's place (PROMPTS.md, prompt 66). */
+    manual: boolean;
     /** 0 for the south-east gear (facing the bottom edge), 180 for the north-west one. */
     rotation: 0 | 180;
     onclose: () => void;
     ondiagonal: (inches: number) => void;
     ontoggledice: (on: boolean) => void;
+    ontogglemanual: (on: boolean) => void;
     onend: () => void;
   }
-  let { seats, qr, diagonal, mmPerPx, running, physical, rotation, onclose, ondiagonal, ontoggledice, onend }: Props = $props();
+  let { seats, qr, diagonal, mmPerPx, running, physical, manual, rotation, onclose, ondiagonal, ontoggledice, ontogglemanual, onend }: Props = $props();
   let confirming = $state(false);
   const set = (inches: number) => ondiagonal(Math.min(120, Math.max(5, Math.round(inches * 2) / 2)));
   // An ISO ID-1 card (85.6 × 54.0 mm) at the configured size: hold a bank card against it to check the diagonal.
@@ -73,8 +76,12 @@
         <span>Physical dice</span>
       </button>
       <span class="state" data-testid="physical-dice-state">{physical ? 'on' : 'off'}</span>
+      <button class="toggle manual" data-testid="manual-dice-toggle" aria-pressed={manual} aria-label="Manual dice: {manual ? 'on, a tap on the dice tray rolls' : 'off'}" onclick={() => ontogglemanual(!manual)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="8" width="13" height="13" rx="2.5" /><circle class="pip" cx="9.5" cy="14.5" r="1.6" /><path d="M14 2l7 7M21 9v-5M21 9h-5" /></svg>
+        <span>Manual</span>
+      </button>
     </div>
-    <p class="note">{physical ? 'The table asks for every roll: the dicecam reads the tray, or tap the face you rolled.' : 'The table rolls the dice itself.'}</p>
+    <p class="note" data-testid="dice-note">{!physical ? 'The table rolls the dice itself.' : manual ? 'The table asks for every roll: tap the dice tray and it rolls for you, or tap a face.' : 'The table asks for every roll: the dicecam reads the tray, or tap the face you rolled.'}</p>
   </section>
 
   <section class="end" data-testid="options-end">

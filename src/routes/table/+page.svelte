@@ -57,6 +57,8 @@
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
+  import ManualDice from '$features/dice/ManualDice.svelte';
+  import { readManualDice, seedOf, writeManualDice } from '$features/dice/manual';
   import RadialMenu from '$features/dice/RadialMenu.svelte';
   import type { Roll } from '$features/map/generate';
   import { consider, dieAt, gathering, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type SeenDie, type Watch } from '$features/dice/dicecam';
@@ -312,6 +314,10 @@
   // The dicecam is on for the whole game, in a corner.
   const DICECAM_URL: string = import.meta.env.VITE_DICECAM_URL ? (String(import.meta.env.VITE_DICECAM_URL).startsWith('/') ? `${base}${import.meta.env.VITE_DICECAM_URL}` : String(import.meta.env.VITE_DICECAM_URL)) : '';
   const physical = $derived(isPhysical(gameState.rng));
+  // Manual dice (prompt 66): a tray drawn in the dicecam's place whose taps throw dice the table makes up, sent
+  // through the same messages as the engine's readings. A setting of this table's device, like the screen's size.
+  let manual = $state(false);
+  const diceTray = $derived(manual || Boolean(DICECAM_URL));
   const awaiting = $derived(gameState.awaiting);
   // The roll for first player at every station (prompt 27): each seat's throw as it comes while the roll is asked
   // for, then every seat's with the winner's glowing while the game is starting; `game/begun` after the pause.
@@ -511,6 +517,16 @@
   async function toggleDice(on: boolean) {
     await game?.append('dice/physical', { on });
   }
+  /** Manual dice on or off; switching them on asks for every roll, as physical dice do, since the tray answers asks. */
+  async function toggleManual(on: boolean) {
+    manual = on;
+    writeManualDice(on);
+    if (on && !physical) await toggleDice(true);
+  }
+  /** The seed of the tray's dice, asked at its first throw: the game's code and how far the game has run. */
+  const manualSeed = () => seedOf(gameState.gameId ?? '', gameEvents.length);
+  /** Where the table knows dice to lie, for the manual tray to throw clear of (the judge reads a die there as resting). */
+  const lyingDice = (): Point[] => [lastThrow, lastReading].flatMap((lie) => lie?.dice ?? []).filter((d) => d.x >= 0).map((d) => ({ x: d.x, y: d.y }));
   // A die set right after the fact (PROMPTS.md, prompt 37): a tap on a die in a log line (the rail's latest, the open
   // log, the prompt's lines so far) opens a radial menu of the six faces over the die, turned to the seat; the face
   // chosen goes as `dice/corrected`, which the reducer applies by folding the game again with the die changed, or
@@ -615,6 +631,7 @@
 
   onMount(() => {
     diagonal = readDiagonalInches();
+    manual = readManualDice();
     viewport = { w: innerWidth, h: innerHeight };
     // The table follows its window: the board, rails and panels are derived from the viewport.
     const onResize = () => {
@@ -698,7 +715,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={Boolean(DICECAM_URL)} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
     <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read.
@@ -728,9 +745,14 @@
       <DonationCards seat={seat.id} ids={unseenAt(seat.id)} ontake={() => takeCards(seat.id)} />
     </EdgePanel>
   {/each}
-  {#if physical && DICECAM_URL}
+  {#if physical && diceTray}
     <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
+      {#if manual}
+        <!-- The tray speaks for the engine (prompt 66): its throws come through the same judge as a camera's readings. -->
+        <ManualDice wanted={awaiting ? awaiting.count - awaiting.have.length : 0} ask={awaiting ? `${awaiting.event.id}:${awaiting.rolled.length}:${awaiting.have.length}` : ''} seed={manualSeed} lying={lyingDice} onmessage={onDicecam} />
+      {:else}
       <Dicecam url={DICECAM_URL} onmessage={onDicecam} onstatus={(s) => { dicecamStatus = s; diagLog('dicecam/status', s); }} ontap={onDockTap} hint={dockHint} rotation={dockPlace.rotation} />
+      {/if}
     </div>
   {/if}
 
@@ -965,7 +987,7 @@
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
   </button>
   {#if options}
-    <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} {physical} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} ontoggledice={toggleDice} onend={endByAgreement} />
+    <OptionsPanel {seats} {qr} {diagonal} mmPerPx={k} running={Boolean(gameState.turn) && !gameState.ended} {physical} {manual} rotation={options === 'nw' ? 180 : 0} onclose={() => (options = null)} ondiagonal={setDiagonal} ontoggledice={toggleDice} ontogglemanual={toggleManual} onend={endByAgreement} />
   {/if}
   <!-- The status line beside the north-west gear (prompt 32): the capture, the version, the build, an update waiting. -->
   <StatusLine left={inset.left + target * 1.5} top={inset.top + target * 0.3} height={target} />

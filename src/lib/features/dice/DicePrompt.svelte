@@ -13,6 +13,7 @@
   import { PIPS } from '$lib/ui/pips';
   import { DICE_AT_HAND, statusText, type DicecamStatus } from './dicecam';
   import { uncovered } from './prompt';
+  import { manualStatusText } from './manual';
 
   interface Props {
     seat: string;
@@ -31,13 +32,15 @@
     stale?: boolean;
     /** A dicecam is set up on this table. */
     configured: boolean;
+    /** The tray is the table's own, rolled at a tap (prompt 66). */
+    manual?: boolean;
     onroll: (values: number[]) => void;
     /** The table rolls the rest of a gathered throw. */
     onauto?: () => void;
     /** A die in the lines so far was tapped, to set its face (prompt 37). */
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, onroll, onauto, oncorrect }: Props = $props();
+  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, onroll, onauto, oncorrect }: Props = $props();
   const gathered = $derived(count > DICE_AT_HAND);
   const pending = $derived(uncovered(rolled, sofar));
   const remaining = $derived(count - have.length);
@@ -75,7 +78,7 @@
       {#if have.length}<DiceRoll values={have} label="rolled so far" size="calc(var(--target) * 0.36)" wrap />{/if}
     </div>
   {/if}
-  <p class="status" data-testid="dicecam-status-{seat}">{statusText(status, remaining, seen, configured, stale, gathered)}</p>
+  <p class="status" data-testid="dicecam-status-{seat}">{manual ? manualStatusText(remaining, seen, stale, gathered) : statusText(status, remaining, seen, configured, stale, gathered)}</p>
   <div class="faces" role="group" aria-label={gathered ? 'Or tap each face as it is rolled' : `Or tap the face you rolled${count > 1 ? `, ${count} times in order` : ''}`}>
     {#each faces as v (v)}
       <button class="face" data-testid="die-face-{v}-{seat}" aria-label="Rolled a {v}" onclick={() => tap(v)}>
