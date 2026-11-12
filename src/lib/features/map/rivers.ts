@@ -41,6 +41,15 @@ export interface RiverResult {
   notes: string[];
 }
 
+const ORDINALS = ['', 'highest', 'second highest', 'third highest', 'fourth highest', 'fifth highest'];
+/** Where a new peak stands among those already discovered on the map (`peaks`, in feet): "the highest discovered so far". */
+export function peakStanding(feet: number, peaks: readonly number[]): string {
+  const higher = peaks.filter((p) => p > feet).length;
+  if (peaks.length === 0) return 'the first discovered and the highest so far';
+  if (higher === 0) return peaks.includes(feet) ? 'as high as the highest discovered so far' : 'the highest discovered so far';
+  return `the ${ORDINALS[higher + 1] ?? `${higher + 1}th highest`} discovered so far`;
+}
+
 /** Pre-printed river edges as a course (downstream edge → out, upstream edges → in). */
 export function printedCourse(id: HexId): RiverCourse | null {
   const edges = riverEdges(id);
@@ -53,7 +62,7 @@ export function printedCourse(id: HexId): RiverCourse | null {
  * Resolve the water features of `id` after its basic terrain is known. `know` describes the
  * neighbours. `seat` is unused here but kept for symmetry with the reducer.
  */
-export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: Knowledge): { rng: RngState; result: RiverResult } {
+export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: Knowledge, peaks: readonly number[] = []): { rng: RngState; result: RiverResult } {
   const rolls: Roll[] = [];
   const notes: string[] = [];
   const roll = (label: string, ask: DiceAsk = { what: `for ${label}` }) => {
@@ -72,12 +81,14 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     const r = dice(rng, 3, 'main', { what: "for the mountain's height", hint: 'the product plus 100, in hundreds of feet; over 15,000 ft is a recorded peak' });
     rng = r.state;
     r.values.forEach((v, i) => rolls.push({ label: `peak die ${i + 1}`, value: v }));
-    const hundreds = r.values.reduce((a, b) => a * b, 1) + 100;
-    const product = r.values.join(' × ');
+    const product = r.values.reduce((a, b) => a * b, 1);
+    const hundreds = product + 100;
+    // The sum in full (prompt 71): "5 × 6 × 4 = 120, plus 100 = 220 hundred feet", then what it makes of the mountain.
+    const sum = `${r.values.join(' × ')} = ${product}, plus 100 = ${hundreds} hundred feet`;
     if (hundreds > 150) {
       peakFeet = hundreds * 100;
-      notes.push(`a peak of ${peakFeet.toLocaleString('en-US')} ft (${product} + 100 hundred ft, a record over 15,000)`);
-    } else notes.push(`a mountain of ${(hundreds * 100).toLocaleString('en-US')} ft (${product} + 100 hundred ft, no record under 15,000)`);
+      notes.push(`${sum}: a record-breaking peak of ${peakFeet.toLocaleString('en-US')} ft (over 15,000), ${peakStanding(peakFeet, peaks)}`);
+    } else notes.push(`${sum}: a mountain of ${(hundreds * 100).toLocaleString('en-US')} ft, no record (15,000 or under)`);
   }
 
   // Water hexes have no visible river course (rules §7.4); rivers that reach them simply end there.

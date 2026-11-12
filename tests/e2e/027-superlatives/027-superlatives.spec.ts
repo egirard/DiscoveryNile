@@ -68,6 +68,8 @@ test.describe('027 - Superlatives', () => {
           const s = await state(page);
           expect(s.map['c24r12']).toMatchObject({ terrain: 'mountain', peakFeet: 22000, markers: ['bottom-1'] });
           expect(s.map['c24r12'].river).not.toBeNull();
+          // The height's sum in full, and where the peak stands among those discovered (prompt 71).
+          expect(s.turn!.log.find((l) => l.kind === 'water')!.outcome).toMatch(/^\d × \d × \d = 120, plus 100 = 220 hundred feet: a record-breaking peak of 22,000 ft \(over 15,000\), the first discovered and the highest so far/);
           expect(s.diagnostics).toEqual([]);
         } }
       ]

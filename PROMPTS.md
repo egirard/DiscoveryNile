@@ -462,3 +462,10 @@ if the party is out of moves then just advance to the hunt roll; don't wait for 
 
 `Outcome: One slice (046, G-189): when a step leaves the expedition out of moves in the field, the table ends the turn itself (the same turn/ended the control sends) after the step's result has lingered and any terrain reveal has played, so the hunt follows at once. Not at a port, not after an undo, not on reload. Cost: the camp can no longer be reached after the last step of a turn. ?auto-end=0|1; the E2E build keeps it off so existing scenarios end turns by the control, new scenario 046 has it on (a-move-left, turn-ended-itself).`
 
+
+## 71. 2026-11-12
+
+after rolling the mountain height, add the results in: 3X2X4=2400 feet (my calc might be wrong) Also add "A record breaking peak, highest discovered (so far)" or appropriate.
+
+`Outcome: One slice (011/027, G-190): the mountain's height line gives the sum in full and the verdict, e.g. "5 × 6 × 4 = 120, plus 100 = 220 hundred feet: a record-breaking peak of 22,000 ft (over 15,000), the highest discovered so far" (or the first discovered, as high as the highest, the second highest…, among every peak on the map); a lesser one reads "… a mountain of 10,100 ft, no record (15,000 or under)". By the rules 3 × 2 × 4 is 24, plus 100, in hundreds: 12,400 ft.`
+

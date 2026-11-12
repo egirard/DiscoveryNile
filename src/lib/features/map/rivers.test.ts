@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { d6, dice, rngFromSeed } from '$lib/game/random';
 import { neighbour, opposite, type Direction, type HexId } from './hex';
 import type { Terrain } from './manifest';
-import { printedCourse, resolveWater, riverDirection, type HexKnowledge, type Knowledge, type RiverCourse } from './rivers';
+import { printedCourse, resolveWater, riverDirection, type HexKnowledge, type Knowledge, type RiverCourse, peakStanding } from './rivers';
 
 const H: HexId = 'c12r12';
 const blank: HexKnowledge = { terrain: null, mapped: false, river: null, needsContinuation: false };
@@ -135,6 +135,14 @@ describe('water hexes, cataracts and peaks', () => {
     const connect = knowing({ 1: mapped('veldt', course({ in: [opposite(1)], out: 2 })), 4: mapped('jungle', course({ out: opposite(4) })) });
     const m = resolveWater(rngFromSeed(seedFor([4, 4, 4, 3])), H, 'mountain', connect);
     expect(m.result.peakFeet).toBe((64 + 100) * 100);
+    // The sum in full and where the peak stands among those discovered (prompt 71).
+    expect(m.result.notes[0]).toBe('4 × 4 × 4 = 64, plus 100 = 164 hundred feet: a record-breaking peak of 16,400 ft (over 15,000), the first discovered and the highest so far');
+    const among = (peaks: number[]) => resolveWater(rngFromSeed(seedFor([4, 4, 4, 3])), H, 'mountain', connect, peaks).result.notes[0].split(', ').at(-1);
+    expect(among([15300])).toBe('the highest discovered so far');
+    expect(among([16400])).toBe('as high as the highest discovered so far');
+    expect(among([22000])).toBe('the second highest discovered so far');
+    expect(among([22000, 15300, 31600])).toBe('the third highest discovered so far');
+    expect(peakStanding(15100, [1, 2, 3, 4, 5, 6].map((n) => 16000 + n))).toBe('the 7th highest discovered so far');
     expect(m.result.river).toMatchObject({ in: [4], out: 1, cataract: true });
     const heightDice = m.result.rolls.filter((x) => x.label.startsWith('waterfall')).map((x) => x.value);
     expect(heightDice).toHaveLength(4);
@@ -142,6 +150,7 @@ describe('water hexes, cataracts and peaks', () => {
     expect(m.result.river!.waterfallFeet).toBe(feet >= 400 ? feet : null);
     const low = resolveWater(rngFromSeed(seedFor([1, 1, 1, 1])), H, 'mountain', connect);
     expect(low.result.peakFeet).toBeNull();
+    expect(low.result.notes[0]).toBe('1 × 1 × 1 = 1, plus 100 = 101 hundred feet: a mountain of 10,100 ft, no record (15,000 or under)');
     expect(low.result.river).toMatchObject({ cataract: false });
   });
   it('is deterministic and advances the rng', () => {

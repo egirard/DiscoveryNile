@@ -104,7 +104,7 @@ test.describe('011 - Rivers, oases and cataracts', () => {
           expect(s.map['c22r13'].peakFeet).toBe(20000);
           expect(s.map['c22r13'].river).toMatchObject({ source: true, out: 5 });
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /a peak of 20,000 ft \(.*a record over 15,000\); \d is even: a river rises here and flows in direction 5/);
+            await expect(page.getByTestId('roll-water-bottom-1').last()).toHaveAttribute('data-outcome', /^\d × \d × \d = 100, plus 100 = 200 hundred feet: a record-breaking peak of 20,000 ft \(over 15,000\), the first discovered and the highest so far; \d is even: a river rises here and flows in direction 5/);
           });
         } }
       ]

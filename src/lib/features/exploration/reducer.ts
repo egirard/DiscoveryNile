@@ -224,7 +224,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         // The line tells how the terrain came about (prompt 56): the directions tried, the table, the composite die.
         log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain}: ${gen.result.notes.join('; ')}` });
         // Rivers, oases, cataracts and peaks (rules §7.4–7.5); water may replace the terrain.
-        const water = resolveWater(rng, target, terrain, knowledgeOf(state));
+        const water = resolveWater(rng, target, terrain, knowledgeOf(state), Object.values(state.map).flatMap((m) => (m.peakFeet ? [m.peakFeet] : [])));
         rng = water.rng;
         terrain = water.result.terrain;
         if (water.result.rolls.length || water.result.notes.length) {
