@@ -48,3 +48,48 @@ export function logTrade(log: readonly RollRecord[], seat: SeatId, hex: HexId, n
   const trades = [next];
   return [...log, { kind: 'trade', seat, hex, rolls: [], trades, outcome: tradeLine(trades) }];
 }
+
+// ---- Taking an exchange back (PROMPTS.md, prompt 67) -----------------------------------------------------------
+// Until "Done trading" the trading with a chief is one bargain still being struck: what was bought can be handed
+// back for what it cost and what was sold taken back for what it fetched, so a tap too many is a tap the other way.
+// The tally nets: a bearer bought and handed back leaves no line.
+
+/** The units of an exchange as the panel counts its taps: gifts for rations, else the number of the item. */
+const units = (t: Trade) => (t.item === 'food' ? t.gifts : t.count);
+
+/** How much of `item` this seat has bought (or sold) from the chief at `hex` this turn and not yet taken back, in the panel's units. */
+export function tradedHere(log: readonly RollRecord[], seat: SeatId, hex: HexId, direction: Trade['direction'], item: Item): number {
+  let n = 0;
+  for (const r of log) if (r.trades && r.seat === seat && r.hex === hex) for (const t of r.trades) if (t.direction === direction && t.item === item) n += units(t);
+  return n;
+}
+
+/**
+ * The turn's log with `back` taken off the exchange it undoes: `back` is the exchange as it was first made (its
+ * direction, item, count, gifts and muskets), in part or whole. The latest lines give first; an exchange brought to
+ * nothing leaves the tally, and a tally left empty takes its line with it.
+ */
+export function logTakenBack(log: readonly RollRecord[], seat: SeatId, hex: HexId, back: Trade): RollRecord[] {
+  let left = { count: back.count, gifts: back.gifts, muskets: back.muskets ?? 0 };
+  const out = [...log];
+  for (let i = out.length - 1; i >= 0 && left.count > 0; i--) {
+    const r = out[i];
+    if (!r.trades || r.seat !== seat || r.hex !== hex) continue;
+    const trades: Trade[] = [];
+    for (const t of r.trades) {
+      if (t.direction !== back.direction || t.item !== back.item || left.count === 0) {
+        trades.push(t);
+        continue;
+      }
+      const count = Math.min(t.count, left.count);
+      const share = count / left.count;
+      const gifts = Math.round(left.gifts * share);
+      const muskets = Math.round(left.muskets * share);
+      left = { count: left.count - count, gifts: left.gifts - gifts, muskets: left.muskets - muskets };
+      if (t.count > count) trades.push({ ...t, count: t.count - count, gifts: t.gifts - gifts, ...(t.muskets ? { muskets: t.muskets - muskets } : {}) });
+    }
+    if (trades.length) out[i] = { ...r, trades, outcome: tradeLine(trades) };
+    else out.splice(i, 1);
+  }
+  return out;
+}

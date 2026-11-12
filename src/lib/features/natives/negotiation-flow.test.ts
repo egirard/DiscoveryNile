@@ -51,7 +51,27 @@ describe('negotiation and trade (rules §8.5)', () => {
     const reason = (payload: Record<string, unknown>) => reduce([...traded, event('natives/traded', { seat: 'bottom-1', ...payload })]).diagnostics.at(-1)?.reason;
     expect(reason({ item: 'askaris', count: 1, direction: 'buy' })).toBe('an askari needs a musket; only 0');
     expect(reason({ item: 'camels', count: 1, direction: 'buy' })).toBe('that is not for sale here');
-    expect(reason({ item: 'bearers', count: 1, direction: 'sell' })).toBe('bearers cannot be sold');
+    expect(reason({ item: 'guides', count: 1, direction: 'sell' })).toBe('guides cannot be sold');
+    expect(reason({ item: 'bearers', count: 2, direction: 'sell' })).toBe('bearers cannot be sold'); // only one was bought here
+    // Until the trading is done an exchange can be taken back (prompt 67): the bearer bought is handed back for the
+    // two gifts he cost though the tribe buys no bearers, and the rations sold are taken back for the gifts they fetched.
+    const back = (...more: Record<string, unknown>[]) => reduce([...traded, ...more.map((payload) => event('natives/traded', { seat: 'bottom-1', ...payload }))]);
+    const handed = back({ item: 'bearers', count: 1, direction: 'sell' });
+    expect(handed.diagnostics).toEqual([]);
+    expect(handed.explorers[0].chart).toMatchObject({ bearers: 6, gifts: 20, food: 34 });
+    expect(handed.turn!.log.at(-1)!.outcome).toBe('sold 6 rations for 2 gifts');
+    expect(back({ item: 'bearers', count: 1, direction: 'sell' }, { item: 'bearers', count: 1, direction: 'sell' }).diagnostics.at(-1)?.reason).toBe('bearers cannot be sold');
+    const partly = back({ item: 'food', count: 1, direction: 'buy' });
+    expect(partly.explorers[0].chart).toMatchObject({ bearers: 7, gifts: 17, food: 37 });
+    expect(partly.turn!.log.at(-1)!.outcome).toBe('bought 1 bearer for 2 gifts; sold 3 rations for 1 gift');
+    // Everything taken back: the expedition is as it came and the trading leaves no line.
+    const none = back({ item: 'food', count: 2, direction: 'buy' }, { item: 'bearers', count: 1, direction: 'sell' });
+    expect(none.diagnostics).toEqual([]);
+    expect(none.explorers[0].chart).toMatchObject({ bearers: 6, gifts: 18, food: 40 });
+    expect(none.turn!.log.at(-1)!.outcome).toBe('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
+    expect(none.turn!.phase).toBe('trade');
+    // A third gift's worth of rations bought after the two sold were taken back is a purchase again.
+    expect(back({ item: 'food', count: 2, direction: 'buy' }, { item: 'food', count: 1, direction: 'buy' }).turn!.log.at(-1)!.outcome).toBe('bought 1 bearer for 2 gifts; bought 3 rations for 1 gift');
     const done = reduce([...traded, event('natives/done', { seat: 'bottom-1' })]);
     expect(done.turn).toMatchObject({ phase: 'act', policy: 5 });
     // Next turn the prior negotiation counts as local knowledge (+1) for policies 3 and 5.

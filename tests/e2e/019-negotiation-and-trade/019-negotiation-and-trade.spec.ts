@@ -97,7 +97,32 @@ test.describe('019 - Negotiation and trade', () => {
       ]
     });
 
+    // A tap too many (prompt 67): two bearers hired where one was meant, and the second handed back for what he cost.
     await page.getByTestId('trade-buy-bearers-bottom-1').click();
+    await page.getByTestId('trade-buy-bearers-bottom-1').click();
+    await expect(page.getByTestId('trade-have-bearers-bottom-1')).toHaveAttribute('data-count', '8');
+    await expect(page.getByTestId('trade-row-bearers-bottom-1')).toHaveAttribute('data-bought', '2');
+    await page.getByTestId('trade-sell-bearers-bottom-1').click();
+
+    await steps.step('taken-back', {
+      description: 'Two bearers were hired where one was meant: until Done trading is pressed the − beside the bearers hands one back for the two gifts he cost, though the tribe buys no bearers, and the trading\'s line counts one bearer',
+      verifications: [
+        { spec: 'One bearer stands bought: 7 bearers, 16 gifts of the 18, the line nets to one, and − is offered for the bearer but not for a guide, of which none was bought', check: async () => {
+          await expect(page.getByTestId('trade-have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
+          await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '16');
+          await expect(page.getByTestId('trade-row-bearers-bottom-1')).toHaveAttribute('data-bought', '1');
+          await expect(page.getByTestId('trade-sell-bearers-bottom-1')).toBeEnabled();
+          await expect(page.getByTestId('trade-sell-bearers-bottom-1')).toHaveAttribute('aria-label', 'Hand back one bearer for the 2 gifts it cost');
+          await expect(page.getByTestId('trade-sell-guides-bottom-1')).toBeDisabled();
+          await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('bought 1 bearer for 2 gifts');
+          const s = await state(page);
+          expect(s.turn!.phase).toBe('trade');
+          expect(s.explorers[0].chart).toMatchObject({ bearers: 7, gifts: 16, food: 40 });
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
     await page.getByTestId('trade-sell-food-bottom-1').click();
     await page.getByTestId('trade-sell-food-bottom-1').click();
 

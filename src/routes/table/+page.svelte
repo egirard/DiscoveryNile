@@ -40,6 +40,8 @@
   import SpoilsChooser from '$features/natives/SpoilsChooser.svelte';
   import NegotiationPanel from '$features/natives/NegotiationPanel.svelte';
   import TradePanel from '$features/natives/TradePanel.svelte';
+  import { tradedHere } from '$features/natives/trades';
+  import type { Item } from '$features/expedition/prices';
   import ReorganisePanel from '$features/expedition/ReorganisePanel.svelte';
   import type { Purchases } from '$features/expedition/prices';
   import { moveTargets, researchPending, standingHex } from '$features/exploration/reducer';
@@ -258,7 +260,10 @@
     const seat = seats.find((s) => s.id === gameState.turn!.current);
     const explorer = seat && explorerAt(gameState, seat.id);
     if (!seat || !explorer || !explorer.chart) return null;
-    return { seat, explorer, prices: gameState.turn.trade.prices };
+    // What stands bought and sold with this chief this turn (prompt 67): until Done trading, each can be taken back.
+    const hex = explorer.location.kind === 'hex' ? explorer.location.hex : null;
+    const tally = (direction: 'buy' | 'sell') => Object.fromEntries(Object.keys(gameState.turn!.trade!.prices).map((item) => [item, hex ? tradedHere(gameState.turn!.log, explorer.seat, hex, direction, item as Item) : 0]));
+    return { seat, explorer, prices: gameState.turn.trade.prices, bought: tally('buy'), sold: tally('sell') };
   });
   let reorganisingSeat = $state<string | null>(null);
   const reorganising = $derived.by(() => {
@@ -810,7 +815,7 @@
   {/if}
   {#if trading}
     <EdgePanel seat={trading.seat} {viewport} inset={railDepth + target * 0.4} testid="trade-edge-{trading.seat.id}">
-      <TradePanel seat={trading.seat.id} prices={trading.prices} chart={trading.explorer.chart!} works={trading.explorer.specialties.filter((sp) => sp === 'evangelism' || sp === 'medicine')} owed={worksOwed(gameState, trading.explorer)} onwork={(sp) => perform(trading!.seat.id, sp)} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
+      <TradePanel seat={trading.seat.id} prices={trading.prices} bought={trading.bought} sold={trading.sold} chart={trading.explorer.chart!} works={trading.explorer.specialties.filter((sp) => sp === 'evangelism' || sp === 'medicine')} owed={worksOwed(gameState, trading.explorer)} onwork={(sp) => perform(trading!.seat.id, sp)} ontrade={(item, count, direction) => trade(trading!.seat.id, item, count, direction)} ondone={() => game?.append('natives/done', { seat: trading!.seat.id })} />
     </EdgePanel>
   {/if}
 

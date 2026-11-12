@@ -439,3 +439,5 @@ let's add an option for "manual dice", which shows a window like the dicecam dic
 
 don't jump the manual dice box after a roll - let's leave it in the corner all the time; trading should allow the player to add and remove until done trading is pressed;
 
+`Outcome: Two slices. 044 (G-186, commit e0bff02): the manual dice tray stays in the south-west corner all the time, above the scrim while an ask is open; the dice prompt, result and first-player panels open clear of it, standing aside along their edge (EdgePanel clear). The dicecam's picture still comes to the middle. 019 (G-187): until Done trading is pressed, − hands back anything bought from the chief this turn for what it cost (bearers, guides and askaris too, the askari's musket with it) and + takes back what was sold; the trading's line nets, an exchange taken back in full leaving no line. New step taken-back in 019; its later screenshots renumbered.`
+

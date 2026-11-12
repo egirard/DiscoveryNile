@@ -19,7 +19,7 @@ import type { Chart, Item } from '$features/expedition/prices';
 import { distanceToNearestPort } from '$features/natives/discovery';
 import { modeFor } from '$features/exploration/movement';
 import { logCamp, type CampAction } from '$features/expedition/camp';
-import { logTrade, type Trade } from '$features/natives/trades';
+import { logTakenBack, logTrade, tradedHere, type Trade } from '$features/natives/trades';
 import { directionTo } from '$features/map/hex';
 import { drink, dryDesert, feed, hunt, huntRate, sicknessRound, starve, waterToCarry } from '$features/rations/rations';
 import { addScore, homecoming, publishable, scoreOf, valueOf } from '$features/scoring/score';
@@ -732,6 +732,18 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const it = item as Item;
       const price = prices[it]!;
       let trade: Trade;
+      // Until the trading is done an exchange can be taken back (prompt 67): a sale of what was bought here this turn
+      // hands it back for what it cost (an askari's musket with it), whatever the tribe would buy; a purchase of what
+      // was sold takes it back. The prices stand for the turn, so either way the tally nets and nothing is lost.
+      const undone = tradedHere(state.turn.log, explorer.seat, hex, direction === 'buy' ? 'sell' : 'buy', it) >= count;
+      if (undone && direction === 'sell' && it !== 'food') {
+        if (chart[it] < count) return `only ${chart[it]} ${it}`;
+        chart[it] -= count;
+        chart.gifts += price * count;
+        if (it === 'askaris') chart.muskets += count;
+        const back: Trade = { direction: 'buy', item: it, count, gifts: price * count, ...(it === 'askaris' ? { muskets: count } : {}) };
+        return { ...replaceExplorer(state, { ...holder, chart }), turn: { ...state.turn, log: logTakenBack(state.turn.log, explorer.seat, hex, back) } };
+      }
       if (direction === 'buy') {
         if (it === 'food') {
           // Rations: `price` per gift; `count` is gifts spent.
@@ -764,8 +776,9 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
           trade = { direction: 'sell', item: it, count, gifts: price * count };
         }
       }
-      // One line for the trading this turn (prompt 41), added to as each tap comes.
-      return { ...replaceExplorer(state, { ...holder, chart }), turn: { ...state.turn, log: logTrade(state.turn.log, explorer.seat, hex, trade) } };
+      // One line for the trading this turn (prompt 41), added to as each tap comes; an exchange that undoes one made comes off it.
+      const log = undone ? logTakenBack(state.turn.log, explorer.seat, hex, { ...trade, direction: direction === 'buy' ? 'sell' : 'buy' }) : logTrade(state.turn.log, explorer.seat, hex, trade);
+      return { ...replaceExplorer(state, { ...holder, chart }), turn: { ...state.turn, log } };
     }
     case 'natives/done': {
       const { seat } = event.payload as { seat?: string };

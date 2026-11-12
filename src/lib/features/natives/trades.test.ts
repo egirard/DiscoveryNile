@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { logTrade, talliedTrade, tradeLine, tradeWords, type Trade } from './trades';
+import { logTakenBack, logTrade, talliedTrade, tradedHere, tradeLine, tradeWords, type Trade } from './trades';
 
 describe("the trading's line (prompt 41)", () => {
   it('words each exchange as the log did', () => {
@@ -27,5 +27,22 @@ describe("the trading's line (prompt 41)", () => {
     const three = logTrade([...two, { kind: 'specialty', seat: 'bottom-1', hex: 'c24r12', rolls: [], outcome: 'preached' }], 'bottom-1', 'c24r12', { direction: 'buy', item: 'guides', count: 1, gifts: 4 });
     expect(three.at(-1)!.outcome).toBe('bought 1 guide for 4 gifts');
     expect(three).toHaveLength(4);
+  });
+  it('counts what stands bought and sold with the chief, and takes an exchange back off the line (prompt 67)', () => {
+    let log = logTrade([], 'bottom-1', 'c24r12', { direction: 'buy', item: 'askaris', count: 2, gifts: 2, muskets: 2 });
+    log = logTrade(log, 'bottom-1', 'c24r12', { direction: 'buy', item: 'food', count: 6, gifts: 2 });
+    expect(tradedHere(log, 'bottom-1', 'c24r12', 'buy', 'askaris')).toBe(2);
+    expect(tradedHere(log, 'bottom-1', 'c24r12', 'buy', 'food')).toBe(2); // rations are counted in gifts, a tap each
+    expect(tradedHere(log, 'bottom-1', 'c24r12', 'sell', 'food')).toBe(0);
+    expect(tradedHere(log, 'top-1', 'c24r12', 'buy', 'askaris')).toBe(0);
+    expect(tradedHere(log, 'bottom-1', 'c25r12', 'buy', 'askaris')).toBe(0);
+    log = logTakenBack(log, 'bottom-1', 'c24r12', { direction: 'buy', item: 'askaris', count: 1, gifts: 1, muskets: 1 });
+    expect(log.at(-1)!.outcome).toBe('bought 1 askari for 1 gift and 1 musket; bought 6 rations for 2 gifts');
+    log = logTakenBack(log, 'bottom-1', 'c24r12', { direction: 'buy', item: 'askaris', count: 1, gifts: 1, muskets: 1 });
+    expect(log.at(-1)!.outcome).toBe('bought 6 rations for 2 gifts');
+    // A purchase on an earlier line of the same trading (a sermon came between) is found there.
+    const later = logTrade([...log, { kind: 'specialty', seat: 'bottom-1', hex: 'c24r12', rolls: [], outcome: 'preached' }], 'bottom-1', 'c24r12', { direction: 'buy', item: 'guides', count: 1, gifts: 4 });
+    const back = logTakenBack(later, 'bottom-1', 'c24r12', { direction: 'buy', item: 'food', count: 6, gifts: 2 });
+    expect(back.map((r) => r.outcome)).toEqual(['preached', 'bought 1 guide for 4 gifts']);
   });
 });
