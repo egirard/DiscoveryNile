@@ -23,7 +23,7 @@ test.describe('044 - Manual dice', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Manual dice',
-      'The options screen has a second dice control, Manual (prompt 66), for a table without a camera and for trying the game out quickly. It switches physical dice on, so the table asks for every roll, and puts a dice tray the table draws where the dicecam\'s picture would be: no camera is asked for. A tap on the tray throws the dice the table is asking for, made up by the table; the die button in its corner tosses in one die at a time. The tray speaks for the dicecam\'s engine in the engine\'s own messages, so each throw is judged, recorded with where its dice lay and shown exactly as a throw the camera read.'
+      'The options screen has a second dice control, Manual (prompt 66), for a table without a camera and for trying the game out quickly. It switches physical dice on, so the table asks for every roll, and puts a dice tray the table draws in the south-west corner of the board, where the dicecam\'s picture is parked: no camera is asked for, and the tray stays in that corner whoever rolls (prompt 67). A tap on the tray throws the dice the table is asking for, made up by the table; the die button in its corner tosses in one die at a time. The tray speaks for the dicecam\'s engine in the engine\'s own messages, so each throw is judged, recorded with where its dice lay and shown exactly as a throw the camera read.'
     );
 
     await page.goto('/table/?new=1&gameId=ABCDE&seed=34&first-player-pause=hold');
@@ -60,14 +60,17 @@ test.describe('044 - Manual dice', () => {
     await expect(page.getByTestId('dice-ask-bottom-1')).toBeVisible();
 
     await steps.step('tray-asked-for-four', {
-      description: 'The game is started and the table asks bottom-1 for four dice for first player: the tray comes to the middle of the board and offers a roll of the four dice wanted',
+      description: 'The game is started and the table asks bottom-1 for four dice for first player: the tray stays in its corner, lit above the held table, and offers a roll of the four dice wanted',
       verifications: [
         { spec: 'The ask names four dice, the status line says to tap the tray, and the tray offers four', check: async () => {
           await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Roll 4 D6 for first player');
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Tap the dice tray to roll 4 dice');
           await expect(page.getByTestId('manual-dice-hint')).toHaveText('Tap to roll 4 dice');
           await expect(page.getByTestId('manual-dice')).toHaveAttribute('data-wanted', '4');
-          await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-centred', 'true');
+          // The tray does not jump to the middle as the dicecam's picture does (prompt 67): it stays where the hand found it, above the scrim.
+          await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-centred', 'false');
+          await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-raised', 'true');
+          await expect(page.getByTestId('dice-scrim')).toBeVisible();
           expect(await rolledEvents(page)).toEqual([]);
         } }
       ]
@@ -78,7 +81,7 @@ test.describe('044 - Manual dice', () => {
     const first = await trayDice(page);
 
     await steps.step('four-dice-at-a-tap', {
-      description: 'One tap on the tray throws four dice, which land in it; the table takes them as bottom-1\'s roll, shown at its station, and asks top-1 for its four, the tray turned to that seat',
+      description: 'One tap on the tray throws four dice, which land in it; the table takes them as bottom-1\'s roll, shown at its station, and asks top-1 for its four, the tray where it was',
       verifications: [
         { spec: 'The throw entered the game as a dice/rolled event with the tray\'s four faces, left to right, and where each die lay', check: async () => {
           expect(first).toHaveLength(4);
@@ -94,6 +97,7 @@ test.describe('044 - Manual dice', () => {
           await expect(page.getByTestId('first-player-edge-bottom-1')).toBeVisible();
           await expect(page.getByTestId('dicecam-status-top-1')).toHaveText('Tap the dice tray to roll 4 dice');
           await expect(page.getByTestId('dice-prompt-top-1')).toHaveAttribute('data-have', '0');
+          await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-centred', 'false');
         } }
       ]
     });
@@ -134,7 +138,7 @@ test.describe('044 - Manual dice', () => {
           expect(s.starting).toBe(sum(first) > sum(second) ? 'bottom-1' : 'top-1');
           expect(s.diagnostics).toEqual([]);
         } },
-        { spec: 'Both stations show their roll, and the tray is back in its corner offering the next roll', check: async () => {
+        { spec: 'Both stations show their roll, and the tray is still in its corner offering the next roll', check: async () => {
           await expect(page.getByTestId('first-player-edge-bottom-1')).toBeVisible();
           await expect(page.getByTestId('first-player-edge-top-1')).toBeVisible();
           await expect(page.getByTestId('dicecam-place')).toHaveAttribute('data-centred', 'false');

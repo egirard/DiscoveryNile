@@ -1,7 +1,7 @@
 <script lang="ts">
   // A player-facing panel on the board next to a seat's rail: positioned along that seat's span
   // of its edge and rotated toward the seat, so the player reads it upright.
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import { positionAlongEdge, rotationFor, type Seat } from './seats';
 
   interface Props {
@@ -12,9 +12,11 @@
     testid?: string;
     /** Above the scrim that holds the table still while the dice are rolled. */
     raised?: boolean;
+    /** A rectangle of the page the panel opens clear of (the manual dice tray, prompt 67): it stands aside along its edge. */
+    clear?: { x: number; y: number; w: number; h: number } | null;
     children: Snippet;
   }
-  let { seat, viewport, inset, testid, raised = false, children }: Props = $props();
+  let { seat, viewport, inset, testid, raised = false, clear = null, children }: Props = $props();
   // The panel can be dragged about by any part of it that is not a control (PROMPTS.md, prompt 45), with no
   // affordance; the offset is the component's own, so it is forgotten when the panel closes and the next opens in
   // its place. The panel is kept inside the viewport.
@@ -59,6 +61,27 @@
       case 'left': return { x: inset, y: along * viewport.h };
       case 'right': return { x: viewport.w - inset, y: (1 - along) * viewport.h };
     }
+  });
+  // Opening over the rectangle to keep clear, the panel stands aside along its edge by the shorter way that keeps it
+  // on the screen; a panel the player has dragged is left where he put it.
+  $effect(() => {
+    void anchor;
+    if (!el || !clear) return;
+    const c = clear;
+    untrack(() => {
+      if (dx !== 0 || dy !== 0) return;
+      const r = el!.getBoundingClientRect();
+      const gap = 8;
+      if (r.right <= c.x || r.left >= c.x + c.w || r.bottom <= c.y || r.top >= c.y + c.h) return;
+      const horizontal = seat.edge === 'bottom' || seat.edge === 'top';
+      const [lo, hi, from, to, max] = horizontal ? [r.left, r.right, c.x, c.x + c.w, viewport.w] : [r.top, r.bottom, c.y, c.y + c.h, viewport.h];
+      const forward = to + gap - lo;
+      const back = from - gap - hi;
+      const fits = (d: number) => lo + d >= 0 && hi + d <= max;
+      const step = fits(forward) && (!fits(back) || forward <= -back) ? forward : fits(back) ? back : 0;
+      if (horizontal) dx = step;
+      else dy = step;
+    });
   });
 </script>
 

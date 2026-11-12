@@ -434,3 +434,8 @@ let's add an option for "manual dice", which shows a window like the dicecam dic
 
 `Outcome: One slice (044, G-185): the options' dice section has a Manual control beside Physical dice; on, it switches physical dice on with it and puts a dice tray the table draws in the dicecam's place (no camera asked for). A tap on the tray throws the dice asked for (four at most at once), the die button in its corner tosses in one die at a time; faces and places come from a seeded generator, and the tray posts the engine's own messages (rolling, two agreeing settled readings with each die's place), so the throw is judged, recorded with its lay and captured as a camera's is. Kept per browser, or ?manual-dice=1. New scenario 044 (manual-dice-on, tray-asked-for-four, four-dice-at-a-tap, one-die-at-a-time, roll-off-decided); the options baselines of 035 and 037 moved for the new control.`
 
+
+## 67. 2026-11-12
+
+don't jump the manual dice box after a roll - let's leave it in the corner all the time; trading should allow the player to add and remove until done trading is pressed;
+

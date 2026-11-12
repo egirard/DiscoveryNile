@@ -407,13 +407,16 @@
   const dockW = $derived(target * 7);
   const dockH = $derived(target * 4.7);
   const dockPlace = $derived.by(() => {
-    if (awaitingSeat) {
+    // The manual tray stays in its corner (prompt 67): it is tapped, not watched, and a box that jumps is one to chase.
+    if (awaitingSeat && !manual) {
       const cx = (inset.left + viewport.w - inset.right) / 2;
       const cy = (inset.top + viewport.h - inset.bottom) / 2;
       return { x: cx - dockW / 2, y: cy - dockH / 2, rotation: rotationFor(awaitingSeat.edge), centred: true };
     }
     return { x: inset.left + target * 0.4, y: viewport.h - inset.bottom - target * 0.4 - dockH, rotation: 0, centred: false };
   });
+  /** Where the manual tray stands, for the dice panels to open clear of it (prompt 67). */
+  const trayRect = $derived(manual && physical ? { x: dockPlace.x, y: dockPlace.y, w: dockW, h: dockH } : null);
   let dicecamStatus = $state<DicecamStatus>('starting');
   let dicecamSeen = $state<number | null>(null);
   /** The reading is the tray as it already lay, not a throw (prompts 20 and 21): the status line waits for a roll. */
@@ -714,7 +717,7 @@
   {#if awaiting && awaitingSeat}
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" data-testid="dice-scrim" aria-hidden="true"></div>
-    <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised>
+    <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised clear={trayRect}>
       <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
@@ -723,7 +726,7 @@
     {#if !lingering.explored}
       <div class="scrim" data-testid="dice-result-scrim" aria-hidden="true"></div>
     {/if}
-    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised>
+    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised clear={trayRect}>
       <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} explored={lingering.explored} ondone={() => (lingering = null)} onend={() => { const seat = lingering!.seat; lingering = null; void endTurn(seat); }} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
     </EdgePanel>
   {/if}
@@ -732,7 +735,7 @@
     <div class="scrim" data-testid="first-player-scrim" aria-hidden="true"></div>
   {/if}
   {#each firstPlayerRolls as r (r.seat.id)}
-    <EdgePanel seat={r.seat} {viewport} inset={railDepth + target * 0.4} testid="first-player-edge-{r.seat.id}" raised>
+    <EdgePanel seat={r.seat} {viewport} inset={railDepth + target * 0.4} testid="first-player-edge-{r.seat.id}" raised clear={trayRect}>
       <FirstPlayerRoll seat={r.seat.id} values={r.values} winner={r.winner} decided={r.decided} />
       {#if r.decided && unseenAt(r.seat.id).length}
         <!-- The hand dealt, in full under the roll (prompt 44), while the table stands still. -->
@@ -746,7 +749,7 @@
     </EdgePanel>
   {/each}
   {#if physical && diceTray}
-    <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
+    <div class="dock-area" data-testid="dicecam-place" data-centred={dockPlace.centred} data-raised={dockPlace.centred || (manual && Boolean(awaiting))} style="left:{dockPlace.x}px; top:{dockPlace.y}px; width:{dockW}px; height:{dockH}px; rotate:{dockPlace.rotation}deg">
       {#if manual}
         <!-- The tray speaks for the engine (prompt 66): its throws come through the same judge as a camera's readings. -->
         <ManualDice wanted={awaiting ? awaiting.count - awaiting.have.length : 0} ask={awaiting ? `${awaiting.event.id}:${awaiting.rolled.length}:${awaiting.have.length}` : ''} seed={manualSeed} lying={lyingDice} onmessage={onDicecam} />
@@ -1296,7 +1299,7 @@
     font-weight: 700;
     cursor: pointer;
   }
-  .dock-area[data-centred='true'] {
+  .dock-area[data-raised='true'] {
     z-index: 6;
   }
   .gear {
