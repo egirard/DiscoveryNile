@@ -136,6 +136,10 @@ test.describe('043 - An explored hex', () => {
           await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('not lost');
           const next = (await page.getByTestId('dice-result-next-bottom-1').boundingBox())!;
           const line = (await page.getByTestId('result-roll-lost-check-bottom-1').boundingBox())!;
+          // The newest line on top (prompt 72): the terrain's line, decided after the lost check, stands above it.
+          const terrainLine = (await page.getByTestId('result-roll-terrain-bottom-1').boundingBox())!;
+          expect(terrainLine.y).toBeLessThan(line.y);
+          await expect(page.getByTestId('dice-result-bottom-1').locator('[data-order="newest-first"]')).toHaveCount(1);
           expect(line.y).toBeGreaterThan(next.y + next.height - 1);
           await expect(page.getByTestId('hex-c3r6')).toHaveAttribute('data-terrain', 'jungle');
           await expect(page.getByTestId('movement-bottom-1')).toHaveAttribute('data-left', '1');

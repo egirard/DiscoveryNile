@@ -36,8 +36,9 @@
       <button type="button" class="end" data-testid="dice-result-end-{seat}" aria-label="End the turn" onclick={onend}>End</button>
     </p>
   {/if}
-  <ul class="lines" aria-label="What the dice decided">
-    {#each lines as r, i (i)}
+  <!-- The newest line on top (prompt 72), as in the ask's panel: the lost check lowest, what was decided last first. -->
+  <ul class="lines" data-order="newest-first" aria-label="What the dice decided, the newest first">
+    {#each [...lines].reverse() as r, i (lines.length - 1 - i)}
       <li><LogLine record={r} {seat} idPrefix="result-" {oncorrect} /></li>
     {/each}
   </ul>

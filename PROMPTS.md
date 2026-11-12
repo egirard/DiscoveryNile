@@ -469,3 +469,9 @@ after rolling the mountain height, add the results in: 3X2X4=2400 feet (my calc 
 
 `Outcome: One slice (011/027, G-190): the mountain's height line gives the sum in full and the verdict, e.g. "5 × 6 × 4 = 120, plus 100 = 220 hundred feet: a record-breaking peak of 22,000 ft (over 15,000), the highest discovered so far" (or the first discovered, as high as the highest, the second highest…, among every peak on the map); a lesser one reads "… a mountain of 10,100 ft, no record (15,000 or under)". By the rules 3 × 2 × 4 is 24, plus 100, in hundreds: 12,400 ft.`
 
+
+## 72. 2026-11-12
+
+add new text to the top of the current turn record, above the previous entry (so the lowest entry will be the lost check, then above that the terrain check, etc).  That way the topmost thing that's currently being resolved is in the correct position.
+
+`Outcome: One slice (043, G-191): the lines so far in the dice panel and the lines of the result panel are listed newest first: the lost check lowest, the terrain above it, then water and natives, a bare throw not yet in a line on top beside the ask. The rail's log keeps its order. Five dice-panel baselines moved (017, 037 ×2, 043, 045).`

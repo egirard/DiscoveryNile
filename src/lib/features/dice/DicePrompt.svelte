@@ -107,13 +107,15 @@
     {/if}
   </div>
   {#if sofar.length || pending.length}
-    <!-- What the dice have decided so far stands at the foot of the panel (prompt 65), the ask and the faces above it. -->
-    <ul class="so-far" data-testid="dice-so-far-{seat}" aria-label="What the dice have decided so far">
-      {#each sofar as r, i (i)}
-        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
-      {/each}
-      {#each pending as r, i (i)}
+    <!-- What the dice have decided so far stands at the foot of the panel (prompt 65), the ask and the faces above it,
+         the newest on top (prompt 72): the lost check lowest, the terrain above it, so what is being resolved now
+         stands next to the ask it leads to. -->
+    <ul class="so-far" data-testid="dice-so-far-{seat}" data-order="newest-first" aria-label="What the dice have decided so far, the newest first">
+      {#each [...pending].reverse() as r, i (pending.length - 1 - i)}
         <li><span class="what">{what(r.prompt)}</span> <DiceRoll values={r.values} label={what(r.prompt)} size="calc(var(--target) * 0.45)" /></li>
+      {/each}
+      {#each [...sofar].reverse() as r, i (sofar.length - 1 - i)}
+        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
       {/each}
     </ul>
   {/if}
