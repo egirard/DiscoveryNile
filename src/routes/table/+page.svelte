@@ -57,7 +57,7 @@
   import DiceResult from '$features/dice/DiceResult.svelte';
   import { lingerLines } from '$features/dice/linger';
   import { endsItself, outOfMoves } from '$features/turn/auto-end';
-  import { emptyDirection, emptyText, phasesOf, provisionalTerrain, revealSteps, type RevealPhase, type RevealStep } from '$features/map/reveal';
+  import { emptyDirection, emptyText, phasesOf, provisionalTerrain, revealSteps, steppingInto, type RevealPhase, type RevealStep } from '$features/map/reveal';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
   import StatusLine from '$lib/tabletop/StatusLine.svelte';
   import Dicecam from '$features/dice/Dicecam.svelte';
@@ -219,6 +219,12 @@
   const targets = $derived.by(() => {
     const explorer = gameState.turn ? explorerAt(gameState, gameState.turn.current) : undefined;
     return explorer ? moveTargets(gameState, explorer) : [];
+  });
+  // Once a hex is picked and its step waits for dice, the other hexes it might have stepped into no longer matter
+  // (prompt 73): only the hex picked stays marked on the board until the step is applied.
+  const boardTargets = $derived.by(() => {
+    const picked = steppingInto(gameState.awaiting);
+    return picked ? targets.filter((t) => t.hex === picked) : targets;
   });
   /** The seat choosing a policy towards natives right now. */
   // The turn's disaster card, read in full before it applies (prompt 34): at the seat's edge over a scrim, like a roll.
@@ -763,7 +769,7 @@
   data-mm-per-px={k}
 >
   <div class="board" data-testid="board" data-e2e-fit style="inset: {inset.top}px {inset.right}px {inset.bottom}px {inset.left}px">
-    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={choosePort} mapped={gameState.map} caches={Object.values(gameState.caches)} {targets} onhex={move} publishable={publishTargets} onpublish={publish} {reveal} veiled={veiledHex} provisional={provisionalTerrain(awaiting)} />
+    <HexBoard width={boardW} height={boardH} touch={target} tokens={boardTokens} {portChoices} onport={choosePort} mapped={gameState.map} caches={Object.values(gameState.caches)} targets={boardTargets} onhex={move} publishable={publishTargets} onpublish={publish} {reveal} veiled={veiledHex} provisional={provisionalTerrain(awaiting)} />
   </div>
 
   {#if canStart}

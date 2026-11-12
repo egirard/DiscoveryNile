@@ -110,6 +110,9 @@ test.describe('043 - An explored hex', () => {
           const faces = (await page.getByTestId('die-face-6-bottom-1').boundingBox())!;
           const sofar = (await page.getByTestId('dice-so-far-bottom-1').boundingBox())!;
           expect(sofar.y).toBeGreaterThan(faces.y + faces.height - 1);
+          // The hex picked is the only one still marked on the board (prompt 73): the others it might have stepped into are gone.
+          await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(1);
+          await expect(page.getByTestId('move-target-c3r6')).toBeVisible();
           const s = await state(page);
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', sofar: [expect.objectContaining({ kind: 'lost-check', outcome: 'not lost' })] });
           expect(s.diagnostics).toEqual([]);

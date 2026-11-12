@@ -475,3 +475,10 @@ after rolling the mountain height, add the results in: 3X2X4=2400 feet (my calc 
 add new text to the top of the current turn record, above the previous entry (so the lowest entry will be the lost check, then above that the terrain check, etc).  That way the topmost thing that's currently being resolved is in the correct position.
 
 `Outcome: One slice (043, G-191): the lines so far in the dice panel and the lines of the result panel are listed newest first: the lost check lowest, the terrain above it, then water and natives, a bare throw not yet in a line on top beside the ask. The rail's log keeps its order. Five dice-panel baselines moved (017, 037 ×2, 043, 045).`
+
+## 73. 2026-11-12
+
+when an explorer picks a hex to move into, get rid of the other potential moves since they no longer matter
+
+`Outcome: One slice (043, G-192): while a step picked waits for its dice (physical dice), only the hex picked stays marked on the board; the other targets come back, for the next step, once it is applied. Eight baselines moved (037 ×4, 045 ×4): the other target rings gone under the ask.`
+
