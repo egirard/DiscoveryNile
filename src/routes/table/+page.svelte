@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { base } from '$app/paths';
   import QRCode from 'qrcode';
   import { openGame, type Game } from '$lib/game/store';
@@ -26,6 +26,8 @@
   import DeckStack from '$features/cards/DeckStack.svelte';
   import Icon from '$lib/ui/Icon.svelte';
   import TurnControls from '$features/turn/TurnControls.svelte';
+  import MovePrompt from '$features/turn/MovePrompt.svelte';
+  import { movePromptFor } from '$features/turn/move-prompt';
   import { card as cardOf, handValue, type CardId } from '$features/cards/deck';
   import { BOARD, type PortId } from '$features/map/manifest';
   import type { BoardToken, PortChoice } from '$features/map/HexBoard.svelte';
@@ -704,6 +706,29 @@
   // seat acts. The panel stands aside while another panel of the seat's is up.
   const unseenAt = (seat: string): CardId[] => explorerAt(gameState, seat)?.unseen ?? [];
   const busySeats = $derived(new Set([awaitingSeat?.id, outfitting?.seat.id, facingDisaster?.seat.id, facingNatives?.seat.id, dealingSpoils?.seat.id, negotiating?.seat.id, trading?.seat.id, retiring?.seat.id, splitting?.seat.id, reorganising?.seat.id, dieNotice?.seat.id, lingering?.seat.id].filter((x): x is SeatId => Boolean(x))));
+  // The prompt to move (prompt 74): the turn's record at the seat's edge says what the table waits for, a hex picked
+  // or the end of the turn, whenever no other panel of the seat's is saying something else.
+  const movePrompt = $derived.by(() => {
+    const p = starting ? null : movePromptFor(gameState);
+    const seat = p && seats.find((s) => s.id === p.seat);
+    if (!p || !seat || busySeats.has(seat.id) || unseenAt(seat.id).length > 0) return null;
+    if (reveal || revealQueue.length || endingItself || sailingSeat === seat.id || publishingSeat === seat.id) return null;
+    return { seat, left: p.left };
+  });
+  // The hexes open to a step, as they lie on the page: the prompt to move, and an explored hex's result, stand clear of them.
+  let targetsRect = $state<{ x: number; y: number; w: number; h: number } | null>(null);
+  $effect(() => {
+    void boardTargets;
+    void viewport.w;
+    void viewport.h;
+    void tick().then(() => {
+      const boxes = [...document.querySelectorAll('[data-testid^="move-target-"]')].map((n) => n.getBoundingClientRect());
+      if (boxes.length === 0) return void (targetsRect = null);
+      const x = Math.min(...boxes.map((b) => b.left));
+      const y = Math.min(...boxes.map((b) => b.top));
+      targetsRect = { x, y, w: Math.max(...boxes.map((b) => b.right)) - x, h: Math.max(...boxes.map((b) => b.bottom)) - y };
+    });
+  });
   const donationPanels = $derived(starting ? [] : seats.filter((seat) => unseenAt(seat.id).length > 0 && !busySeats.has(seat.id)));
   async function takeCards(seat: string) {
     await game?.append('cards/seen', { seat });
@@ -807,8 +832,13 @@
     {#if !lingering.explored}
       <div class="scrim" class:clear={Boolean(reveal)} data-testid="dice-result-scrim" aria-hidden="true"></div>
     {/if}
-    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised clear={trayRect} faded={Boolean(reveal)}>
-      <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} explored={lingering.explored} ondone={() => (lingering = null)} onend={() => { const seat = lingering!.seat; lingering = null; void endTurn(seat); }} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
+    <EdgePanel seat={lingering.seat} {viewport} inset={railDepth + target * 0.4} testid="dice-result-edge-{lingering.seat.id}" raised clear={lingering.explored ? [trayRect, targetsRect] : trayRect} faded={Boolean(reveal)}>
+      <DiceResult seat={lingering.seat.id} prompt={lingering.prompt} lines={lingering.lines} explored={lingering.explored} left={movePromptFor(gameState)?.left ?? null} ondone={() => (lingering = null)} onend={() => { const seat = lingering!.seat; lingering = null; void endTurn(seat); }} oncorrect={(roll, anchor) => openDieMenu(lingering!.seat, roll, anchor)} />
+    </EdgePanel>
+  {:else if movePrompt}
+    <!-- Nothing asked, nothing just decided: the turn's record prompts for the next step or the end of the turn (prompt 74). -->
+    <EdgePanel seat={movePrompt.seat} {viewport} inset={railDepth + target * 0.4} testid="move-prompt-edge-{movePrompt.seat.id}" clear={[trayRect, targetsRect]}>
+      <MovePrompt seat={movePrompt.seat.id} left={movePrompt.left} onend={() => endTurn(movePrompt!.seat)} />
     </EdgePanel>
   {/if}
   {#if starting}

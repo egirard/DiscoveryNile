@@ -63,6 +63,11 @@ test.describe('010 - First step into the unknown', () => {
           await expect(page.getByTestId('move-target-c25r11')).toHaveAttribute('data-unknown', 'false');
           await expect(page.getByTestId('move-target-c24r13')).toHaveAttribute('data-unknown', 'false');
         } },
+        { spec: 'The turn\'s record at the seat\'s edge prompts for the step: before the first, which settles how the expedition travels, without movement points (prompt 74)', check: async () => {
+          await expect(page.getByTestId('move-prompt-text-bottom-1')).toHaveText('Pick a hex to move into, or');
+          await expect(page.getByTestId('move-prompt-end-bottom-1')).toHaveText('END TURN');
+          await expect(page.getByTestId('move-prompt-bottom-1')).toHaveAttribute('data-left', '');
+        } },
         { spec: 'With steps still to take, the turn is ended early with an arrow in Africa (not the hourglass of a wait in Europe), which asks for confirmation', check: async () => {
           await expect(page.getByTestId('end-turn-bottom-1')).toHaveAttribute('data-icon', 'next');
         } },

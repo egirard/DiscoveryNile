@@ -4,6 +4,12 @@
   import { untrack, type Snippet } from 'svelte';
   import { positionAlongEdge, rotationFor, type Seat } from './seats';
 
+  interface Rect {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  }
   interface Props {
     seat: Seat;
     viewport: { w: number; h: number };
@@ -12,8 +18,11 @@
     testid?: string;
     /** Above the scrim that holds the table still while the dice are rolled. */
     raised?: boolean;
-    /** A rectangle of the page the panel opens clear of (the manual dice tray, prompt 67): it stands aside along its edge. */
-    clear?: { x: number; y: number; w: number; h: number } | null;
+    /**
+     * Rectangles of the page the panel stands clear of: the manual dice tray (prompt 67), the hexes the expedition may
+     * step into while the panel prompts for a step (prompt 74). It stands aside along its edge, and again when they change.
+     */
+    clear?: Rect | null | (Rect | null)[];
     /** Stood down for a moment so the board beneath can be watched (the terrain's direction played out, prompt 68): faint, and not in the way of a tap. */
     faded?: boolean;
     children: Snippet;
@@ -24,6 +33,9 @@
   // its place. The panel is kept inside the viewport.
   let dx = $state(0);
   let dy = $state(0);
+  // Where the panel has stood aside by itself, apart from where a hand has dragged it.
+  let ax = $state(0);
+  let ay = $state(0);
   let el: HTMLDivElement | undefined = $state();
   function grab(e: PointerEvent) {
     if (e.button !== 0 || !el) return;
@@ -64,31 +76,52 @@
       case 'right': return { x: viewport.w - inset, y: (1 - along) * viewport.h };
     }
   });
-  // Opening over the rectangle to keep clear, the panel stands aside along its edge by the shorter way that keeps it
-  // on the screen; a panel the player has dragged is left where he put it.
+  // Over a rectangle to keep clear, the panel stands aside along its edge by the shorter way that keeps it on the
+  // screen, past every rectangle in its way; when they change it finds its place again. A panel the player has
+  // dragged is left where he put it.
   $effect(() => {
     void anchor;
-    if (!el || !clear) return;
-    const c = clear;
+    const rects = (Array.isArray(clear) ? clear : [clear]).filter((c): c is Rect => c !== null);
+    if (!el) return;
     untrack(() => {
       if (dx !== 0 || dy !== 0) return;
+      if (rects.length === 0) {
+        ax = 0;
+        ay = 0;
+        return;
+      }
       const r = el!.getBoundingClientRect();
       const gap = 8;
-      if (r.right <= c.x || r.left >= c.x + c.w || r.bottom <= c.y || r.top >= c.y + c.h) return;
       const horizontal = seat.edge === 'bottom' || seat.edge === 'top';
-      const [lo, hi, from, to, max] = horizontal ? [r.left, r.right, c.x, c.x + c.w, viewport.w] : [r.top, r.bottom, c.y, c.y + c.h, viewport.h];
-      const forward = to + gap - lo;
-      const back = from - gap - hi;
+      // The panel's box where it opens, without the step it has already taken.
+      const home = { left: r.left - ax, right: r.right - ax, top: r.top - ay, bottom: r.bottom - ay };
+      const [lo, hi, max] = horizontal ? [home.left, home.right, viewport.w] : [home.top, home.bottom, viewport.h];
       const fits = (d: number) => lo + d >= 0 && hi + d <= max;
-      const step = fits(forward) && (!fits(back) || forward <= -back) ? forward : fits(back) ? back : 0;
-      if (horizontal) dx = step;
-      else dy = step;
+      let step = 0;
+      let from = Infinity;
+      let to = -Infinity;
+      for (let i = 0; i <= rects.length; i++) {
+        const sx = horizontal ? step : 0;
+        const sy = horizontal ? 0 : step;
+        const hit = rects.filter((c) => !(home.right + sx <= c.x || home.left + sx >= c.x + c.w || home.bottom + sy <= c.y || home.top + sy >= c.y + c.h));
+        if (hit.length === 0) break;
+        for (const c of hit) {
+          from = Math.min(from, horizontal ? c.x : c.y);
+          to = Math.max(to, horizontal ? c.x + c.w : c.y + c.h);
+        }
+        const forward = to + gap - lo;
+        const back = from - gap - hi;
+        step = fits(forward) && (!fits(back) || forward <= -back) ? forward : fits(back) ? back : 0;
+        if (step === 0) break;
+      }
+      ax = horizontal ? step : 0;
+      ay = horizontal ? 0 : step;
     });
   });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="panel" class:raised class:faded data-faded={faded} bind:this={el} data-testid={testid} data-seat={seat.id} data-moved={dx !== 0 || dy !== 0} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg; --dx:{dx}px; --dy:{dy}px" onpointerdown={grab}>
+<div class="panel" class:raised class:faded data-faded={faded} bind:this={el} data-testid={testid} data-seat={seat.id} data-moved={dx !== 0 || dy !== 0} data-aside={ax !== 0 || ay !== 0} data-e2e-fit style="left:{anchor.x}px; top:{anchor.y}px; --rotation:{rotation}deg; --dx:{dx + ax}px; --dy:{dy + ay}px" onpointerdown={grab}>
   {@render children()}
 </div>
 

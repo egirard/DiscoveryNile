@@ -482,3 +482,8 @@ when an explorer picks a hex to move into, get rid of the other potential moves 
 
 `Outcome: One slice (043, G-192): while a step picked waits for its dice (physical dice), only the hex picked stays marked on the board; the other targets come back, for the next step, once it is applied. Eight baselines moved (037 ×4, 045 ×4): the other target rings gone under the ask.`
 
+## 74. 2026-11-13
+
+The "turn progress record" should prompt the player to pick a hex to move into.  Maybe "You have 2MP, please pick a hex to move into, or END TURN." or "Pick a hex to move into, or END TURN".
+
+`Outcome: One slice (046/010, G-193): while it is a seat's turn with a hex open to its expedition and no other panel of its up, a panel at its edge reads "You have 2 MP: pick a hex to move into, or END TURN" (END TURN the control); before the first step, which settles the mode of travel and so the points, "Pick a hex to move into, or END TURN". An explored hex's result ends with the same line. The panel stands aside along its edge, clear of the hexes open to the step.`

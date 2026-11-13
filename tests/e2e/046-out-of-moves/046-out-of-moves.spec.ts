@@ -69,6 +69,16 @@ test.describe('046 - Out of moves', () => {
           const s = await state(page);
           expect(s.turn).toMatchObject({ current: 'bottom-1', phase: 'act', moved: false, movement: { spent: 1, points: 2 } });
           expect((await events(page)).at(-1)!.type).toBe('expedition/moved');
+        } },
+        { spec: 'The turn\'s record at the seat\'s edge prompts for the step with the point left, or END TURN, and stands clear of the hexes it may step into (prompt 74)', check: async () => {
+          await expect(page.getByTestId('move-prompt-bottom-1')).toHaveAttribute('data-left', '1');
+          await expect(page.getByTestId('move-prompt-text-bottom-1')).toHaveText('You have 1 MP: pick a hex to move into, or');
+          await expect(page.getByTestId('move-prompt-end-bottom-1')).toHaveText('END TURN');
+          const panel = (await page.getByTestId('move-prompt-edge-bottom-1').boundingBox())!;
+          for (const target of await page.locator('[data-testid^="move-target-"]').all()) {
+            const hex = (await target.boundingBox())!;
+            expect(hex.x + hex.width <= panel.x || hex.x >= panel.x + panel.width || hex.y + hex.height <= panel.y || hex.y >= panel.y + panel.height).toBe(true);
+          }
         } }
       ]
     });

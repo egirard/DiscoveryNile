@@ -3,12 +3,14 @@
   // or of a fight is in, the ask stays at the seat's edge for a moment with the lines it made, every number in them
   // (the die and its modifiers, the rate a hunter, the rations and the stores; the nerve against the warriors), so the
   // result is read before the table moves on. "Carry on" dismisses it sooner. The dice can be tapped to be set right.
-  // A hex explored with moves left (prompt 65) keeps its result instead: "Explored a jungle hex; pick a new hex to
-  // explore, or end turn", with an End control, the lines at the foot; the next step on the board takes it away.
+  // A hex explored with moves left (prompt 65) keeps its result instead: "Explored a jungle hex", then the prompt to
+  // move (prompt 74: "You have 2 MP: pick a hex to move into, or END TURN", the last words the control), the lines at
+  // the foot; the next step on the board takes it away.
   import LogLine from '$features/exploration/LogLine.svelte';
   import type { RollRecord } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
   import { resultTitle } from './linger';
+  import { movePromptText } from '$features/turn/move-prompt';
 
   interface Props {
     seat: string;
@@ -17,12 +19,14 @@
     lines: RollRecord[];
     /** A hex explored with moves left (prompt 65): the result stays, offering the next step or the end of the turn. */
     explored?: { hex: string; terrain: string | null } | null;
+    /** Movement points left for the next step (prompt 74), named in the explored hex's prompt. */
+    left?: number | null;
     ondone: () => void;
     /** End the turn from the panel (an explored hex). */
     onend?: () => void;
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, lines, explored = null, ondone, onend, oncorrect }: Props = $props();
+  let { seat, prompt, lines, explored = null, left = null, ondone, onend, oncorrect }: Props = $props();
   const terrainWords = $derived(explored?.terrain ? explored.terrain.replace(/-/g, ' ') : 'new');
   const heading = $derived(explored ? `Explored a ${terrainWords} hex` : resultTitle(prompt));
 </script>
@@ -32,8 +36,8 @@
   {#if explored}
     <!-- The hex is explored and moves are left (prompt 65): the next step is picked on the board, or the turn ends here. -->
     <p class="next" data-testid="dice-result-next-{seat}">
-      <span>Pick a new hex to explore, or end turn</span>
-      <button type="button" class="end" data-testid="dice-result-end-{seat}" aria-label="End the turn" onclick={onend}>End</button>
+      <span data-testid="dice-result-next-text-{seat}">{movePromptText(left)}</span>
+      <button type="button" class="end" data-testid="dice-result-end-{seat}" aria-label="End the turn" onclick={onend}>END TURN</button>
     </p>
   {/if}
   <!-- The newest line on top (prompt 72), as in the ask's panel: the lost check lowest, what was decided last first. -->
@@ -71,9 +75,9 @@
     margin: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--gap);
     font-size: calc(var(--target) * 0.3);
+    font-weight: 700;
   }
   .next .end {
     height: var(--target);

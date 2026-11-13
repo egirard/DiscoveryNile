@@ -59,7 +59,7 @@ test.describe('043 - An explored hex', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'An explored hex',
-      'With physical dice the table asks for each die of a step into a blank hex: the lost check, the direction of the terrain to copy, the terrain. What the dice have already decided for the step stands at the foot of the ask, below the faces, each line with its verdict, the lost check\'s reading "not lost" (prompt 65). When the last die is in and the expedition still has movement points, the result does not go by itself: it stays at the edge, reading "Explored a jungle hex; pick a new hex to explore, or end turn", the board open for the next step and an End control in the panel.'
+      'With physical dice the table asks for each die of a step into a blank hex: the lost check, the direction of the terrain to copy, the terrain. What the dice have already decided for the step stands at the foot of the ask, below the faces, each line with its verdict, the lost check\'s reading "not lost" (prompt 65). When the last die is in and the expedition still has movement points, the result does not go by itself: it stays at the edge, reading "Explored a jungle hex" and, as the prompt to move does (prompt 74), "You have 1 MP: pick a hex to move into, or END TURN", the last words the control that ends the turn, the board open for the next step.'
     );
 
     // Seed 60 as in scenario 039, the roll-off scripted (bottom-1 first) and every die after physical dice are switched on
@@ -127,12 +127,12 @@ test.describe('043 - An explored hex', () => {
     await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
 
     await steps.step('explored-pick-or-end', {
-      description: 'The last die is in and the hex is mapped as jungle with a point to spare: the result stays at the edge without holding the table, headed Explored a jungle hex, offering a new hex to explore or the End of the turn, the lines decided at its foot; the board shows the next targets',
+      description: 'The last die is in and the hex is mapped as jungle with a point to spare: the result stays at the edge without holding the table, headed Explored a jungle hex, prompting for the next hex with the point left, or END TURN, the lines decided at its foot; the board shows the next targets',
       verifications: [
-        { spec: 'The panel reads Explored a jungle hex with the next-step line and an End control, no Carry on, no scrim; the lines stand below; the board offers targets', check: async () => {
+        { spec: 'The panel reads Explored a jungle hex with the prompt to move and its END TURN control, no Carry on, no scrim; the lines stand below; the board offers targets', check: async () => {
           await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('Explored a jungle hex');
-          await expect(page.getByTestId('dice-result-next-bottom-1')).toContainText('Pick a new hex to explore, or end turn');
-          await expect(page.getByTestId('dice-result-end-bottom-1')).toHaveText('End');
+          await expect(page.getByTestId('dice-result-next-text-bottom-1')).toHaveText('You have 1 MP: pick a hex to move into, or');
+          await expect(page.getByTestId('dice-result-end-bottom-1')).toHaveText('END TURN');
           await expect(page.getByTestId('dice-result-ok-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('dice-result-scrim')).toHaveCount(0);
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-explored', 'c3r6');
