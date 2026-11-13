@@ -493,3 +493,9 @@ The "turn progress record" should prompt the player to pick a hex to move into. 
 rolling for sickness should give an option to roll a bunch of dice for bearers, and a bunch for askari
 
 `Outcome: One slice (047, G-194): with physical dice the evening's sickness dice are asked for a type of man at once ("Roll 3 D6 for the 3 sick bearers, a die a man", then guides, then askaris; the starving sick apart from the fed), and such an ask takes its dice as they come, a bunch at a throw or one by one, with "Roll the rest". One sick man is one die as before; the table's own dice play the same.`
+
+## 76. 2026-11-13
+
+when in camp/cache editing, remember if bearers or askari are sick and adjust numbers accordingly
+
+`Outcome: One slice (048, G-195): the camp panel shows the sick under a type's count ("4", "3 sick"), "dismiss" sends the well away and a new "dismiss sick" the sick (the log tells them apart: "1 bearer, 3 sick bearers dismissed"), the sick count never exceeds the men or animals left, and the panel's movement line counts the sick as the board does (a sick bearer carries nothing, each sick man twenty units carried) and says when they cannot all be carried.`

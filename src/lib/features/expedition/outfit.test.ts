@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NO_SICKNESS } from '$lib/game/state';
 import { ITEM_NAMES, SAMPLES, movementOptions, mountSoldAt, outfitLike } from './outfit';
 import { ITEMS, NO_PURCHASES, cost, type Chart, type Purchases } from './prices';
 import { modeFor } from '$features/exploration/movement';
@@ -102,5 +103,20 @@ describe('spending a budget like a sample expedition', () => {
       expect(movementOptions(chart(mounted)).mounted, `mounted at $${budget}`).toBe(true);
       expect(budget - cost(mounted), `mounted at $${budget}`).toBeLessThan(50);
     }
+  });
+});
+
+describe('how an expedition with sick men could move (prompt 76)', () => {
+  it('a sick bearer carries nothing and every sick man is twenty units carried; the sick who cannot be carried halt it', () => {
+    // Ten bearers carry 100. Two of them sick: eight carry 80, less 40 for the two carried.
+    const some = movementOptions(chart({ bearers: 10, askaris: 2, food: 40 }), { ...NO_SICKNESS, bearers: 2 });
+    expect(some).toMatchObject({ overlandCarry: 40, overland: true, sickMen: 2, halted: false });
+    expect(movementOptions(chart({ bearers: 10, askaris: 2, food: 41 }), { ...NO_SICKNESS, bearers: 2 }).overland).toBe(false);
+    // A sick askari is carried too; the explorer's own sickness counts.
+    expect(movementOptions(chart({ bearers: 10, askaris: 2, food: 40 }), { ...NO_SICKNESS, askaris: 1, explorer: true })).toMatchObject({ overlandCarry: 60, sickMen: 2 });
+    // Three sick of four bearers: one well bearer carries nobody, and nothing moves.
+    expect(movementOptions(chart({ bearers: 4, askaris: 2 }), { ...NO_SICKNESS, bearers: 3 })).toMatchObject({ overlandCarry: 0, overland: false, sickMen: 3, halted: true });
+    // Without the sick told the numbers are the outfitter's.
+    expect(movementOptions(chart({ bearers: 10, food: 40 }))).toMatchObject({ overlandCarry: 100, sickMen: 0, halted: false });
   });
 });

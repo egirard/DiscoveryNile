@@ -8,11 +8,13 @@
   import Icon from '$lib/ui/Icon.svelte';
   import MovementNotes from './MovementNotes.svelte';
   import { ITEMS, type Chart, type Item } from './prices';
-  import type { Cache } from '$lib/game/state';
+  import { NO_SICKNESS, type Cache, type Sickness } from '$lib/game/state';
 
   interface Props {
     seat: string;
     chart: Chart;
+    /** The sick of the expedition (prompt 76): told beside the men, left out of the well who are dismissed, counted in how it could move. */
+    sick?: Sickness;
     /** The caches on this hex the explorer may use: its own, and anyone's once the hex is published (RQ-3). */
     caches: Cache[];
     /** The round in play: a cache made this round is open, an earlier one is dug up first. */
@@ -22,7 +24,8 @@
     /** Water poured away for want of room and not drawn again (prompt 61): what caching other goods would bring back. */
     waterShed?: number;
     waterStep?: number;
-    onaction: (action: 'cache' | 'dismiss' | 'release' | 'eat', item: Item, count: number) => void;
+    /** `sick`: the men dismissed are sick ones. */
+    onaction: (action: 'cache' | 'dismiss' | 'release' | 'eat', item: Item, count: number, sick?: boolean) => void;
     /** Goods back out of a cache made this round. */
     ontake: (cacheId: number, item: Item, count: number) => void;
     onrecover: (cacheId: number) => void;
@@ -30,11 +33,14 @@
     onwater: (rations: number) => void;
     onclose: () => void;
   }
-  let { seat, chart, caches, round, waterHere, waterShed = 0, waterStep = 10, onaction, ontake, onrecover, onwater, onclose }: Props = $props();
+  let { seat, chart, sick = NO_SICKNESS, caches, round, waterHere, waterShed = 0, waterStep = 10, onaction, ontake, onrecover, onwater, onclose }: Props = $props();
   let step = $state(1);
   const MEN: Item[] = ['guides', 'bearers', 'askaris'];
   const ANIMALS: Item[] = ['camels', 'horses'];
   const n = (item: Item) => Math.min(step, chart[item]);
+  /** The sick among a type of man, and the well: a tap on dismiss sends the well away, another control the sick. */
+  const ill = (item: Item) => (item === 'guides' || item === 'bearers' || item === 'askaris' ? Math.min(sick[item], chart[item]) : 0);
+  const well = (item: Item) => chart[item] - ill(item);
   const held = (c: Cache) => (Object.entries(c.contents) as [Item, number][]).filter(([, v]) => v > 0);
   const listed = (c: Cache) => held(c).map(([k, v]) => `${v} ${k}`).join(', ');
   /** The explorer's own cache made this turn, open to take from (prompt 38): its goods stand in the right column. */
@@ -52,7 +58,7 @@
     <button class="step" data-testid="reorganise-step-{seat}" aria-label="{step} at a time; tap to switch" aria-pressed={step === 10} onclick={() => (step = step === 1 ? 10 : 1)}>×{step}</button>
     <button class="close" data-testid="reorganise-close-{seat}" aria-label="Close" onclick={onclose}>×</button>
   </div>
-  <MovementNotes {chart} {seat} testid="camp-capacity" />
+  <MovementNotes {chart} {seat} {sick} testid="camp-capacity" />
   {#if open}
     <div class="row heads" class:cached={open}>
       <span class="col-head expedition">expedition</span>
@@ -62,11 +68,18 @@
   {#each rows as item (item)}
     <div class="row" class:cached={open} data-testid="reorganise-row-{item}-{seat}">
       <span class="icon" aria-label={item}><Icon name={item} /></span>
-      <span class="have" class:none={chart[item] === 0} data-count={chart[item]}>{chart[item]}</span>
+      <span class="have" class:none={chart[item] === 0} data-count={chart[item]}>{chart[item]}{#if ill(item) > 0}<small class="ill" data-testid="camp-sick-{item}-{seat}" data-count={ill(item)} aria-label="{ill(item)} of them sick">{ill(item)} sick</small>{/if}</span>
       {#if chart[item] === 0}
         <span class="note span2">none left</span>
       {:else if MEN.includes(item)}
-        <button data-testid="dismiss-{item}-{seat}" aria-label="Dismiss {n(item)} {item}" onclick={() => onaction('dismiss', item, n(item))}>dismiss</button>
+        {#if well(item) > 0}
+          <button data-testid="dismiss-{item}-{seat}" aria-label="Dismiss {Math.min(step, well(item))} {ill(item) > 0 ? 'well ' : ''}{item}" onclick={() => onaction('dismiss', item, Math.min(step, well(item)))}>dismiss</button>
+        {:else}
+          <span class="note" data-testid="all-sick-{item}-{seat}">all sick</span>
+        {/if}
+        {#if ill(item) > 0}
+          <button data-testid="dismiss-sick-{item}-{seat}" aria-label="Dismiss {Math.min(step, ill(item))} sick {item}" onclick={() => onaction('dismiss', item, Math.min(step, ill(item)), true)}>dismiss sick</button>
+        {/if}
       {:else if ANIMALS.includes(item)}
         <button data-testid="release-{item}-{seat}" aria-label="Turn {n(item)} {item} loose" onclick={() => onaction('release', item, n(item))}>loose</button>
         <button data-testid="eat-{item}-{seat}" aria-label="Eat {n(item)} {item}: ten rations each" onclick={() => onaction('eat', item, n(item))}>eat</button>
@@ -175,6 +188,14 @@
   }
   .span2 {
     grid-column: span 2;
+  }
+  .ill {
+    display: block;
+    font-size: calc(var(--target) * 0.2);
+    font-weight: 400;
+    font-style: italic;
+    white-space: nowrap;
+    line-height: 1;
   }
   .have.none {
     opacity: 0.4;

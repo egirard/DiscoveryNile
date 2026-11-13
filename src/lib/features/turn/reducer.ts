@@ -901,7 +901,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
     }
     case 'expedition/reorganised': {
       // Any turn (rules §5): cache goods under a marker, dismiss men, turn animals loose or eat them.
-      const { seat, action, item, count, cacheId } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown; cacheId?: unknown };
+      const { seat, action, item, count, cacheId, sick: ofTheSick } = event.payload as { seat?: string; action?: unknown; item?: unknown; count?: unknown; cacheId?: unknown; sick?: unknown };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
       if (state.turn.phase !== 'act') return 'not now';
@@ -917,6 +917,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const men: Item[] = ['guides', 'bearers', 'askaris'];
       const animals: Item[] = ['camels', 'horses'];
       let caches = state.caches;
+      // The sick go with the men and animals they are counted among (prompt 76): never more sick than there are.
+      let sick = holder.sick;
       if (action === 'take') {
         // Goods back out of a cache made this round on this hex (prompt 34); an earlier cache is dug up first.
         const cache = typeof cacheId === 'number' ? state.caches[cacheId] : undefined;
@@ -943,6 +945,14 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         else { const id = Math.max(0, ...Object.keys(caches).map(Number)) + 1; caches = { ...caches, [id]: { id, hex, seat: explorer.seat, round: state.turn.round, contents: { [it]: count } } }; }
       } else if (action === 'dismiss') {
         if (!men.includes(it)) return `${it} cannot be dismissed`;
+        // The well are dismissed, unless the sick are named (`sick: true`); past the well, the sick go too.
+        const type = it as 'guides' | 'bearers' | 'askaris';
+        const ill = sick[type];
+        const well = chart[it] - ill;
+        if (ofTheSick === true) {
+          if (ill < count) return `only ${ill} sick ${it}`;
+          sick = { ...sick, [type]: ill - count };
+        } else if (count > well) sick = { ...sick, [type]: ill - (count - Math.max(0, well)) };
         chart[it] -= count;
       } else if (action === 'release') {
         if (!animals.includes(it)) return `${it} cannot be turned loose`;
@@ -952,8 +962,10 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
         chart[it] -= count;
         chart.food += 10 * count;
       } else return 'expedition/reorganised needs cache, take, dismiss, release or eat';
+      // The well animals go first; the sick among them are never more than the animals left.
+      if (sick.animals > chart.camels + chart.horses) sick = { ...sick, animals: chart.camels + chart.horses };
       // One line for the camp's doings this turn (prompt 39), added to as each tap comes.
-      return { ...replaceExplorer(state, { ...holder, chart }), caches, turn: { ...state.turn, log: logCamp(state.turn.log, explorer.seat, hex, { action: action as CampAction, item: it, count }) } };
+      return { ...replaceExplorer(state, { ...holder, chart, sick }), caches, turn: { ...state.turn, log: logCamp(state.turn.log, explorer.seat, hex, { action: action as CampAction, item: it, count, ...(action === 'dismiss' && ofTheSick === true ? { sick: true as const } : {}) }) } };
     }
     case 'cache/recovered': {
       const { seat, cacheId } = event.payload as { seat?: string; cacheId?: unknown };

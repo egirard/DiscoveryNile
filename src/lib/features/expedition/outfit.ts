@@ -2,6 +2,7 @@
 // sample expeditions for $1000 scaled to whatever budget the explorer has.
 import type { PortId } from '$features/map/manifest';
 import { canoeRate } from '$features/exploration/movement';
+import type { Sickness } from '$lib/game/state';
 import { CAMEL_PORTS, HORSE_PORTS, ITEMS, NO_PURCHASES, PRICES, cost, load, mountedCarry, overlandCarry, people, type Chart, type Item, type Purchases } from './prices';
 
 /** The price list's names, for the chart's rows. */
@@ -34,13 +35,40 @@ export interface MovementOptions {
   mountedCarry: number | null;
   /** Everyone rides and the loads are carried: the expedition moves at the mounted rate. */
   mounted: boolean;
+  /** The sick men, the explorer among them, when the sick are counted (the camp, prompt 76). */
+  sickMen: number;
+  /** The sick cannot all be carried (an animal, two well bearers or a canoe seat each): the expedition cannot move at all. */
+  halted: boolean;
 }
 
-export function movementOptions(c: Chart): MovementOptions {
+/**
+ * How the expedition could move. With the sick told (the camp, prompt 76) the numbers are those the board moves by
+ * (`overload` and `sickCarried`): a sick bearer carries nothing, every sick man is twenty units of what is carried
+ * overland (RQ-18), and when the sick cannot all be carried nothing moves.
+ */
+export function movementOptions(c: Chart, sick?: Sickness): MovementOptions {
   const n = people(c);
   const weight = load(c);
-  const overland = overlandCarry(c);
+  const sickMen = sick ? sick.guides + sick.bearers + sick.askaris + (sick.explorer ? 1 : 0) : 0;
+  const carriers = c.camels + c.horses + Math.floor(Math.max(0, c.bearers - (sick?.bearers ?? 0)) / 2) + c.canoes * 12;
+  const halted = sickMen > carriers;
+  const able = overlandCarry({ ...c, bearers: Math.max(0, c.bearers - (sick?.bearers ?? 0)) });
+  const overland = able === null ? null : Math.max(0, able - 20 * sickMen);
   const mounted = mountedCarry(c);
+  if (sick)
+    return {
+      people: n,
+      load: weight,
+      overlandCarry: overland,
+      overland: overland !== null && weight <= overland && !halted,
+      canoeHexes: c.canoes > 0 ? canoeRate(Math.floor(c.bearers / c.canoes)).known : 0,
+      canoeSeats: c.canoes > 0 && 12 * c.canoes >= n && !halted,
+      portage: c.bearers >= 8,
+      mountedCarry: mounted,
+      mounted: mounted !== null && weight <= mounted && !halted,
+      sickMen,
+      halted
+    };
   return {
     people: n,
     load: weight,
@@ -50,7 +78,9 @@ export function movementOptions(c: Chart): MovementOptions {
     canoeSeats: c.canoes > 0 && 12 * c.canoes >= n,
     portage: c.bearers >= 8,
     mountedCarry: mounted,
-    mounted: mounted !== null && weight <= mounted
+    mounted: mounted !== null && weight <= mounted,
+    sickMen: 0,
+    halted: false
   };
 }
 

@@ -13,6 +13,8 @@ export interface CampTally {
   action: CampAction;
   item: Item;
   count: number;
+  /** The men dismissed were sick ones (prompt 76): "2 sick bearers dismissed". */
+  sick?: true;
 }
 
 /** "5 muskets", "1 musket", "20 food". */
@@ -22,7 +24,7 @@ export function someOf(count: number, item: string): string {
 
 /** Add one reorganisation to the tally: the same action on the same item is summed, the rest keep their order. */
 export function tallied(tally: readonly CampTally[], next: CampTally): CampTally[] {
-  const at = tally.findIndex((t) => t.action === next.action && t.item === next.item);
+  const at = tally.findIndex((t) => t.action === next.action && t.item === next.item && Boolean(t.sick) === Boolean(next.sick));
   if (at < 0) return [...tally, next];
   return tally.map((t, i) => (i === at ? { ...t, count: t.count + next.count } : t));
 }
@@ -41,7 +43,7 @@ export function campLine(tally: readonly CampTally[]): string {
   return actions
     .map((action) => {
       const of = tally.filter((t) => t.action === action && t.count > 0);
-      return WORDED[action](of.map((t) => someOf(t.count, t.item)).join(', '), of.reduce((n, t) => n + t.count, 0));
+      return WORDED[action](of.map((t) => someOf(t.count, t.sick ? `sick ${t.item}` : t.item)).join(', '), of.reduce((n, t) => n + t.count, 0));
     })
     .join('; ');
 }

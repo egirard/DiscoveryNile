@@ -5,6 +5,7 @@
   import Icon from '$lib/ui/Icon.svelte';
   import { movementOptions } from './outfit';
   import type { Chart } from './prices';
+  import type { Sickness } from '$lib/game/state';
 
   interface Props {
     chart: Chart;
@@ -13,11 +14,16 @@
     testid?: string;
     /** The mount sold at this port (outfitting): the mounted pill shows even before one is bought. */
     mount?: 'horses' | 'camels' | null;
+    /** The sick of the expedition (the camp, prompt 76): the carrying is counted without them and they are carried. */
+    sick?: Sickness;
   }
-  let { chart, seat, testid = 'chart-capacity', mount = null }: Props = $props();
-  const moves = $derived(movementOptions(chart));
+  let { chart, seat, testid = 'chart-capacity', mount = null, sick }: Props = $props();
+  const moves = $derived(movementOptions(chart, sick));
+  const sickNote = $derived(moves.halted ? `${moves.sickMen} sick: they cannot all be carried (an animal, two well bearers or a canoe seat each), so the expedition cannot move` : `${moves.sickMen} sick, carried: twenty units each overland, and a sick bearer carries nothing`);
   const overlandLabel = $derived(
-    moves.overlandCarry === null
+    moves.halted
+      ? 'Cannot move: the sick cannot all be carried'
+      : moves.overlandCarry === null
       ? `Cannot move overland: the bearers cannot even carry the canoes (eight each)`
       : moves.overland
         ? `Can move overland: ${moves.load} units to carry, bearers and animals carry ${moves.overlandCarry}`
@@ -53,9 +59,14 @@
   data-portage={moves.portage}
   data-mounted={moves.mounted}
   data-mount={mount ?? 'none'}
+  data-sick={moves.sickMen}
+  data-halted={moves.halted}
 >
   <span class="stat" aria-label="{moves.people} {moves.people === 1 ? 'person' : 'people'}"><Icon name="people" size="1.1em" /> {moves.people}</span>
   <span class="stat" aria-label="{moves.load} units to carry; {moves.overlandCarry ?? 0} carried overland"><Icon name="food" size="1.1em" /> {moves.load}/{moves.overlandCarry ?? 0}</span>
+  {#if moves.sickMen > 0}
+    <span class="stat sick" class:halted={moves.halted} data-testid="{testid}-sick-{seat}" data-count={moves.sickMen} aria-label={sickNote}><Icon name="medicine" size="1.1em" /> {moves.sickMen}{moves.halted ? ' ✗' : ''}</span>
+  {/if}
   <span class="mode" data-testid="mode-foot-{seat}" data-ok={moves.overland} aria-label={overlandLabel}><Icon name="foot" size="1.1em" /><span class="mark">{moves.overland ? '✓' : '✗'}</span></span>
   <span class="mode" data-testid="mode-canoe-{seat}" data-ok={moves.canoeSeats} aria-label={canoeLabel}>
     <Icon name="canoes" size="1.1em" />{#if chart.canoes > 0}<span class="hexes">{moves.canoeHexes}</span>{/if}{#if chart.canoes > 0 && moves.portage}<Icon name="cataract" size="0.9em" />{/if}<span class="mark">{moves.canoeSeats ? '✓' : '✗'}</span>
@@ -88,6 +99,9 @@
   }
   .mode[data-ok='false'] {
     opacity: 0.55;
+  }
+  .sick.halted {
+    font-weight: 700;
   }
   .hexes {
     font-weight: 700;

@@ -47,4 +47,30 @@ describe('starvation, desertion and sickness at the end of the turn (rules §11)
     expect(e5.sick).toMatchObject({ bearers: 1, explorer: true });
     expect(e5.lastMeal!.rolls.map((r) => r.value)).toEqual([1, 1, 2, 3, 4]);
   });
+  it('the camp remembers the sick: the well are dismissed first, the sick when named, never more sick than men (prompt 76)', () => {
+    const { events, pass } = lean();
+    const halted = [...events, ...pass('top-1', reduce(events)), event('disaster/faced', { seat: 'bottom-1' })];
+    const camp = (payload: Record<string, unknown>) => event('expedition/reorganised', { seat: 'bottom-1', ...payload });
+    // Four bearers, three of them sick: dismissing one sends the well one away and the three sick stay sick.
+    const well = reduce([...halted, camp({ action: 'dismiss', item: 'bearers', count: 1 })]);
+    expect(well.diagnostics).toEqual([]);
+    expect(well.explorers[0].chart!.bearers).toBe(3);
+    expect(well.explorers[0].sick.bearers).toBe(3);
+    // Past the well, the sick go: two more dismissed leave one bearer, and he is sick.
+    const past = reduce([...halted, camp({ action: 'dismiss', item: 'bearers', count: 3 })]);
+    expect(past.explorers[0].chart!.bearers).toBe(1);
+    expect(past.explorers[0].sick.bearers).toBe(1);
+    // The sick named: they are dismissed, the well bearer stays, the halt is lifted and the board offers a step again.
+    const sick = reduce([...halted, camp({ action: 'dismiss', item: 'bearers', count: 2, sick: true }), camp({ action: 'dismiss', item: 'bearers', count: 1, sick: true })]);
+    expect(sick.diagnostics).toEqual([]);
+    expect(sick.explorers[0].chart!.bearers).toBe(1);
+    expect(sick.explorers[0].sick.bearers).toBe(0);
+    expect(sick.turn!.log.at(-1)!.outcome).toBe('3 sick bearers dismissed');
+    expect(moveTargets(sick, sick.explorers[0]).length).toBeGreaterThan(0);
+    const mixed = reduce([...halted, camp({ action: 'dismiss', item: 'bearers', count: 1 }), camp({ action: 'dismiss', item: 'bearers', count: 1, sick: true })]);
+    expect(mixed.turn!.log.at(-1)!.outcome).toBe('1 bearer, 1 sick bearer dismissed');
+    const reason = (payload: Record<string, unknown>) => reduce([...halted, camp(payload)]).diagnostics.at(-1)?.reason;
+    expect(reason({ action: 'dismiss', item: 'bearers', count: 4, sick: true })).toBe('only 3 sick bearers');
+    expect(reason({ action: 'dismiss', item: 'askaris', count: 1, sick: true })).toBe('only 0 sick askaris');
+  });
 });
