@@ -316,6 +316,8 @@ export interface AwaitingDice {
   rolled: { prompt: string; values: number[]; seat: SeatId }[];
   /** The dice of this throw already in, when it comes in parts: a throw of more dice than the tray holds (prompt 33). */
   have: number[];
+  /** The rule lets the dice come in parts however few they are (`DiceAsk.parts`, prompt 75): a bunch at a throw, or one by one. */
+  parts?: true;
   /** Where in the stream's script the event reads this throw (`DiceNeeded.at`). */
   at: number;
   /** The log lines the held event has made before this ask, with their verdicts (prompt 34), when the rule tells them. */

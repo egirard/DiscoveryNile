@@ -175,6 +175,14 @@ export function watching(count: number, ...lies: (Lie | null)[]): Watch {
   return gathering(count, 0, ...lies);
 }
 
+/**
+ * Whether a throw of `count` dice comes in parts: more dice than the tray holds (prompt 33), or several dice a rule
+ * lets the player throw as he likes, a bunch or one by one (`DiceAsk.parts`, prompt 75).
+ */
+export function inParts(count: number, parts = false): boolean {
+  return count > DICE_AT_HAND || (parts && count > 1);
+}
+
 /** Watch for the rest of a throw of `count` dice of which `have` are in (prompt 33), ignoring the lies given. */
 export function gathering(count: number, have: number, ...lies: (Lie | null)[]): Watch {
   const ignore = lies.filter((l): l is Lie => l !== null);

@@ -487,3 +487,9 @@ when an explorer picks a hex to move into, get rid of the other potential moves 
 The "turn progress record" should prompt the player to pick a hex to move into.  Maybe "You have 2MP, please pick a hex to move into, or END TURN." or "Pick a hex to move into, or END TURN".
 
 `Outcome: One slice (046/010, G-193): while it is a seat's turn with a hex open to its expedition and no other panel of its up, a panel at its edge reads "You have 2 MP: pick a hex to move into, or END TURN" (END TURN the control); before the first step, which settles the mode of travel and so the points, "Pick a hex to move into, or END TURN". An explored hex's result ends with the same line. The panel stands aside along its edge, clear of the hexes open to the step.`
+
+## 75. 2026-11-13
+
+rolling for sickness should give an option to roll a bunch of dice for bearers, and a bunch for askari
+
+`Outcome: One slice (047, G-194): with physical dice the evening's sickness dice are asked for a type of man at once ("Roll 3 D6 for the 3 sick bearers, a die a man", then guides, then askaris; the starving sick apart from the fed), and such an ask takes its dice as they come, a bunch at a throw or one by one, with "Roll the rest". One sick man is one die as before; the table's own dice play the same.`

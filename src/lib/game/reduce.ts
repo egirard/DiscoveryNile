@@ -110,7 +110,7 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     // attached itself, then the lines still in the making, each given the seat whose roll it is.
     const stood = e.state ? tagRolls(allRecords(e.state).slice(allRecords(state).length), readOf(e.state.rng)) : [];
     const making = (e.making ?? []).map((m): RollRecord => ({ ...m, seat }));
-    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], at: e.at, sofar: [...stood, ...(e.sofar ?? []), ...making] } };
+    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], ...(e.ask.parts && e.count > 1 ? { parts: true as const } : {}), at: e.at, sofar: [...stood, ...(e.sofar ?? []), ...making] } };
   }
 }
 

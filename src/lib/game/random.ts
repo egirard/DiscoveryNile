@@ -46,6 +46,11 @@ export interface DiceAsk {
   what: string;
   hint?: string;
   seat?: string;
+  /**
+   * The dice may come in parts, however few are asked (PROMPTS.md, prompt 75): a die a sick man, thrown as a bunch
+   * or one at a time as the player likes. A throw of more dice than the tray holds comes in parts whatever this says.
+   */
+  parts?: true;
 }
 
 /**

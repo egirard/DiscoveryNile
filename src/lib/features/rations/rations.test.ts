@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NO_PURCHASES, type Chart } from '$features/expedition/prices';
 import { NO_SICKNESS } from '$lib/game/state';
-import { rngScripted } from '$lib/game/random';
+import { DiceNeeded, rngScripted, withPhysical } from '$lib/game/random';
 import { drink, dryDesert, feed, hunt, huntingModifiers, rationsPerHunter, sickCarried, sicknessRound, starve, waterPerTurn, waterToCarry, type Camp } from './rations';
 
 const chart = (p: Partial<Chart>): Chart => ({ ...NO_PURCHASES, water: 0, guideHomes: {}, ...p });
@@ -121,6 +121,35 @@ describe('sickness rolls', () => {
     expect(doctored.summary).toBe('1 bearer recovers'); // 2 − 1 recovers; 5 − 1 = 4 lingers
     const explorer = sicknessRound(rngScripted(1, { sickness: [5] }), chart({}), { ...NO_SICKNESS, explorer: true }, fed, false);
     expect(explorer.explorerDied).toBe(true);
+  });
+  it('with physical dice asks for a die a man by the bunch, type by type, to be thrown as the player likes (prompt 75)', () => {
+    const fed = { guides: 0, bearers: 0, askaris: 0, explorer: false };
+    const asked = (run: () => unknown): DiceNeeded => {
+      try {
+        run();
+      } catch (e) {
+        if (e instanceof DiceNeeded) return e;
+        throw e;
+      }
+      throw new Error('no dice were asked for');
+    };
+    const physical = (sickness: number[]) => withPhysical(rngScripted(1, { sickness }), true);
+    const sick = { ...NO_SICKNESS, bearers: 3, askaris: 2 };
+    const men = chart({ bearers: 5, askaris: 4 });
+    const bearers = asked(() => sicknessRound(physical([]), men, sick, fed, false));
+    expect(bearers).toMatchObject({ stream: 'sickness', count: 3, at: 0, ask: { what: 'for the 3 sick bearers, a die a man', hint: '1 or less recovers, 5 or more dies', parts: true } });
+    const askaris = asked(() => sicknessRound(physical([1, 3, 6]), men, sick, fed, false));
+    expect(askaris).toMatchObject({ count: 2, at: 3, ask: { what: 'for the 2 sick askaris, a die a man', parts: true } });
+    // All in: the dice are read as they always were, a die a man in order.
+    const done = sicknessRound(physical([1, 3, 6, 5, 2]), men, sick, fed, false);
+    expect(done.summary).toBe('1 bearer recovers, 1 bearer dies of sickness, 1 askari dies of sickness');
+    expect(done.rolls.map((r) => r.label)).toEqual(['sick bearer', 'sick bearer', 'sick bearer', 'sick askari', 'sick askari']);
+    // One man is one die, asked for as before; the starving sick are thrown for apart from the fed, the well starving last.
+    expect(asked(() => sicknessRound(physical([]), men, { ...NO_SICKNESS, askaris: 1 }, fed, false))).toMatchObject({ count: 1, ask: { what: 'for the sick askari' } });
+    const hungry = { guides: 0, bearers: 4, askaris: 0, explorer: false };
+    expect(asked(() => sicknessRound(physical([]), men, sick, hungry, false)).ask).toMatchObject({ what: 'for the 3 sick bearers, a die a man', hint: 'no recovery, 2 or more dies' });
+    expect(asked(() => sicknessRound(physical([]), men, sick, { ...hungry, bearers: 2 }, false)).ask.what).toBe('for the 2 sick bearers who starve, a die a man');
+    expect(asked(() => sicknessRound(physical([6, 6, 6, 3, 3]), men, sick, hungry, false))).toMatchObject({ count: 1, ask: { what: 'for the starving bearer', hint: '4+ and he falls sick' } });
   });
   it('sick men must be carried or the expedition halts', () => {
     expect(sickCarried(chart({ bearers: 4 }), { ...NO_SICKNESS, bearers: 3 })).toEqual({ sickMen: 3, carriers: 0, halted: true });

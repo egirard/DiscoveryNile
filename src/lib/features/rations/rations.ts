@@ -3,7 +3,7 @@ import { load, mountedCarry, overlandCarry, type Chart } from '$features/expedit
 import type { Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
 import { hasPart, type Modifier, type Roll } from '$features/map/generate';
-import { d6, type DiceAsk, type RngState } from '$lib/game/random';
+import { d6, dice, type DiceAsk, type RngState } from '$lib/game/random';
 
 export interface Camp {
   terrain: Terrain | null;
@@ -275,17 +275,32 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
     const hi = 5 + shift;
     return `${lo >= 1 ? `${lo} or less recovers` : 'no recovery'}, ${hi <= 6 ? `${hi} or more dies` : 'no death'}`;
   };
-  // The sick: recovery or death.
+  // A die a man, asked for by the bunch (PROMPTS.md, prompt 75): the sick bearers together, then the sick askaris,
+  // thrown at once or one by one as the player likes (`parts`). The dice are read in the order they always were.
+  const rollMen = (n: number, label: string, men: string, hint: string): number[] => {
+    if (n <= 0) return [];
+    if (n === 1) return [roll(label, { what: `for the ${label}`, hint })];
+    const r = dice(rng, n, 'sickness', { what: `for the ${n} ${men}, a die a man`, hint: hint.replace('and he falls', 'and a man falls'), parts: true });
+    rng = r.state;
+    for (const value of r.values) rolls.push({ label, value });
+    return r.values;
+  };
+  // The sick: recovery or death, those also starving first.
   for (const t of MEN) {
+    const one = t.slice(0, -1);
     let recovered = 0;
-    for (let i = 0; i < sick[t]; i++) {
-      const isStarving = i < starving[t];
-      const v = roll(`sick ${t.slice(0, -1)}`, { what: `for the sick ${t.slice(0, -1)}`, hint: sickHint(healthyDoctor, isStarving) }) - (healthyDoctor ? 1 : 0) + (isStarving ? 3 : 0);
+    const hungry = Math.min(sick[t], starving[t]);
+    const thrown = [
+      ...rollMen(hungry, `sick ${one}`, hungry < sick[t] ? `sick ${t} who starve` : `sick ${t}`, sickHint(healthyDoctor, true)).map((d) => d + 3),
+      ...rollMen(sick[t] - hungry, `sick ${one}`, `sick ${t}`, sickHint(healthyDoctor, false))
+    ];
+    for (const d of thrown) {
+      const v = d - (healthyDoctor ? 1 : 0);
       if (v <= 1) { nextSick[t]--; recovered++; }
       else if (v >= 5) { nextSick[t]--; next[t]--; died[t]++; }
     }
-    if (recovered) notes.push(`${recovered} ${recovered === 1 ? t.slice(0, -1) : t} recover${recovered === 1 ? 's' : ''}`);
-    if (died[t]) notes.push(`${died[t]} ${died[t] === 1 ? t.slice(0, -1) : t} die${died[t] === 1 ? 's' : ''} of sickness`);
+    if (recovered) notes.push(`${recovered} ${recovered === 1 ? one : t} recover${recovered === 1 ? 's' : ''}`);
+    if (died[t]) notes.push(`${died[t]} ${died[t] === 1 ? one : t} die${died[t] === 1 ? 's' : ''} of sickness`);
   }
   let explorerDied = false;
   if (sick.explorer) {
@@ -297,7 +312,7 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   for (const t of MEN) {
     let fell = 0;
     const wellStarving = Math.max(0, starving[t] - sick[t]);
-    for (let i = 0; i < wellStarving; i++) if (roll(`starving ${t.slice(0, -1)}`, { what: `for the starving ${t.slice(0, -1)}`, hint: '4+ and he falls sick' }) >= 4) fell++;
+    for (const d of rollMen(wellStarving, `starving ${t.slice(0, -1)}`, `starving ${t}`, '4+ and he falls sick')) if (d >= 4) fell++;
     nextSick[t] += fell;
     if (fell) notes.push(`${fell} starving ${fell === 1 ? t.slice(0, -1) : t} fall${fell === 1 ? 's' : ''} sick`);
   }

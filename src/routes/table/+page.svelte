@@ -67,7 +67,7 @@
   import { readManualDice, seedOf, writeManualDice } from '$features/dice/manual';
   import RadialMenu from '$features/dice/RadialMenu.svelte';
   import type { Roll } from '$features/map/generate';
-  import { consider, dieAt, gathering, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type SeenDie, type Watch } from '$features/dice/dicecam';
+  import { consider, dieAt, gathering, inParts, lieOf, moved, rechecked, recheckText, type DicecamStatus, type EngineMessage, type Lie, type Point, type Recheck, type SeenDie, type Watch } from '$features/dice/dicecam';
   import type { DockTap } from '$features/dice/Dicecam.svelte';
   import { log as diagLog } from '$lib/diagnostics/diag';
   import { consumedRecord } from '$lib/diagnostics/dice';
@@ -516,7 +516,7 @@
     // A throw gathered in parts (prompt 33) watches again for the rest after each part, the part just taken a lie.
     // Whether the engine has seen the dice move since the last throw was taken goes with it (prompt 58): until it
     // has, a die read with another face where a die lay is a flicker of the engine's reading, not a throw.
-    watch = awaiting ? gathering(awaiting.count, awaiting.have.length, lastThrow, lastReading) : null;
+    watch = awaiting ? { ...gathering(awaiting.count, awaiting.have.length, lastThrow, lastReading), gathered: inParts(awaiting.count, awaiting.parts) } : null;
     if (watch && motionSinceTake) watch = moved(watch);
     dicecamSeen = null;
     dicecamStale = false;
@@ -824,7 +824,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" class:clear={Boolean(reveal)} data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised clear={trayRect} faded={Boolean(reveal)}>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} note={emptyNote} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} parts={awaiting.parts} note={emptyNote} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
     <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read.

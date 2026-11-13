@@ -11,7 +11,7 @@
   import type { RollRecord } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
   import { PIPS } from '$lib/ui/pips';
-  import { DICE_AT_HAND, statusText, type DicecamStatus } from './dicecam';
+  import { inParts, statusText, type DicecamStatus } from './dicecam';
   import { uncovered } from './prompt';
   import { manualStatusText } from './manual';
 
@@ -37,13 +37,15 @@
     /** What the board has just shown of the last die (prompt 68): "Hex in direction 3 is empty; roll again". */
     note?: string | null;
     onroll: (values: number[]) => void;
+    /** The rule lets the dice come in parts however few (prompt 75): a bunch at a throw, or one by one. */
+    parts?: boolean;
     /** The table rolls the rest of a gathered throw. */
     onauto?: () => void;
     /** A die in the lines so far was tapped, to set its face (prompt 37). */
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, note = null, onroll, onauto, oncorrect }: Props = $props();
-  const gathered = $derived(count > DICE_AT_HAND);
+  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, note = null, parts = false, onroll, onauto, oncorrect }: Props = $props();
+  const gathered = $derived(inParts(count, parts));
   const pending = $derived(uncovered(rolled, sofar));
   const remaining = $derived(count - have.length);
   /** Faces tapped so far for a throw of several dice. */
