@@ -115,6 +115,34 @@ test.describe('035 - Options', () => {
       ]
     });
 
+    for (let i = 0; i < 12; i++) await page.getByTestId('diagonal-less').click();
+    await expect(page.getByTestId('options-panel')).toHaveAttribute('data-diagonal', '15');
+
+    await steps.step('options-on-a-small-screen', {
+      description: 'The screen is set to 15", a laptop: everything is the same size in the hand, so the options no longer fit one section under another. They stand in two columns, the screen size over ending the game and the phones over the dice, and the confirmation is whole on the screen',
+      verifications: [
+        { spec: 'The panel is in two columns and whole on the screen', check: async () => {
+          await expect(page.getByTestId('options-panel')).toHaveAttribute('data-columns', '2');
+          const panel = (await page.getByTestId('options-panel').boundingBox())!;
+          expect(panel.y).toBeGreaterThanOrEqual(0);
+          expect(panel.y + panel.height).toBeLessThanOrEqual(1080);
+          expect(await page.getByTestId('options-panel').evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+        } },
+        { spec: 'Every section, and both answers to ending the game, lie inside the panel', check: async () => {
+          const panel = (await page.getByTestId('options-panel').boundingBox())!;
+          for (const id of ['options-screen', 'options-phones', 'options-dice', 'options-end', 'end-game-yes', 'end-game-no']) {
+            const box = (await page.getByTestId(id).boundingBox())!;
+            expect(box.x, id).toBeGreaterThanOrEqual(panel.x);
+            expect(box.y, id).toBeGreaterThanOrEqual(panel.y);
+            expect(box.x + box.width, id).toBeLessThanOrEqual(panel.x + panel.width);
+            expect(box.y + box.height, id).toBeLessThanOrEqual(panel.y + panel.height);
+          }
+        } }
+      ]
+    });
+
+    await page.getByTestId('diagonal-27').click();
+    await expect(page.getByTestId('options-panel')).toHaveAttribute('data-columns', '1');
     await page.getByTestId('end-game-yes').click();
 
     await steps.step('ended-by-agreement', {

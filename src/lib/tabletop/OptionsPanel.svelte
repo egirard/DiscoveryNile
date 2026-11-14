@@ -18,13 +18,15 @@
     manual: boolean;
     /** 0 for the south-east gear (facing the bottom edge), 180 for the north-west one. */
     rotation: 0 | 180;
+    /** The screen is too short for the sections one under another (a 15" laptop): they stand in two columns. */
+    short?: boolean;
     onclose: () => void;
     ondiagonal: (inches: number) => void;
     ontoggledice: (on: boolean) => void;
     ontogglemanual: (on: boolean) => void;
     onend: () => void;
   }
-  let { seats, qr, diagonal, mmPerPx, running, physical, manual, rotation, onclose, ondiagonal, ontoggledice, ontogglemanual, onend }: Props = $props();
+  let { seats, qr, diagonal, mmPerPx, running, physical, manual, rotation, short = false, onclose, ondiagonal, ontoggledice, ontogglemanual, onend }: Props = $props();
   let confirming = $state(false);
   const set = (inches: number) => ondiagonal(Math.min(120, Math.max(5, Math.round(inches * 2) / 2)));
   // An ISO ID-1 card (85.6 × 54.0 mm) at the configured size: hold a bank card against it to check the diagonal.
@@ -32,7 +34,7 @@
   const cardH = $derived(54 / mmPerPx);
 </script>
 
-<div class="options" data-testid="options-panel" data-rotation={rotation} data-diagonal={diagonal} data-e2e-fit style="--rotation:{rotation}deg">
+<div class="options" data-testid="options-panel" data-rotation={rotation} data-diagonal={diagonal} data-columns={short ? 2 : 1} class:short data-e2e-fit style="--rotation:{rotation}deg">
   <div class="head">
     <h2 class="title">Options</h2>
     <button class="close" data-testid="options-close" aria-label="Close the options" onclick={onclose}>
@@ -118,8 +120,10 @@
     rotate: var(--rotation);
     width: calc(var(--target) * 9);
     max-height: calc(100vh - var(--target) * 2);
-    overflow: hidden;
+    /* Never cut off: a screen shorter than even the two columns scrolls the panel. */
+    overflow: auto;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: calc(var(--gap) * 0.8);
     padding: var(--gap) calc(var(--gap) * 1.5);
     border-radius: calc(var(--target) * 0.4);
@@ -128,6 +132,28 @@
     color: var(--paper);
     font-family: 'Nile Sans', 'DejaVu Sans', sans-serif;
     box-shadow: 0 0 calc(var(--target) * 0.6) rgba(0, 0, 0, 0.6);
+  }
+  /* A short screen (prompt 82): two columns, the screen size over ending the game, the phones over the dice. */
+  .options.short {
+    width: calc(var(--target) * 18);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: 'head head' 'screen phones' 'end dice';
+    column-gap: calc(var(--gap) * 2.5);
+  }
+  .short .head {
+    grid-area: head;
+  }
+  .short .screen {
+    grid-area: screen;
+  }
+  .short .phones {
+    grid-area: phones;
+  }
+  .short .dice {
+    grid-area: dice;
+  }
+  .short .end {
+    grid-area: end;
   }
   .head {
     display: flex;
