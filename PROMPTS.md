@@ -505,3 +505,9 @@ when in camp/cache editing, remember if bearers or askari are sick and adjust nu
 Encountering natives only happens when you enter a hex, or choose to remain in the hex.  therefore, don't do the native encounter at the start of the next turn, unless the player is choosing to remain in the hex.
 
 `Outcome: One slice (016, G-196): a turn begun in a tribe's hex no longer opens on the policy panel; the expedition may walk away unmet. Ending the turn there is remaining: the policy is asked then, the expedition stays, and the turn ends after it. The prompt at the edge reads "Natives here. Pick a hex to move into, or REMAIN". Scenarios 017-020, 022 and 026 remain by the end-turn control; a zoologist's study now comes before the natives (022).`
+
+## 78. 2026-11-13
+
+you roll at the start of your turn to escape, so you would then be able to move.  If this contradicts the rules as you've read them, please supply me with quotations of the specific rules.
+
+`Outcome: One slice (018, G-197): no contradiction; the rules say only "he must roll again every turn, subtracting three from his die roll. He remains in that hex until he is killed, escapes, or his player retires him". An explorer who escapes on his turn's roll is now free to act: he may walk away at once, and meets the tribe again only by remaining (prompt 77).`

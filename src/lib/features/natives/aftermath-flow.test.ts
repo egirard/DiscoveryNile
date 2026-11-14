@@ -82,10 +82,17 @@ describe('defeat: captivity, escape and death', () => {
     expect(reduce([...ev4, event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]).diagnostics.at(-1)?.reason).toBe('the explorer is held prisoner');
     const ev5 = [...ev4, event('turn/ended', { seat: 'bottom-1' })];
     const free = reduce([...ev5, ...pass('top-1', reduce(ev5))]);
-    expect(free.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'natives' });
+    // Free at the start of the turn (prompt 78): no policy is asked, and he may walk away from the tribe at once.
+    expect(free.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'act', policy: null, moved: false });
     expect(free.turn!.log[0]).toMatchObject({ kind: 'captivity', outcome: 'escape 6 − 3 = 3: the explorer escapes alone', rolls: [{ label: 'escape', value: 6 }] });
     expect(free.explorers[0].location).toEqual({ kind: 'hex', hex: 'c24r12' });
     expect(free.explorers[0].chart).toMatchObject({ askaris: 0, bearers: 0, food: 0, muskets: 0 });
+    const away = reduce([...ev5, ...pass('top-1', reduce(ev5)), event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]);
+    expect(away.diagnostics).toEqual([]);
+    expect(away.explorers[0].location).toEqual({ kind: 'hex', hex: 'c25r12' });
+    // Remaining instead meets the tribe again before the turn ends (prompt 77).
+    const stays = reduce([...ev5, ...pass('top-1', reduce(ev5)), event('turn/ended', { seat: 'bottom-1' })]);
+    expect(stays.turn).toMatchObject({ current: 'bottom-1', phase: 'natives', moved: true });
   });
   it('a killed explorer leaves the turn order', () => {
     const combat = [...COMBAT.slice(0, 30), 1]; // the defeat die comes up 1: killed

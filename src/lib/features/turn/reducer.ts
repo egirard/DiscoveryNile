@@ -263,8 +263,8 @@ function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
     return { ...perish({ ...state, tribes: { ...state.tribes, [tribe]: { ...t, attitude: t.attitude - 1 } } }, explorer, 'died', `killed in captivity by tribe ${tribe} at ${hex}`), rng: r.rng, turn };
   }
   if (r.fate === 'prisoner') return { ...replaceExplorer(state, explorer), rng: r.rng, turn };
-  // Free, but still in the tribe's hex: a policy is chosen (rules §8.1).
-  return { ...replaceExplorer(state, { ...explorer, location: { kind: 'hex', hex }, chart: r.chart }), rng: r.rng, turn: { ...turn, phase: 'natives' } };
+  // Free at the start of his turn (prompt 78): he may leave the tribe's hex at once; remaining there meets them again (rules §8.1).
+  return { ...replaceExplorer(state, { ...explorer, location: { kind: 'hex', hex }, chart: r.chart }), rng: r.rng, turn: { ...turn, moved: false } };
 }
 
 /** Staying in the hex after a victory whose village was not found, the explorer searches again (rules §8.4). */

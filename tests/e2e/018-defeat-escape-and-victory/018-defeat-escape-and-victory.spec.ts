@@ -244,7 +244,7 @@ test.describe('018 - Defeat, escape and victory', () => {
     await passTurn(page);
 
     await steps.step('escaped', {
-      description: 'The captive\'s turn opens with the escape die: a 6 less three is a 3, so the explorer escapes alone, with nothing, and stands free in the hex again, where the tribe waits for a policy',
+      description: 'The captive\'s turn opens with the escape die: a 6 less three is a 3, so the explorer escapes alone, with nothing, and stands free in the hex again. The turn is his (prompt 78): he may walk away at once, or REMAIN and meet the tribe',
       verifications: [
         { spec: 'The captivity note reads the escape; the explorer is back on the hex with an empty chart', check: async () => {
           await expect(page.getByTestId('captivity-note-bottom-1')).toHaveText('escape 6 − 3 = 3: the explorer escapes alone');
@@ -254,8 +254,14 @@ test.describe('018 - Defeat, escape and victory', () => {
           const e = s.explorers.find((x) => x.seat === 'bottom-1')!;
           expect(e.location).toEqual({ kind: 'hex', hex: 'c24r12' });
           expect(e.chart).toMatchObject({ askaris: 0, bearers: 0, food: 0, muskets: 0 });
-          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'natives' });
+          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'act', policy: null, moved: false });
           expect(s.diagnostics).toEqual([]);
+        } },
+        { spec: 'No policy is asked: hexes are open to a step and the prompt offers REMAIN', check: async () => {
+          await expect(page.getByTestId('policy-panel-bottom-1')).toHaveCount(0);
+          expect(await page.locator('[data-testid^="move-target-"]').count()).toBeGreaterThan(0);
+          await expect(page.getByTestId('move-prompt-text-bottom-1')).toHaveText('Natives here. Pick a hex to move into, or');
+          await expect(page.getByTestId('move-prompt-end-bottom-1')).toHaveText('REMAIN');
         } }
       ]
     });
