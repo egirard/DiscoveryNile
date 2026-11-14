@@ -535,3 +535,9 @@ let's make sure that the roll information is presented to the user before and af
 end this game on the options screen falls off of a 15" screen
 
 `Outcome: One slice (035, G-201): on a screen too short for the options one section under another (a 15" laptop) they stand in two columns, the screen size over ending the game and the phones over the dice, so "End this game" and its confirmation are whole on the screen. A screen shorter still scrolls the panel instead of cutting it off.`
+
+## 83. 2026-11-14
+
+I'd like to take a direct and complete approach to reviewing the turn interactions.  Please create a sample-turn-text.md in the docs directory, and include all of the current text samples.  Include each (major) substep so that we can see the initial prompt, the updated text as the die rolls or other steps resolve the action, and how the text gets summarized in the turn interaction record after the next operation starts.  If there are major variations in the step (such as lost or not lost) then please document both paths.  We don't need every single variation (IE: rolling a D6 for a terrain type only needs one or two potential results documented - include one that has sub-types like jungle+swamp).  We can then edit that document to fully spec out the interaction flow.
+
+`Outcome: docs/sample-turn-text.md, no code changed: fifteen sample sequences taken from the game's own rules played with table dice (a step into a hex four ways, the disaster card and a lost step, natives ten ways), each step with the ask, the lines so far, the result panel, the log lines and the rail's one line; a list of what was noticed, and of the text not sampled.`
