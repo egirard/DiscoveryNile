@@ -85,12 +85,13 @@ describe('the game\'s end (rules: Description of Game; RQ-10)', () => {
     expect(left.seats.find((s) => s.id === 'top-1')!.uid).toBeNull();
     expect(left.explorers.map((e) => e.seat)).toEqual(['bottom-1', 'top-1']);
   });
-  it('continues on the same map: published hexes and records stay, scores and explorers start afresh', () => {
+  it('resets for a new game (prompt 80): everything explored is lost, published hexes and records too, and scores and explorers start afresh', () => {
     const { over } = fiveRounds();
     const next = reduceOne(over, event('game/continued', {}));
     expect(next.diagnostics).toEqual([]);
     expect(next).toMatchObject({ turn: null, ended: null, scores: {}, explorers: [], games: 1, deck: null });
-    expect(next.map['c24r12']).toMatchObject({ publishedBy: 'bottom-1' });
+    expect(over.map['c24r12']).toMatchObject({ publishedBy: 'bottom-1' });
+    expect(next).toMatchObject({ map: {}, tribes: {}, superlatives: [], transits: [] });
     expect(next.seats.filter((s) => s.uid)).toHaveLength(0); // the players have left the table (prompt 63): seats are taken afresh
     const again = reduce([...fiveRounds().events, event('game/continued', {}), event('seat/taken', { seat: 'bottom-1', uid: 'table:bottom-1' }), event('explorer/commissioned', { seat: 'bottom-1', specialties: ['medicine'] }), event('game/started', {})]);
     expect(again.diagnostics).toEqual([]);

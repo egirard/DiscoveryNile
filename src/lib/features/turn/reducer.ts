@@ -446,12 +446,12 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       return endGame(state, 'consensus');
     }
     case 'game/continued': {
-      // A new game on the same map (rules: Description of Game): what was published stays known, with its tribes and the
-      // records to beat; the scores start afresh. The seats are cleared too (prompt 63): the players of the game that
-      // ended have left the table, and whoever plays next takes a seat afresh and commissions a new explorer.
+      // A new game is a new table (PROMPTS.md, prompt 80): everything explored is lost with the game that ended, the
+      // published hexes with their tribes too, the records to beat and the transits; the board is as printed again.
+      // The seats are cleared (prompt 63): whoever plays next takes a seat afresh and commissions a new explorer.
       if (!state.ended) return 'the game has not ended';
       const seats = state.seats.map((s) => ({ ...s, uid: null, name: null }));
-      return { ...state, seats, explorers: [], turn: null, deck: null, rollOff: null, history: [], scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
+      return { ...state, seats, explorers: [], turn: null, deck: null, rollOff: null, history: [], map: {}, tribes: {}, superlatives: [], transits: [], scores: {}, endVotes: [], ended: null, parties: {}, caches: {}, games: state.games + 1 };
     }
     case 'game/started': {
       if (state.turn) return 'game already started';

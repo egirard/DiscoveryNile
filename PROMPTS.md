@@ -517,3 +517,9 @@ you roll at the start of your turn to escape, so you would then be able to move.
 let's leave the player's turn in the turn track for five seconds (with an OK button to dismiss it early).  Let's keep the entire turn segment in the record (a segment is a single hex move: select a hex, roll for lost, roll to find the terrain, roll for details, roll for natives; native resolution is another sequence; hunting is a final sequence)
 
 `Outcome: One slice (037, G-198): what the dice decided stays at the seat's edge five seconds (was two), dismissed sooner by "OK" (was "Carry on"). A result holds its whole segment: a step into a hex (lost check, terrain, details, natives), the natives dealt with, or the hunt; where one throw closes two (a step lost, then the hunt) each is headed: "The step into c24r19", "The hunt".`
+
+## 80. 2026-11-13
+
+end this game should lose the explored hexes and reset the game
+
+`Outcome: One slice (030, G-199): the new game after a game's end starts on the board as printed. Everything explored is lost with the game that ended, published hexes, tribes, superlative records and transits included; scores, explorers and seats were already cleared. The standings still show first; the reset is the tap on their control.`

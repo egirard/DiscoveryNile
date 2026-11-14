@@ -1,6 +1,6 @@
 <script lang="ts">
   // The game's end (rules: Description of Game): the standings in the middle of the table, the winner first, and the
-  // offer of a new game that continues on the same map.
+  // offer of a new game, the board as printed again (prompt 80).
   import type { GameEnd } from '$lib/game/state';
   import { colourFor } from '$features/explorers/colours';
   import { fmtPoints } from '$features/scoring/transits';
@@ -24,7 +24,7 @@
       </li>
     {/each}
   </ol>
-  <button class="continue" data-testid="continue-game" aria-label="Start a new game on this map" onclick={oncontinue}>
+  <button class="continue" data-testid="continue-game" aria-label="Reset the table for a new game: everything explored is lost" onclick={oncontinue}>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 1 2.3 5.7" /><path d="M4 18v-6h6" /></svg>
   </button>
 </div>
