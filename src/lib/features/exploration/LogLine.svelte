@@ -6,6 +6,7 @@
   import type { Roll } from '$features/map/generate';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import { card as cardOf } from '$features/cards/deck';
+  import AskedLine from '$features/dice/AskedLine.svelte';
 
   interface Props {
     record: RollRecord;
@@ -16,8 +17,10 @@
     idPrefix?: string;
     /** A die rolled at the table was tapped, to set its face (prompt 37): the roll and where the die is drawn. */
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
+    /** Under the line, the asks its dice answered, each with what its dice meant, the newest first (prompt 81): in the dice panels. */
+    asks?: boolean;
   }
-  let { record: r, seat, rail = false, idPrefix = '', oncorrect }: Props = $props();
+  let { record: r, seat, rail = false, idPrefix = '', oncorrect, asks = false }: Props = $props();
   /** The dice can be tapped when they know their throws and someone listens. */
   const tappable = $derived(Boolean(oncorrect) && r.rolls.some((x) => x.from));
   const KIND: Record<string, string> = {
@@ -64,6 +67,13 @@
       {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{idPrefix}{note}-total-{seat}">= {r.total}</span>{/if}
     {/if}
     <span class="outcome" class:bad={r.lost} data-testid="{idPrefix}{note}-note-{seat}">{r.outcome}</span>
+    {#if asks && !rail && r.asks?.length}
+      <span class="asks" data-testid="{idPrefix}asks-{r.kind}-{seat}" data-count={r.asks.length}>
+        {#each [...r.asks].reverse() as a, i (r.asks.length - 1 - i)}
+          <AskedLine asked={a} testid="{idPrefix}ask-{r.kind}-{r.asks.length - 1 - i}-{seat}" />
+        {/each}
+      </span>
+    {/if}
   {/if}
 </span>
 
@@ -154,5 +164,10 @@
   }
   .more {
     font-weight: 700;
+  }
+  .asks {
+    flex-basis: 100%;
+    display: grid;
+    gap: calc(var(--gap) * 0.35);
   }
 </style>

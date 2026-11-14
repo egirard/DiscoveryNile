@@ -83,7 +83,7 @@ export function oasisSearchable(m: MappedHex, seat: string): boolean {
  * says what an even roll does without saying whether there is one (prompt 56): that is the first explorer's secret.
  */
 export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[]; summary: string } {
-  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'an even roll finds it, if there is one to find', seat });
+  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'an even roll finds it, if there is one to find', seat, result: ([v]) => (m.oasis && v % 2 === 0 ? 'even: the oasis is found' : v % 2 === 0 ? 'even, but no oasis here' : 'odd: no oasis found') });
   const found = m.oasis && r.value % 2 === 0;
   const summary = found ? `the oasis is found (${r.value} is even)` : `no oasis found (${r.value}; an even roll finds one, if there is one to find)`;
   return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }], summary };
@@ -255,7 +255,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
       // Canoes first discovering a cataract going downstream: d6 − 3 canoes go over the falls (rules §7.5).
       let nextChart = chart;
       if (mode === 'canoe' && newlyMapped && map[target].river?.cataract && riverDirection(courseAt(state, from), directionTo(from, target) as Direction) === 'downstream') {
-        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: 'each point over 3 loses a canoe' });
+        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: 'each point over 3 loses a canoe', result: ([v]) => { const over = Math.min(chart.canoes, Math.max(0, v - 3)); return over ? `${v} − 3 = ${over} canoe${over > 1 ? 's' : ''} lost` : 'every canoe survives'; } });
         rng = r.state;
         const lostCanoes = Math.min(chart.canoes, Math.max(0, r.value - 3));
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };

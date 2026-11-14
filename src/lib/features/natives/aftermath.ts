@@ -41,7 +41,7 @@ export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0, se
     rolls.push({ label, value: r.value });
     return r.value;
   };
-  const die = roll(modifier ? 'escape' : 'defeat', { what: modifier ? 'for an escape' : 'on the consequences of defeat', hint: `${modifier ? `with ${modifier > 0 ? '+' : '−'}${Math.abs(modifier)}: ` : ''}1 killed, 2 prisoner, 3 escapes alone, 4 a musket and rations, 5 and 6 survival rolls`, seat });
+  const die = roll(modifier ? 'escape' : 'defeat', { what: modifier ? 'for an escape' : 'on the consequences of defeat', hint: `${modifier ? `with ${modifier > 0 ? '+' : '−'}${Math.abs(modifier)}: ` : ''}1 killed, 2 prisoner, 3 escapes alone, 4 a musket and rations, 5 and 6 survival rolls`, seat, result: ([v]) => { const f = fateOf(v + modifier); return `${modifier ? `${v} ${modifier > 0 ? '+' : '−'} ${Math.abs(modifier)} = ${v + modifier}: ` : ''}${f === 'killed' ? 'killed' : f === 'prisoner' ? 'held prisoner' : f === 'alone' ? 'escapes alone' : f === 'musket' ? 'escapes with a musket and rations' : f === 'one-roll' ? 'escapes, with one survival roll' : 'escapes, with two survival rolls'}`; } });
   const fate = fateOf(die + modifier);
   const chart: Chart = { ...EMPTY };
   // The die and its modifier open the line (prompt 56): "defeat 2: the explorer is held prisoner", "escape 5 − 3 = 2: …".
@@ -58,7 +58,7 @@ export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0, se
       for (let i = 0; i < tries; i++) {
         let item: (typeof ITEMS)[number] | null = null;
         for (let attempt = 0; attempt < 12 && !item; attempt++) {
-          const candidate = ITEMS[roll('survival', { what: 'on the survival table', hint: '1 guide, 2 bearer, 3 askari, 4 camel, 5 horse, 6 canoe', seat }) - 1];
+          const candidate = ITEMS[roll('survival', { what: 'on the survival table', hint: '1 guide, 2 bearer, 3 askari, 4 camel, 5 horse, 6 canoe', seat, result: ([v]) => { const it = ITEMS[v - 1]; return had[it] > 0 ? `${/^[aeiou]/.test(it) ? 'an' : 'a'} ${it.slice(0, -1)}` : `${it}: the expedition had none, rolled again`; } }) - 1];
           if (had[candidate] > 0) item = candidate;
         }
         if (!item) { notes.push('nothing more to be found'); continue; }
@@ -66,7 +66,7 @@ export function consequencesOfDefeat(rng: RngState, had: Chart, modifier = 0, se
         const noun = item.slice(0, -1);
         let note = `${/^[aeiou]/.test(noun) ? 'an' : 'a'} ${noun} (survival ${rolls.at(-1)!.value})`;
         if (LOADED.has(item)) {
-          const load = roll('load', { what: `for what the ${noun} carries`, hint: '1–3 rations, 4–5 gifts, 6 muskets', seat });
+          const load = roll('load', { what: `for what the ${noun} carries`, hint: '1–3 rations, 4–5 gifts, 6 muskets', seat, result: ([v]) => (v <= 3 ? '10 rations' : v <= 5 ? '10 gifts' : '10 muskets') });
           if (load <= 3) { chart.food += 10; note += ` with 10 rations (load ${load})`; }
           else if (load <= 5) { chart.gifts += 10; note += ` with 10 gifts (load ${load})`; }
           else { chart.muskets += 10; note += ` with 10 muskets (load ${load})`; }
@@ -90,12 +90,12 @@ export interface VictoryResult {
 
 /** Prisoners (surviving askaris less a die, at most the surviving warriors) and the search for the village. */
 export function resultsOfVictory(rng: RngState, askaris: number, warriors: number, policy: number): VictoryResult {
-  const p = d6(rng, 'combat', { what: 'for prisoners', hint: `${askaris} askaris less the die; 6 takes none` });
+  const p = d6(rng, 'combat', { what: 'for prisoners', hint: `${askaris} askaris less the die; 6 takes none`, result: ([v]) => (v === 6 ? 'no quarter: none taken' : `${askaris} − ${v}: ${Math.min(Math.max(0, askaris - v), warriors)} taken`) });
   rng = p.state;
   const rolls: Roll[] = [{ label: 'prisoners', value: p.value }];
   const noQuarter = p.value === 6;
   const prisoners = noQuarter ? 0 : Math.min(Math.max(0, askaris - p.value), warriors);
-  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it` });
+  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it`, result: ([a, b]) => `${a} + ${b} = ${a + b}: the village ${a + b <= prisoners + policy ? 'is found' : 'cannot be found'}` });
   rng = v.state;
   v.values.forEach((value) => rolls.push({ label: 'village', value }));
   const villageFound = v.values[0] + v.values[1] <= prisoners + policy;
@@ -113,7 +113,7 @@ export function villageSearchText(values: number[], prisoners: number, policy: n
 
 /** Another search for the village on a later turn (rules §8.4). */
 export function searchVillage(rng: RngState, prisoners: number, policy: number, seat?: string): { rng: RngState; rolls: Roll[]; found: boolean; summary: string } {
-  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it`, seat });
+  const v = dice(rng, 2, 'combat', { what: 'to find the village', hint: `${prisoners + policy} or less finds it`, seat, result: ([a, b]) => `${a} + ${b} = ${a + b}: the village ${a + b <= prisoners + policy ? 'is found' : 'cannot be found'}` });
   return { rng: v.state, rolls: v.values.map((value) => ({ label: 'village', value })), found: v.values[0] + v.values[1] <= prisoners + policy, summary: villageSearchText(v.values, prisoners, policy) };
 }
 
@@ -129,7 +129,7 @@ export interface LootResult {
 
 /** One die per original warrior: 1–4 that many rations, 5 a gift, 6 a camel in the desert or a canoe on water. */
 export function loot(rng: RngState, original: number, terrain: Terrain | null, water: boolean): LootResult {
-  const r = dice(rng, original, 'combat', { what: 'for the loot', hint: `one die a warrior: 1–4 that many rations, 5 a gift, 6 ${terrain === 'desert' ? 'a camel' : water ? 'a canoe' : 'nothing'}` });
+  const r = dice(rng, original, 'combat', { what: 'for the loot', hint: `one die a warrior: 1–4 that many rations, 5 a gift, 6 ${terrain === 'desert' ? 'a camel' : water ? 'a canoe' : 'nothing'}`, result: (vs) => { const food = vs.filter((x) => x <= 4).reduce((a, b) => a + b, 0), five = vs.filter((x) => x === 5).length, six = vs.filter((x) => x === 6).length; const sixes = terrain === 'desert' ? 'camel' : water ? 'canoe' : ''; return [food ? `${food} rations` : '', five ? `${five} gift${five > 1 ? 's' : ''}` : '', six && sixes ? `${six} ${sixes}${six > 1 ? 's' : ''}` : ''].filter(Boolean).join(', ') || 'nothing'; } });
   let rations = 0, gifts = 0, camels = 0, canoes = 0;
   for (const v of r.values) {
     if (v <= 4) rations += v;

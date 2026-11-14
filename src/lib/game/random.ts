@@ -51,6 +51,25 @@ export interface DiceAsk {
    * or one at a time as the player likes. A throw of more dice than the tray holds comes in parts whatever this says.
    */
   parts?: true;
+  /**
+   * What the dice rolled mean, in a few words (PROMPTS.md, prompt 81): "not lost", "veldt", "7: ready". The ask stays
+   * in the record with its dice and this beside it, so the roll is read before and after it is made. Called with the
+   * dice as they were read; never kept in the game's state.
+   */
+  result?: (values: number[]) => string;
+}
+
+/** An ask answered (prompt 81): the words the table asked in, the dice read for it and what they meant. */
+export interface Asked {
+  prompt: string;
+  values: number[];
+  result: string;
+}
+
+/** "Roll a D6 {what}; {hint}" or "Roll 4 D6 {what}; {hint}": the words of an ask. */
+export function askText(count: number, ask: DiceAsk): string {
+  const what = count === 1 ? 'a D6' : `${count} D6`;
+  return `Roll ${what} ${ask.what}${ask.hint ? `; ${ask.hint}` : ''}`;
 }
 
 /**
@@ -77,6 +96,9 @@ export class DiceNeeded extends Error {
    * theirs first, so the natives' reaction stands before the fight.
    */
   making?: LineInMaking[];
+  /** The dice read and the asks answered in this run of the event before the dice ran out (prompt 81). */
+  read?: ReadDie[];
+  asked?: Asked[];
   constructor(
     public readonly stream: Stream,
     public readonly count: number,
@@ -136,6 +158,8 @@ export interface RngObject {
   next: Partial<Record<Stream, number>>;
   /** With physical dice, the scripted dice read since the last event settled, in order (prompt 37): how a log line's dice find their throws. */
   read?: ReadDie[];
+  /** With physical dice, the asks answered since the last event settled, in order, their dice the dice of `read` (prompt 81). */
+  asked?: Asked[];
   /** The dice are rolled at the table: a roll with no value scripted asks for one instead of drawing from the generator. */
   physical?: boolean;
 }
@@ -194,11 +218,16 @@ function scriptedLeft(state: RngState, stream: Stream): number {
   return (state.scripts[stream]?.length ?? 0) - (state.next[stream] ?? 0);
 }
 
-/**
- * One six-sided die from a stream: the next scripted value for that stream if any, else from its generator.
- * With physical dice (`physical`), a stream with nothing scripted asks the table instead (`DiceNeeded`).
- */
-export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; value: number } {
+/** The ask cannot be answered yet: the dice read and the asks answered so far in this run go with it (prompt 81). */
+function needed(state: RngObject, stream: Stream, count: number, ask: DiceAsk, at: number): DiceNeeded {
+  const e = new DiceNeeded(stream, count, ask, at);
+  e.read = state.read ?? [];
+  e.asked = state.asked ?? [];
+  return e;
+}
+
+/** One die read from a stream, without noting the ask it answers. */
+function one(state: RngState, stream: Stream, ask: DiceAsk): { state: RngState; value: number } {
   if (typeof state !== 'number') {
     const script = state.scripts[stream];
     const i = state.next[stream] ?? 0;
@@ -207,22 +236,37 @@ export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNA
       if (!state.physical) return { state: { ...state, next }, value: script[i] };
       return { state: { ...state, next, read: [...(state.read ?? []), { value: script[i], from: state.sources?.[stream]?.[i] ?? null }] }, value: script[i] };
     }
-    if (state.physical) throw new DiceNeeded(stream, 1, ask, i);
+    if (state.physical) throw needed(state, stream, 1, ask, i);
   }
   const r = nextRandom(state, stream);
   return { state: r.state, value: 1 + Math.floor(r.value * 6) };
 }
 
+/** With physical dice, note the ask just answered: its words, its dice and what they meant (prompt 81). */
+function answered(state: RngState, ask: DiceAsk, values: number[]): RngState {
+  if (typeof state === 'number' || !state.physical) return state;
+  return { ...state, asked: [...(state.asked ?? []), { prompt: askText(values.length, ask), values, result: ask.result?.(values) ?? '' }] };
+}
+
+/**
+ * One six-sided die from a stream: the next scripted value for that stream if any, else from its generator.
+ * With physical dice (`physical`), a stream with nothing scripted asks the table instead (`DiceNeeded`).
+ */
+export function d6(state: RngState, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; value: number } {
+  const r = one(state, stream, ask);
+  return { state: answered(r.state, ask, [r.value]), value: r.value };
+}
+
 /** Several dice, in order; with physical dice they are asked for together, as one throw. */
 export function dice(state: RngState, count: number, stream: Stream = 'main', ask: DiceAsk = UNNAMED): { state: RngState; values: number[] } {
-  if (typeof state !== 'number' && state.physical && scriptedLeft(state, stream) < count) throw new DiceNeeded(stream, count, ask, state.next[stream] ?? 0);
+  if (typeof state !== 'number' && state.physical && scriptedLeft(state, stream) < count) throw needed(state, stream, count, ask, state.next[stream] ?? 0);
   const values: number[] = [];
   for (let i = 0; i < count; i++) {
-    const r = d6(state, stream, ask);
+    const r = one(state, stream, ask);
     state = r.state;
     values.push(r.value);
   }
-  return { state, values };
+  return { state: answered(state, ask, values), values };
 }
 
 // ---- Physical dice ---------------------------------------------------------------------------
@@ -285,8 +329,9 @@ export function settled(state: RngState): RngState {
     scripts[stream as Stream] = (scripts[stream as Stream] ?? []).slice(n);
     if (sources?.[stream as Stream]) sources[stream as Stream] = sources[stream as Stream]!.slice(n);
   }
-  const { read: _read, ...rest } = state;
+  const { read: _read, asked: _asked, ...rest } = state;
   void _read;
+  void _asked;
   return { ...rest, scripts, next: {}, ...(sources ? { sources } : {}) };
 }
 

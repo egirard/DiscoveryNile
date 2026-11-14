@@ -1,5 +1,5 @@
 import type { SeatId } from '$lib/tabletop/seats';
-import type { RngState, Stream } from './random';
+import type { Asked, RngState, Stream } from './random';
 import type { GameEvent } from './events';
 import type { CardId } from '$features/cards/deck';
 import type { PortId } from '$features/map/manifest';
@@ -175,6 +175,8 @@ export interface RollRecord {
   needed?: string;
   /** Human-readable result: 'lost', 'moved', 'mapped veldt', 'bounced: lake' … */
   outcome: string;
+  /** The asks the line's dice answered (prompt 81), with physical dice: each ask's words, its dice and what they meant. */
+  asks?: Asked[];
   lost?: boolean;
   /** The roll for first player (prompt 28): each seat's final throw and total, the one line every seat's log holds. */
   contenders?: { seat: SeatId; values: number[]; total: number }[];
@@ -322,6 +324,8 @@ export interface AwaitingDice {
   at: number;
   /** The log lines the held event has made before this ask, with their verdicts (prompt 34), when the rule tells them. */
   sofar: RollRecord[];
+  /** The asks already answered for the held event that no line so far accounts for (prompt 81), each with what its dice meant. */
+  asked?: Asked[];
 }
 
 export interface GameEnd {

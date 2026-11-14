@@ -6,6 +6,8 @@ import { reduce } from '$lib/game/reduce';
 import { created, event, resetSequence } from '$lib/game/test-fixtures';
 import { DiceNeeded, d6, dice, isPhysical, rngScripted, settled, withPhysical, withRolled } from '$lib/game/random';
 import type { GameEvent } from '$lib/game/events';
+import { askedOf, attachAsks } from '$lib/game/sources';
+import type { RollRecord } from '$lib/game/state';
 import { okayFrom, promptText, uncovered } from './prompt';
 
 beforeEach(resetSequence);
@@ -40,6 +42,45 @@ describe('the generator with physical dice', () => {
   });
 });
 
+describe('an ask kept with its result (prompt 81)', () => {
+  const lost = { what: 'to see if you are lost', hint: '2+ means you\'re okay', result: ([v]: number[]) => (v >= 2 ? 'not lost' : 'lost') };
+  it('notes each ask answered with its words, its dice and what they meant, and forgets them when the event settles', () => {
+    const rng = withRolled(withPhysical(5, true), 'main', [3, 6, 4]);
+    const one = d6(rng, 'main', lost);
+    const two = dice(one.state, 2, 'main', { what: 'for surprise', hint: '4+ and the expedition is ready', result: ([a, b]) => `${a} + ${b} = ${a + b}: not surprised` });
+    expect(askedOf(two.state)).toEqual([
+      { prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [3], result: 'not lost' },
+      { prompt: 'Roll 2 D6 for surprise; 4+ and the expedition is ready', values: [6, 4], result: '6 + 4 = 10: not surprised' }
+    ]);
+    expect(askedOf(settled(two.state))).toEqual([]);
+    // Without physical dice nothing is asked, so nothing is noted.
+    expect(askedOf(d6(rngScripted(1, [3]), 'main', lost).state)).toEqual([]);
+  });
+  it('hands the asks answered so far to the ask that runs out of dice', () => {
+    const one = d6(withRolled(withPhysical(5, true), 'main', [1]), 'main', lost);
+    let caught: DiceNeeded | null = null;
+    try { d6(one.state, 'main', { what: 'for the hunt' }); } catch (e) { caught = e as DiceNeeded; }
+    expect(caught!.asked).toEqual([{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [1], result: 'lost' }]);
+    expect(caught!.read).toEqual([{ value: 1, from: null }]);
+  });
+  it('gives each line the asks its dice answered; an ask no line shows goes with the next, and the rest are loose', () => {
+    const asked = [
+      { prompt: 'Roll a D6 A', values: [3], result: 'a' },
+      { prompt: 'Roll a D6 B', values: [5], result: 'b' },
+      { prompt: 'Roll 2 D6 C', values: [2, 2], result: 'c' },
+      { prompt: 'Roll a D6 D', values: [6], result: 'd' }
+    ];
+    const read = [3, 5, 2, 2, 6].map((value) => ({ value, from: null }));
+    const line = (kind: RollRecord['kind'], values: number[]): RollRecord => ({ kind, seat: 'bottom-1', rolls: values.map((value) => ({ label: kind, value })), outcome: '' });
+    const { records, loose } = attachAsks([line('lost-check', [3]), line('action', []), line('combat', [2, 2])], read, asked);
+    expect(records[0].asks).toEqual([asked[0]]);
+    expect(records[1].asks).toBeUndefined();
+    expect(records[2].asks).toEqual([asked[1], asked[2]]);
+    expect(loose).toEqual([asked[3]]);
+    expect(attachAsks([line('lost-check', [3])], read, [])).toEqual({ records: [line('lost-check', [3])], loose: [] });
+  });
+});
+
 describe('the prompt', () => {
   it('reads as the table asks it', () => {
     expect(promptText(1, { what: 'to see if you are lost', hint: okayFrom(4) })).toBe("Roll a D6 to see if you are lost; 4+ means you're okay");
@@ -70,6 +111,8 @@ describe('the reducer with physical dice', () => {
     const second = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] })]);
     expect(second.diagnostics).toEqual([]);
     expect(second.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ prompt: 'Roll 4 D6 for first player; the highest total goes first', values: [6, 6, 6, 6], seat: 'bottom-1' }] });
+    // The throw made stays with the ask in its words and its total (prompt 81).
+    expect(second.awaiting!.asked).toEqual([{ prompt: 'Roll 4 D6 for first player; the highest total goes first', values: [6, 6, 6, 6], result: '6 + 6 + 6 + 6 = 24' }]);
 
     const started = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] }), event('dice/rolled', { seat: 'top-1', values: [1, 1, 1, 1] })]);
     expect(started.diagnostics).toEqual([]);

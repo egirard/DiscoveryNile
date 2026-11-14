@@ -826,7 +826,7 @@
     <!-- The table stands still until the dice are rolled: nothing else can be tapped, which is also what the reducer says. -->
     <div class="scrim" class:clear={Boolean(reveal)} data-testid="dice-scrim" aria-hidden="true"></div>
     <EdgePanel seat={awaitingSeat} {viewport} inset={railDepth + target * 0.4} testid="dice-edge-{awaitingSeat.id}" raised clear={trayRect} faded={Boolean(reveal)}>
-      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} parts={awaiting.parts} note={emptyNote} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
+      <DicePrompt seat={awaitingSeat.id} prompt={awaiting.prompt} count={awaiting.count} rolled={awaiting.event.type === 'game/started' ? [] : awaiting.rolled} sofar={awaiting.sofar} asked={awaiting.event.type === 'game/started' ? [] : awaiting.asked} have={awaiting.have} status={manual ? 'active' : dicecamStatus} seen={dicecamSeen} stale={dicecamStale} configured={diceTray} {manual} parts={awaiting.parts} note={emptyNote} onroll={(values) => rolled(awaitingSeat!.id, values)} onauto={() => rolledAuto(awaitingSeat!.id)} oncorrect={(roll, anchor) => openDieMenu(awaitingSeat!, roll, anchor)} />
     </EdgePanel>
   {:else if lingering}
     <!-- The last die is in: what it decided stays at the seat's edge for a moment (prompts 54 and 55), the table still until it is read.

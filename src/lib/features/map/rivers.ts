@@ -78,7 +78,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
   // Mountain peaks (rules §7.5): whenever mountain terrain is discovered.
   let peakFeet: number | null = null;
   if (hasPart(terrain, 'mountain')) {
-    const r = dice(rng, 3, 'main', { what: "for the mountain's height", hint: 'the product plus 100, in hundreds of feet; over 15,000 ft is a recorded peak' });
+    const r = dice(rng, 3, 'main', { what: "for the mountain's height", hint: 'the product plus 100, in hundreds of feet; over 15,000 ft is a recorded peak', result: (vs) => { const feet = (vs.reduce((a, b) => a * b, 1) + 100) * 100; return `${feet.toLocaleString('en-US')} ft${feet > 15000 ? ': a recorded peak' : ': no record'}`; } });
     rng = r.state;
     r.values.forEach((v, i) => rolls.push({ label: `peak die ${i + 1}`, value: v }));
     const product = r.values.reduce((a, b) => a * b, 1);
@@ -115,7 +115,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
   let river: RiverCourse | null = null;
   if (outflows.length >= 2) {
     // Several rivers leave here: it must be a lake, a swamp or a jungle-swamp.
-    const v = roll('lake, swamp or jungle-swamp', { what: 'for the water two rivers leave from', hint: '1–2 lake, 3–4 swamp, 5–6 jungle-swamp' });
+    const v = roll('lake, swamp or jungle-swamp', { what: 'for the water two rivers leave from', hint: '1–2 lake, 3–4 swamp, 5–6 jungle-swamp', result: ([x]) => (x <= 2 ? 'lake' : x <= 4 ? 'swamp' : 'jungle-swamp') });
     const water: Terrain = v <= 2 ? 'lake' : v <= 4 ? 'swamp' : 'jungle-swamp';
     notes.push(`two rivers leave this hex, so it is water: ${v} makes it ${water}`);
     return { rng, result: { terrain: water, river: null, oasis: false, peakFeet, rolls, notes } };
@@ -126,7 +126,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
       river = { in: inflows, out, source: false, cataract: false, waterfallFeet: null };
       notes.push('the rivers connect');
     } else {
-      const d = roll('where the river comes from', { what: 'for where the river comes from', hint: 'a direction around the hex' }) as Direction;
+      const d = roll('where the river comes from', { what: 'for where the river comes from', hint: 'a direction around the hex', result: ([x]) => (candidate(x as Direction) ? `it comes from direction ${x}` : `nothing to come from in direction ${x}: the river rises here`) }) as Direction;
       if (candidate(d)) {
         river = { in: [d], out, source: false, cataract: false, waterfallFeet: null };
         notes.push(`the river comes from the ${nb(d)!.mapped ? 'water' : 'unexplored hex'} in direction ${d}`);
@@ -145,7 +145,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     let out: Direction | null = null;
     const passed: Direction[] = [];
     for (let i = 0; i < 12 && out === null; i++) {
-      const d = roll('where the river goes', { what: 'for where the river flows on to', hint: 'a direction around the hex, rolled again until the river can go that way' }) as Direction;
+      const d = roll('where the river goes', { what: 'for where the river flows on to', hint: 'a direction around the hex, rolled again until the river can go that way', result: ([x]) => (exits.includes(x as Direction) ? `it flows on in direction ${x}` : `it cannot go in direction ${x}: rolled again`) }) as Direction;
       if (exits.includes(d)) out = d;
       else passed.push(d);
     }
@@ -154,9 +154,9 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     notes.push(`the river flows on in direction ${out}${passed.length ? ` (not ${passed.join(', ')}: mapped land there)` : ''}`);
   } else {
     // No rivers known in or out: maybe a source (an oasis in desert).
-    const v = roll('a river source?', { what: 'for a river source', hint: 'an even roll means a river rises here' });
+    const v = roll('a river source?', { what: 'for a river source', hint: 'an even roll means a river rises here', result: ([x]) => (x % 2 === 0 ? `even: ${terrain === 'desert' ? 'an oasis' : 'a river'}, if it has somewhere to flow` : 'odd: no river') });
     if (v % 2 === 0) {
-      const d = roll('which way it flows', { what: 'for which way the river flows', hint: 'a direction around the hex' }) as Direction;
+      const d = roll('which way it flows', { what: 'for which way the river flows', hint: 'a direction around the hex', result: ([x]) => { const to = nb(x as Direction); return to && (!to.mapped || isWater(to.terrain)) ? (terrain === 'desert' ? 'an oasis' : `it flows in direction ${x}`) : `direction ${x} is mapped land: no river`; } }) as Direction;
       const n = nb(d);
       if (n && (!n.mapped || isWater(n.terrain))) {
         if (terrain === 'desert') {
@@ -171,11 +171,11 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
 
   // Cataracts (rules §7.5) whenever a river is mapped in a hex that is not water.
   if (river) {
-    const v = roll('cataract?', { what: 'for a cataract', hint: hasPart(terrain, 'mountain') ? '2, 3 or 4 means a cataract' : terrain === 'desert' ? '1 or 2 means a cataract' : '1 means a cataract' });
+    const v = roll('cataract?', { what: 'for a cataract', hint: hasPart(terrain, 'mountain') ? '2, 3 or 4 means a cataract' : terrain === 'desert' ? '1 or 2 means a cataract' : '1 means a cataract', result: ([x]) => ((hasPart(terrain, 'mountain') ? x >= 2 && x <= 4 : terrain === 'desert' ? x <= 2 : x === 1) ? 'a cataract' : 'no cataract') });
     const found = hasPart(terrain, 'mountain') ? v >= 2 && v <= 4 : terrain === 'desert' ? v <= 2 : v === 1;
     if (found) {
       river.cataract = true;
-      const h = dice(rng, 4, 'main', { what: "for the waterfall's height", hint: 'the product in feet; 400 ft or more is recorded' });
+      const h = dice(rng, 4, 'main', { what: "for the waterfall's height", hint: 'the product in feet; 400 ft or more is recorded', result: (vs) => { const ft = vs.reduce((a, b) => a * b, 1); return `${vs.join(' × ')} = ${ft} ft: ${ft >= 400 ? 'a recorded fall' : 'under the 400 recorded'}`; } });
       rng = h.state;
       h.values.forEach((x, i) => rolls.push({ label: `waterfall die ${i + 1}`, value: x }));
       const feet = h.values.reduce((a, b) => a * b, 1);

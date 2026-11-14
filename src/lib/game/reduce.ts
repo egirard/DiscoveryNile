@@ -1,7 +1,7 @@
 import { REDUCER_VERSION, SCHEMA_VERSION, type GameEvent } from './events';
 import { initialState, type AwaitingDice, type GameState, type RollRecord } from './state';
 import { DiceNeeded, generated, settled, withPhysical, withRolled, type DieSource } from './random';
-import { allRecords, readOf, tagNew, tagRolls } from './sources';
+import { allRecords, attachAsks, readOf, tagNew, tagRolls } from './sources';
 import { askWhat } from '$features/dice/prompt';
 import { reduceSeats } from '$features/seats/reducer';
 import { reduceExplorers } from '$features/explorers/reducer';
@@ -110,7 +110,9 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     // attached itself, then the lines still in the making, each given the seat whose roll it is.
     const stood = e.state ? tagRolls(allRecords(e.state).slice(allRecords(state).length), readOf(e.state.rng)) : [];
     const making = (e.making ?? []).map((m): RollRecord => ({ ...m, seat }));
-    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], ...(e.ask.parts && e.count > 1 ? { parts: true as const } : {}), at: e.at, sofar: [...stood, ...(e.sofar ?? []), ...making] } };
+    // Each line so far keeps the asks its dice answered, with what they meant (prompt 81); the asks no line accounts for yet stand alone.
+    const told = attachAsks([...stood, ...(e.sofar ?? []), ...making], e.read ?? [], e.asked ?? []);
+    return { ...state, awaiting: { event, seat, stream: e.stream, count: e.count, prompt: promptText(e.count, e.ask), rolled, have: [], ...(e.ask.parts && e.count > 1 ? { parts: true as const } : {}), at: e.at, sofar: told.records, ...(told.loose.length ? { asked: told.loose } : {}) } };
   }
 }
 

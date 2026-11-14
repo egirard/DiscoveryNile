@@ -523,3 +523,9 @@ let's leave the player's turn in the turn track for five seconds (with an OK but
 end this game should lose the explored hexes and reset the game
 
 `Outcome: One slice (030, G-199): the new game after a game's end starts on the board as printed. Everything explored is lost with the game that ended, published hexes, tribes, superlative records and transits included; scores, explorers and seats were already cleared. The standings still show first; the reset is the tap on their control.`
+
+## 81. 2026-11-14
+
+let's make sure that the roll information is presented to the user before and after the roll; thus, when we show "roll 1D6 for terrain: 1 is veldt...." we keep that line and add "Result: 1 (Veldt).  For each line of the native encounter, add the result "for surprise: 6 4" turns into "for surprise 6 4: Not surprised".  Many other examples need this treatment.
+
+`Outcome: One slice (037, G-200): with physical dice every ask answered stays in the dice panels in its own words, with its dice and what they meant: "Roll 2 D6 for surprise; 4+ and the expedition is ready" / "Result: 6 4, 6 + 4 = 10: not surprised". It stands under the log line its dice made, in the ask's panel (lines so far) and in the result panel. Every named ask of the game gives its result (terrain, rivers, peaks, natives, the fight die by die, the aftermath, trade prices, hunt, sickness, specialties, disasters, cache).`

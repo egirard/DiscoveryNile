@@ -326,6 +326,10 @@ test.describe('037 - Physical dice', () => {
           expect(s.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'not lost' })]);
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
           await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-outcome', 'not lost');
+          // The ask answered stays in its words under its line, with its die and what it meant (prompt 81).
+          await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+          await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1')).toHaveAttribute('data-values', '4');
+          await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1-result')).toHaveText('4 − 1 = 3: not lost');
           await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('not lost');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
         } },
@@ -357,6 +361,14 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '4');
           await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('not lost');
           await expect(page.getByTestId('result-terrain-note-bottom-1')).toHaveText('mapped veldt: veldt copied from the neighbour in direction 2');
+          // Every ask of the step is kept in its words with its result (prompt 81): before the roll and after it.
+          await expect(page.getByTestId('result-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+          await expect(page.getByTestId('result-ask-lost-check-0-bottom-1-result')).toHaveText('4 − 1 = 3: not lost');
+          await expect(page.getByTestId('result-ask-terrain-0-bottom-1-text')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied');
+          await expect(page.getByTestId('result-ask-terrain-0-bottom-1-result')).toHaveText('veldt, copied from direction 2');
+          await expect(page.getByTestId('result-ask-water-0-bottom-1-result')).toHaveText('odd: no river');
+          await expect(page.getByTestId('result-ask-natives-0-bottom-1-text')).toHaveText('Roll 2 D6 for natives; natives on 2, 3, 4');
+          await expect(page.getByTestId('result-ask-natives-0-bottom-1-result')).toHaveText('3 + 3 = 6: no natives');
           await expect(page.getByTestId('result-water-note-bottom-1')).toHaveText('1 is odd: no river');
           await expect(page.getByTestId('result-natives-note-bottom-1')).toHaveText('no natives (3 + 3 = 6)');
           await expect(page.getByTestId('result-natives-needed-bottom-1')).toHaveText('needs 2, 3, 4');

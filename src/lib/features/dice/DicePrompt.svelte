@@ -12,7 +12,8 @@
   import type { Roll } from '$features/map/generate';
   import { PIPS } from '$lib/ui/pips';
   import { inParts, statusText, type DicecamStatus } from './dicecam';
-  import { uncovered } from './prompt';
+  import AskedLine from './AskedLine.svelte';
+  import type { Asked } from '$lib/game/random';
   import { manualStatusText } from './manual';
 
   interface Props {
@@ -23,6 +24,8 @@
     rolled: { prompt: string; values: number[] }[];
     /** The log lines the held event has made so far, with their verdicts (prompt 34): shown above the throws they do not yet cover. */
     sofar?: RollRecord[];
+    /** The asks already answered that no line so far accounts for (prompt 81), each with what its dice meant. */
+    asked?: Asked[];
     /** The dice of this throw already in, when it is gathered over several throws. */
     have?: number[];
     status: DicecamStatus;
@@ -44,9 +47,8 @@
     /** A die in the lines so far was tapped, to set its face (prompt 37). */
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
-  let { seat, prompt, count, rolled, sofar = [], have = [], status, seen, stale = false, configured, manual = false, note = null, parts = false, onroll, onauto, oncorrect }: Props = $props();
+  let { seat, prompt, count, rolled, sofar = [], asked = [], have = [], status, seen, stale = false, configured, manual = false, note = null, parts = false, onroll, onauto, oncorrect }: Props = $props();
   const gathered = $derived(inParts(count, parts));
-  const pending = $derived(uncovered(rolled, sofar));
   const remaining = $derived(count - have.length);
   /** Faces tapped so far for a throw of several dice. */
   let taps = $state<number[]>([]);
@@ -69,8 +71,6 @@
     taps = [];
     onroll(next);
   }
-  /** "for first player" out of "Roll 4 D6 for first player; the highest total goes first". */
-  const what = (p: string) => p.replace(/^Roll (a|\d+) D6 /, '').split(';')[0];
   const faces = [1, 2, 3, 4, 5, 6];
 </script>
 
@@ -108,16 +108,17 @@
       </button>
     {/if}
   </div>
-  {#if sofar.length || pending.length}
+  {#if sofar.length || asked.length}
     <!-- What the dice have decided so far stands at the foot of the panel (prompt 65), the ask and the faces above it,
          the newest on top (prompt 72): the lost check lowest, the terrain above it, so what is being resolved now
-         stands next to the ask it leads to. -->
+         stands next to the ask it leads to. Every ask answered stays in its words, with its dice and what they meant
+         (prompt 81): under the line they made, or alone until a line accounts for them. -->
     <ul class="so-far" data-testid="dice-so-far-{seat}" data-order="newest-first" aria-label="What the dice have decided so far, the newest first">
-      {#each [...pending].reverse() as r, i (pending.length - 1 - i)}
-        <li><span class="what">{what(r.prompt)}</span> <DiceRoll values={r.values} label={what(r.prompt)} size="calc(var(--target) * 0.45)" /></li>
+      {#each [...asked].reverse() as a, i (asked.length - 1 - i)}
+        <li><AskedLine asked={a} testid="so-far-asked-{asked.length - 1 - i}-{seat}" /></li>
       {/each}
       {#each [...sofar].reverse() as r, i (sofar.length - 1 - i)}
-        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" {oncorrect} /></li>
+        <li class="record"><LogLine record={r} {seat} idPrefix="so-far-" asks {oncorrect} /></li>
       {/each}
     </ul>
   {/if}
@@ -154,9 +155,6 @@
     display: flex;
     align-items: center;
     gap: calc(var(--gap) * 0.5);
-  }
-  .what {
-    opacity: 0.8;
   }
   .gathered {
     display: flex;

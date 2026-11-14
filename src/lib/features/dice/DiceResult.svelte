@@ -49,7 +49,7 @@
     {/if}
     <ul class="lines" data-order="newest-first" data-segment={segment.name} aria-label="{segment.title || 'What the dice decided'}, the newest first">
       {#each [...segment.lines].reverse() as r, i (segment.lines.length - 1 - i)}
-        <li><LogLine record={r} {seat} idPrefix="result-" {oncorrect} /></li>
+        <li><LogLine record={r} {seat} idPrefix="result-" asks {oncorrect} /></li>
       {/each}
     </ul>
   {/each}

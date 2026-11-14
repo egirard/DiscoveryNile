@@ -64,7 +64,7 @@ export function lostCheck(rng: RngState, input: LostCheckInput): { rng: RngState
   if (input.ailing) modifiers.push({ label: 'sick, wounded or starving', value: -1 });
   const bonus = modifiers.reduce((a, m) => a + m.value, 0);
   // Lost on a total of 0 or less: the die must reach 1 − the modifiers.
-  const r = d6(rng, 'main', { what: 'to see if you are lost', hint: okayFrom(1 - bonus) });
+  const r = d6(rng, 'main', { what: 'to see if you are lost', hint: okayFrom(1 - bonus), result: ([v]) => `${bonus ? `${v} ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} = ${v + bonus}: ` : ''}${v + bonus <= 0 ? 'lost' : 'not lost'}` });
   const total = r.value + bonus;
   return { rng: r.state, result: { lost: total <= 0, automatic: false, needed: needText(1 - bonus), rolls: [{ label: 'lost check', value: r.value }], modifiers, total } };
 }
@@ -95,7 +95,7 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
     return lookup(n) ?? null;
   };
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const r = d6(rng, 'main', { what: `for the direction of the terrain to copy${attempt === 2 ? ', once more' : ''}`, hint: 'a mapped neighbour in that direction is copied' });
+    const r = d6(rng, 'main', { what: `for the direction of the terrain to copy${attempt === 2 ? ', once more' : ''}`, hint: 'a mapped neighbour in that direction is copied', result: ([v]) => { const there = known(v as Direction); return there ? `${there}, copied from direction ${v}` : `nothing mapped in direction ${v}`; } });
     rng = r.state;
     rolls.push({ label: `direction (try ${attempt})`, value: r.value });
     const t = known(r.value as Direction);
@@ -108,7 +108,7 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
   const neighboursKnown = DIRECTIONS.map(known);
   const anyJungle = neighboursKnown.some((t) => hasPart(t, 'jungle'));
   const anyDesert = neighboursKnown.some((t) => hasPart(t, 'desert'));
-  const r = d6(rng, 'main', { what: 'for the terrain', hint: '1 desert, 2 mountain, 3 swamp, 4 jungle, 5 veldt, 6 lake' });
+  const r = d6(rng, 'main', { what: 'for the terrain', hint: '1 desert, 2 mountain, 3 swamp, 4 jungle, 5 veldt, 6 lake', result: ([v]) => (RANDOM_TABLE[v] === 'desert' && anyJungle ? 'desert, but veldt beside jungle' : RANDOM_TABLE[v] === 'jungle' && anyDesert ? 'jungle, but veldt beside desert' : RANDOM_TABLE[v]) });
   rng = r.state;
   rolls.push({ label: 'random terrain', value: r.value });
   let basic = RANDOM_TABLE[r.value];
@@ -118,14 +118,14 @@ export function generateTerrain(rng: RngState, id: HexId, lookup: TerrainLookup)
   notes.push(basic === rolled ? `${r.value} on the table: ${basic}` : `${r.value} on the table: ${rolled}, but veldt beside ${rolled === 'desert' ? 'jungle' : 'desert'}`);
   let terrain: Terrain = basic;
   if (basic === 'jungle') {
-    const c = d6(rng, 'main', { what: 'for what the jungle hides', hint: '2 adds mountain, 3 adds swamp' });
+    const c = d6(rng, 'main', { what: 'for what the jungle hides', hint: '2 adds mountain, 3 adds swamp', result: ([v]) => (v === 3 ? 'swamp in the jungle' : v === 2 ? 'mountain in the jungle' : 'nothing more: jungle') });
     rng = c.state;
     rolls.push({ label: 'jungle composite', value: c.value });
     if (c.value === 3) terrain = 'jungle-swamp';
     if (c.value === 2) terrain = 'jungle-mountain';
     notes.push(c.value === 3 ? '3: swamp in the jungle' : c.value === 2 ? '2: mountain in the jungle' : `${c.value}: the jungle hides nothing`);
   } else if ((basic === 'swamp' || basic === 'mountain') && !anyDesert) {
-    const c = d6(rng, 'main', { what: `for jungle in the ${basic}`, hint: '4 adds jungle' });
+    const c = d6(rng, 'main', { what: `for jungle in the ${basic}`, hint: '4 adds jungle', result: ([v]) => (v === 4 ? `jungle in the ${basic}` : `no jungle: ${basic}`) });
     rng = c.state;
     rolls.push({ label: 'jungle composite', value: c.value });
     if (c.value === 4) terrain = basic === 'swamp' ? 'jungle-swamp' : 'jungle-mountain';

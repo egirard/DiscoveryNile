@@ -13,7 +13,7 @@ export interface OfferResult {
 
 /** Gifts offered times the larger of two dice must reach the tribe's warriors, or the chief is insulted. */
 export function offerGifts(rng: RngState, gifts: number, warriors: number): OfferResult {
-  const two = dice(rng, 2, 'combat', { what: `for the offer of ${gifts} gift${gifts === 1 ? '' : 's'}`, hint: `the larger die times ${gifts} must reach ${warriors} warriors` });
+  const two = dice(rng, 2, 'combat', { what: `for the offer of ${gifts} gift${gifts === 1 ? '' : 's'}`, hint: `the larger die times ${gifts} must reach ${warriors} warriors`, result: (vs) => { const top = Math.max(...vs); return `${top} × ${gifts} = ${top * gifts}: the chief is ${top * gifts >= warriors ? 'satisfied' : 'insulted'}`; } });
   const larger = Math.max(...two.values);
   const satisfied = gifts * larger >= warriors;
   return {
@@ -27,14 +27,14 @@ export function offerGifts(rng: RngState, gifts: number, warriors: number): Offe
 
 /** Giving everything but the men always satisfies; the chief returns three dice of gifts. */
 export function giveEverything(rng: RngState): { rng: RngState; rolls: Roll[]; gifts: number } {
-  const three = dice(rng, 3, 'combat', { what: "for the chief's gifts in return", hint: 'the total in gifts' });
+  const three = dice(rng, 3, 'combat', { what: "for the chief's gifts in return", hint: 'the total in gifts', result: (vs) => `${vs.join(' + ')} = ${vs.reduce((a, b) => a + b, 0)} gifts` });
   return { rng: three.state, rolls: three.values.map((value) => ({ label: 'chief’s gifts', value })), gifts: three.values.reduce((a, b) => a + b, 0) };
 }
 
 export type PoisonResult = 'dies' | 'recovers' | 'fails';
 
 export function attemptPoison(rng: RngState, bonus: number): { rng: RngState; rolls: Roll[]; result: PoisonResult; summary: string } {
-  const r = d6(rng, 'combat', { what: "for the chief's poison", hint: okayFrom(4 - bonus, 'you shrug it off', 'it takes hold') });
+  const r = d6(rng, 'combat', { what: "for the chief's poison", hint: okayFrom(4 - bonus, 'you shrug it off', 'it takes hold'), result: ([v]) => { const t = v + bonus; return `${bonus ? `${v} + ${bonus} = ${t}: ` : ''}${t <= 2 ? 'the poison kills' : t === 3 ? 'poisoned, but he recovers' : 'the poison fails'}`; } });
   const total = r.value + bonus;
   const result: PoisonResult = total <= 2 ? 'dies' : total === 3 ? 'recovers' : 'fails';
   const die = bonus ? `${r.value} + ${bonus} = ${total}` : `${total}`;
@@ -64,7 +64,7 @@ export function tradePrices(rng: RngState, ctx: TradeContext): { rng: RngState; 
   const rolls: Roll[] = [];
   // One die at a time, each named (prompt 20): a physical table asks "for the price of bearers" and lists each as it is read.
   for (const item of goods) {
-    const r = d6(rng, 'combat', { what: `for the price of ${item}`, hint: `in gifts${item === 'food' ? ', rations per gift' : ' each'}` });
+    const r = d6(rng, 'combat', { what: `for the price of ${item}`, hint: `in gifts${item === 'food' ? ', rations per gift' : ' each'}`, result: ([v]) => (item === 'food' ? `${v} ration${v === 1 ? '' : 's'} a gift` : `${v} gift${v === 1 ? '' : 's'} each`) });
     rng = r.state;
     prices[item] = r.value;
     rolls.push({ label: `price of ${item}`, value: r.value });

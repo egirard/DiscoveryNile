@@ -125,7 +125,7 @@ export interface HuntResult {
 export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: boolean): { rng: RngState; result: HuntResult } {
   const modifiers = huntingModifiers(camp);
   const bonus = modifiers.reduce((a, m) => a + m.value, 0);
-  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags one ration per hunter at 2, two at 4, three at 6` });
+  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags one ration per hunter at 2, two at 4, three at 6`, result: ([v]) => `${bonus ? `${v} ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} = ${v + bonus}: ` : ''}${RATE[rationsPerHunter(v + bonus)]}${rationsPerHunter(v + bonus) ? ' per hunter' : ' bagged'}` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
   const perHunter = rationsPerHunter(total), explorerShare = rationsPerHunter(total + (zoologist ? 1 : 0));
   const game = perHunter * askaris + explorerShare;
@@ -277,22 +277,34 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   };
   // A die a man, asked for by the bunch (PROMPTS.md, prompt 75): the sick bearers together, then the sick askaris,
   // thrown at once or one by one as the player likes (`parts`). The dice are read in the order they always were.
-  const rollMen = (n: number, label: string, men: string, hint: string): number[] => {
+  // What the dice meant, man by man, told as a tally (prompt 81): "1 recovers, 2 still sick".
+  const tally = (values: number[], read: (d: number) => string): string => {
+    const counts = new Map<string, number>();
+    for (const d of values) counts.set(read(d), (counts.get(read(d)) ?? 0) + 1);
+    return values.length === 1 ? read(values[0]) : [...counts].map(([word, k]) => `${k} ${word}`).join(', ');
+  };
+  const rollMen = (n: number, label: string, men: string, hint: string, read: (d: number) => string): number[] => {
     if (n <= 0) return [];
-    if (n === 1) return [roll(label, { what: `for the ${label}`, hint })];
-    const r = dice(rng, n, 'sickness', { what: `for the ${n} ${men}, a die a man`, hint: hint.replace('and he falls', 'and a man falls'), parts: true });
+    const result = (values: number[]) => tally(values, read);
+    if (n === 1) return [roll(label, { what: `for the ${label}`, hint, result })];
+    const r = dice(rng, n, 'sickness', { what: `for the ${n} ${men}, a die a man`, hint: hint.replace('and he falls', 'and a man falls'), parts: true, result });
     rng = r.state;
     for (const value of r.values) rolls.push({ label, value });
     return r.values;
   };
+  const sickRead = (doc: boolean, isStarving: boolean) => (d: number) => {
+    const v = d + (isStarving ? 3 : 0) - (doc ? 1 : 0);
+    return v <= 1 ? 'recovers' : v >= 5 ? 'dies' : 'still sick';
+  };
+  const starvingRead = (d: number) => (d >= 4 ? 'falls sick' : 'stays well');
   // The sick: recovery or death, those also starving first.
   for (const t of MEN) {
     const one = t.slice(0, -1);
     let recovered = 0;
     const hungry = Math.min(sick[t], starving[t]);
     const thrown = [
-      ...rollMen(hungry, `sick ${one}`, hungry < sick[t] ? `sick ${t} who starve` : `sick ${t}`, sickHint(healthyDoctor, true)).map((d) => d + 3),
-      ...rollMen(sick[t] - hungry, `sick ${one}`, `sick ${t}`, sickHint(healthyDoctor, false))
+      ...rollMen(hungry, `sick ${one}`, hungry < sick[t] ? `sick ${t} who starve` : `sick ${t}`, sickHint(healthyDoctor, true), sickRead(healthyDoctor, true)).map((d) => d + 3),
+      ...rollMen(sick[t] - hungry, `sick ${one}`, `sick ${t}`, sickHint(healthyDoctor, false), sickRead(healthyDoctor, false))
     ];
     for (const d of thrown) {
       const v = d - (healthyDoctor ? 1 : 0);
@@ -304,7 +316,7 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   }
   let explorerDied = false;
   if (sick.explorer) {
-    const v = roll('sick explorer', { what: 'for the sick explorer', hint: sickHint(false, starving.explorer) }) + (starving.explorer ? 3 : 0);
+    const v = roll('sick explorer', { what: 'for the sick explorer', hint: sickHint(false, starving.explorer), result: ([d]) => sickRead(false, starving.explorer)(d) }) + (starving.explorer ? 3 : 0);
     if (v <= 1) { nextSick.explorer = false; notes.push('the explorer recovers'); }
     else if (v >= 5) { explorerDied = true; notes.push('the explorer dies of sickness'); }
   }
@@ -312,11 +324,11 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   for (const t of MEN) {
     let fell = 0;
     const wellStarving = Math.max(0, starving[t] - sick[t]);
-    for (const d of rollMen(wellStarving, `starving ${t.slice(0, -1)}`, `starving ${t}`, '4+ and he falls sick')) if (d >= 4) fell++;
+    for (const d of rollMen(wellStarving, `starving ${t.slice(0, -1)}`, `starving ${t}`, '4+ and he falls sick', starvingRead)) if (d >= 4) fell++;
     nextSick[t] += fell;
     if (fell) notes.push(`${fell} starving ${fell === 1 ? t.slice(0, -1) : t} fall${fell === 1 ? 's' : ''} sick`);
   }
-  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer', { what: 'for the starving explorer', hint: '4+ and he falls sick' }) >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
+  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer', { what: 'for the starving explorer', hint: '4+ and he falls sick', result: ([d]) => starvingRead(d) }) >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
   return { rng, rolls, chart: next, sick: nextSick, died, explorerDied, summary: notes.join(', ') };
 }
 
