@@ -25,3 +25,33 @@ export function lingerLines(before: GameState, after: GameState): RollRecord[] |
 export function resultTitle(prompt: string): string {
   return askWhat(prompt).replace(/^for\s+/, '').replace(/^./, (c) => c.toUpperCase());
 }
+
+/** How long a result stays at the seat's edge by itself (PROMPTS.md, prompt 79): five seconds, or until OK is tapped. */
+export const RESULT_MS = 5000;
+
+/**
+ * A segment of a turn (prompt 79): one step into a hex (the hex picked, the lost check, the terrain, its details,
+ * the natives found there), the natives dealt with, or the hunt that closes the turn. A result is kept whole, a
+ * segment at a time.
+ */
+export interface Segment {
+  name: 'step' | 'natives' | 'hunt' | 'other';
+  title: string;
+  lines: RollRecord[];
+}
+
+const STEP = new Set<RollRecord['kind']>(['lost-check', 'terrain', 'water', 'turned-back', 'canoes', 'natives', 'transit']);
+const NATIVES = new Set<RollRecord['kind']>(['reaction', 'combat', 'defeat', 'captivity', 'victory', 'loot', 'negotiation', 'poison', 'trade']);
+const segmentOf = (r: RollRecord): Segment['name'] => (r.kind === 'hunting' ? 'hunt' : STEP.has(r.kind) ? 'step' : NATIVES.has(r.kind) ? 'natives' : 'other');
+
+/** The lines of a result by segment, in the order they were made: a step lost and the hunt it led to are two. */
+export function segmentsOf(lines: RollRecord[]): Segment[] {
+  const out: Segment[] = [];
+  for (const r of lines) {
+    const name = segmentOf(r);
+    const last = out.at(-1);
+    if (last && last.name === name && (name !== 'step' || last.lines[0].hex === r.hex)) last.lines.push(r);
+    else out.push({ name, title: name === 'hunt' ? 'The hunt' : name === 'step' ? (r.hex ? `The step into ${r.hex}` : 'The step') : name === 'natives' ? 'The natives' : '', lines: [r] });
+  }
+  return out;
+}

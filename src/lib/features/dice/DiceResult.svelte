@@ -2,14 +2,14 @@
   // What the dice just decided (PROMPTS.md, prompts 54 and 55): once the last die of the hunt, of the natives' nerve
   // or of a fight is in, the ask stays at the seat's edge for a moment with the lines it made, every number in them
   // (the die and its modifiers, the rate a hunter, the rations and the stores; the nerve against the warriors), so the
-  // result is read before the table moves on. "Carry on" dismisses it sooner. The dice can be tapped to be set right.
+  // result is read before the table moves on: five seconds, or "OK" sooner (prompt 79), the whole segment of the turn in it. The dice can be tapped to be set right.
   // A hex explored with moves left (prompt 65) keeps its result instead: "Explored a jungle hex", then the prompt to
   // move (prompt 74: "You have 2 MP: pick a hex to move into, or END TURN", the last words the control), the lines at
   // the foot; the next step on the board takes it away.
   import LogLine from '$features/exploration/LogLine.svelte';
   import type { RollRecord } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
-  import { resultTitle } from './linger';
+  import { resultTitle, segmentsOf } from './linger';
   import { movePromptText } from '$features/turn/move-prompt';
 
   interface Props {
@@ -28,6 +28,8 @@
   }
   let { seat, prompt, lines, explored = null, left = null, ondone, onend, oncorrect }: Props = $props();
   const terrainWords = $derived(explored?.terrain ? explored.terrain.replace(/-/g, ' ') : 'new');
+  // The newest segment on top, as its lines are (prompt 72); named only when the result holds more than one (a step lost, then the hunt).
+  const segments = $derived([...segmentsOf(lines)].reverse());
   const heading = $derived(explored ? `Explored a ${terrainWords} hex` : resultTitle(prompt));
 </script>
 
@@ -41,13 +43,18 @@
     </p>
   {/if}
   <!-- The newest line on top (prompt 72), as in the ask's panel: the lost check lowest, what was decided last first. -->
-  <ul class="lines" data-order="newest-first" aria-label="What the dice decided, the newest first">
-    {#each [...lines].reverse() as r, i (lines.length - 1 - i)}
-      <li><LogLine record={r} {seat} idPrefix="result-" {oncorrect} /></li>
-    {/each}
-  </ul>
+  {#each segments as segment, n (n)}
+    {#if segments.length > 1 && segment.title && segment.title !== heading}
+      <p class="segment" data-testid="dice-result-segment-{segment.name}-{seat}">{segment.title}</p>
+    {/if}
+    <ul class="lines" data-order="newest-first" data-segment={segment.name} aria-label="{segment.title || 'What the dice decided'}, the newest first">
+      {#each [...segment.lines].reverse() as r, i (segment.lines.length - 1 - i)}
+        <li><LogLine record={r} {seat} idPrefix="result-" {oncorrect} /></li>
+      {/each}
+    </ul>
+  {/each}
   {#if !explored}
-    <button type="button" class="carry-on" data-testid="dice-result-ok-{seat}" onclick={ondone}>Carry on</button>
+    <button type="button" class="carry-on" data-testid="dice-result-ok-{seat}" aria-label="OK: carry on" onclick={ondone}>OK</button>
   {/if}
 </div>
 
@@ -63,6 +70,11 @@
     font-size: calc(var(--target) * 0.42);
     font-weight: 700;
     line-height: 1.2;
+  }
+  .segment {
+    margin: 0;
+    font-size: calc(var(--target) * 0.3);
+    font-weight: 700;
   }
   .lines {
     margin: 0;

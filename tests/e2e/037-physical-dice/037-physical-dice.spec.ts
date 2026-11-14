@@ -456,6 +456,10 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The hunt');
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '2');
           await expect(page.getByTestId('result-roll-lost-check-bottom-1')).toBeVisible();
+          // The result is kept by segment (prompt 79): the step that was lost, and the hunt that closed the turn; OK carries on sooner than its five seconds.
+          await expect(page.getByTestId('dice-result-segment-hunt-bottom-1')).toHaveCount(0); // the panel's own title names the hunt
+          await expect(page.getByTestId('dice-result-segment-step-bottom-1')).toHaveText(/^The step into c\d+r\d+$/);
+          await expect(page.getByTestId('dice-result-ok-bottom-1')).toHaveText('OK');
           await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('two per hunter: 12 rations bagged, ');
           await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('from the stores)');
           await expect(page.getByTestId('result-meal-total-bottom-1')).toHaveCount(0); // no modifier at this camp: the die stands alone

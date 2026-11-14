@@ -93,7 +93,7 @@ test.describe('042 - One player at the table', () => {
     await expect(page.getByTestId('dice-result-bottom-1')).toHaveCount(0);
 
     await steps.step('card-after-the-result', {
-      description: 'Carry on (or two seconds at the table) takes the result away, and the disaster card the next turn stands at is shown at the same edge; nothing in the game changed meanwhile',
+      description: 'OK (or five seconds at the table, prompt 79) takes the result away, and the disaster card the next turn stands at is shown at the same edge; nothing in the game changed meanwhile',
       verifications: [
         { spec: 'The disaster card is shown for bottom-1 with its control, the result is gone, and no event passed between', check: async () => {
           await expect(page.getByTestId('disaster-panel-bottom-1')).toBeVisible();

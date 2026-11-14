@@ -57,7 +57,7 @@
   import DicePrompt from '$features/dice/DicePrompt.svelte';
   import type { RollRecord } from '$lib/game/state';
   import DiceResult from '$features/dice/DiceResult.svelte';
-  import { lingerLines } from '$features/dice/linger';
+  import { RESULT_MS, lingerLines } from '$features/dice/linger';
   import { endsItself, outOfMoves } from '$features/turn/auto-end';
   import { emptyDirection, emptyText, phasesOf, provisionalTerrain, revealSteps, steppingInto, type RevealPhase, type RevealStep } from '$features/map/reveal';
   import FirstPlayerRoll from '$features/turn/FirstPlayerRoll.svelte';
@@ -359,13 +359,13 @@
   /** What the dice just decided (prompts 54 and 55): the hunt's meal, the natives' nerve or the fight, kept at the seat's
    *  edge for a moment after the last die is in, so the result is read before the table goes on. */
   let lingering = $state<{ seat: Seat; prompt: string; lines: RollRecord[]; explored: { hex: HexId; terrain: string | null } | null } | null>(null);
-  /** How long: `?dice-result=<ms>` (`hold` keeps it until tapped), else the build's, else two seconds. */
+  /** How long: `?dice-result=<ms>` (`hold` keeps it until tapped), else the build's, else five seconds (prompt 79). */
   const DICE_RESULT_MS: number | null = (() => {
     const q = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dice-result');
     if (q === 'hold') return null;
     if (q !== null && q !== '' && Number.isFinite(Number(q))) return Number(q);
     const env = import.meta.env.VITE_DICE_RESULT_MS;
-    return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : 2000;
+    return env !== undefined && env !== '' && Number.isFinite(Number(env)) ? Number(env) : RESULT_MS;
   })();
   // The terrain's direction played out on the board (prompt 68): after each direction die, the digit rolled glows on
   // the compass, then the neighbour that way, then its terrain is copied into the hex explored, or an empty neighbour
@@ -466,7 +466,7 @@
   });
   /** The disaster card shown: not while a result lingers at the same seat (prompt 64). With one player at the table the
    *  next turn is the same seat's, and its card would cover the hunt's result the moment the die was in; the card waits
-   *  the result's two seconds, or the tap on Carry on. Another seat's card stands at its own edge and waits for nothing. */
+   *  the result's five seconds, or the tap on OK. Another seat's card stands at its own edge and waits for nothing. */
   const disasterShown = $derived(facingDisaster && lingering?.seat.id !== facingDisaster.seat.id ? facingDisaster : null);
   /** How long the decided roll is shown before play begins: `?first-player-pause=<ms>` (`hold` never begins by itself), else the build's, else three seconds. */
   const FIRST_PLAYER_PAUSE_MS: number | null = (() => {

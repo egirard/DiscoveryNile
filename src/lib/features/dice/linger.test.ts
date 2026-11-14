@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState, RollRecord } from '$lib/game/state';
-import { allRecords, lingerLines, resultTitle } from './linger';
+import { RESULT_MS, allRecords, lingerLines, resultTitle, segmentsOf } from './linger';
 
 const line = (kind: RollRecord['kind'], outcome = ''): RollRecord => ({ kind, seat: 'bottom-1', rolls: [], outcome });
 const game = (history: RollRecord[][], turn: RollRecord[] | null, awaiting: boolean): GameState =>
@@ -35,5 +35,21 @@ describe('the lines kept in view after a throw (prompts 54 and 55)', () => {
     expect(resultTitle("Roll a D6 to see if you are lost; 2+ means you're okay")).toBe('To see if you are lost');
     expect(resultTitle("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4 over 1 warrior and they hide")).toBe("The natives' nerve");
     expect(resultTitle('Roll 2 D6 for surprise; 4+ and the expedition is ready')).toBe('Surprise');
+  });
+});
+
+describe('a result kept whole, a segment at a time (prompt 79)', () => {
+  it('stays five seconds by itself', () => {
+    expect(RESULT_MS).toBe(5000);
+  });
+  it('keeps a step into a hex as one segment: the lost check, the terrain, its details and the natives', () => {
+    const at = (kind: RollRecord['kind']): RollRecord => ({ ...line(kind), hex: 'c24r12' });
+    const s = segmentsOf([at('lost-check'), at('terrain'), at('water'), at('natives')]);
+    expect(s.map((x) => [x.name, x.title, x.lines.map((r) => r.kind)])).toEqual([['step', 'The step into c24r12', ['lost-check', 'terrain', 'water', 'natives']]]);
+  });
+  it('tells a step lost from the hunt it led to, and the natives dealt with from both', () => {
+    expect(segmentsOf([{ ...line('lost-check', 'lost'), hex: 'c25r12' }, line('hunting')]).map((x) => x.title)).toEqual(['The step into c25r12', 'The hunt']);
+    expect(segmentsOf([line('reaction'), line('combat'), line('victory')]).map((x) => [x.name, x.lines.length])).toEqual([['natives', 3]]);
+    expect(segmentsOf([])).toEqual([]);
   });
 });

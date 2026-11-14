@@ -511,3 +511,9 @@ Encountering natives only happens when you enter a hex, or choose to remain in t
 you roll at the start of your turn to escape, so you would then be able to move.  If this contradicts the rules as you've read them, please supply me with quotations of the specific rules.
 
 `Outcome: One slice (018, G-197): no contradiction; the rules say only "he must roll again every turn, subtracting three from his die roll. He remains in that hex until he is killed, escapes, or his player retires him". An explorer who escapes on his turn's roll is now free to act: he may walk away at once, and meets the tribe again only by remaining (prompt 77).`
+
+## 79. 2026-11-13
+
+let's leave the player's turn in the turn track for five seconds (with an OK button to dismiss it early).  Let's keep the entire turn segment in the record (a segment is a single hex move: select a hex, roll for lost, roll to find the terrain, roll for details, roll for natives; native resolution is another sequence; hunting is a final sequence)
+
+`Outcome: One slice (037, G-198): what the dice decided stays at the seat's edge five seconds (was two), dismissed sooner by "OK" (was "Carry on"). A result holds its whole segment: a step into a hex (lost check, terrain, details, natives), the natives dealt with, or the hunt; where one throw closes two (a step lost, then the hunt) each is headed: "The step into c24r19", "The hunt".`
