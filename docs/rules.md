@@ -164,7 +164,7 @@ Warriors = product of three dice, but the largest die is capped at the distance 
 
 ### 8.1 Policy *(Rules: Natives: Explorer Policy)*
 
-Whenever an explorer enters, remains in, or discovers natives in a hex, choose a policy: **1** defensive stand (no hunting, research, trade, or leaving until next turn), **2** immediate retreat to the previous hex (marker removed, credit lost unless published; remaining movement may be spent), **3** cautious show of force, **4** ignore them, **5** open friendly approach.
+Whenever an explorer enters, remains in, or discovers natives in a hex, choose a policy: **1** defensive stand (no hunting, research, trade, or leaving until next turn), **2** immediate retreat to the previous hex (marker removed, credit lost unless published; remaining movement may be spent), **3** cautious show of force, **4** ignore them, **5** open friendly approach. At the table (prompt 77, G-196): natives already in the hex are not met at the start of the turn; the expedition may leave, and ending the turn there is remaining, which asks for the policy before the turn ends.
 
 ### 8.2 Reaction *(Rules: Natives: Native Reaction)*
 

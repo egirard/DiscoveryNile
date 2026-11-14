@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
-import { endTurnFromRail } from '../helpers/turn';
+import { endTurnFromRail, remainAmongNatives } from '../helpers/turn';
 import { withLogOpen } from '../helpers/log';
 
 async function commission(page: Page, seat: string) {
@@ -98,6 +98,7 @@ test.describe('017 - Native reaction and combat', () => {
     await page.getByTestId('physical-dice').click();
     await expect(page.getByTestId('physical-dice')).toHaveAttribute('aria-pressed', 'true');
     await page.getByTestId('options-close').click();
+    await remainAmongNatives(page, 'bottom-1'); // the turn begins free to leave (prompt 77): the expedition remains
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await page.getByTestId('policy-4-bottom-1').click();
     const tapFaces = async (values: number[]) => { for (const v of values) await page.getByTestId(`die-face-${v}-bottom-1`).click(); };

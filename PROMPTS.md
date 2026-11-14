@@ -499,3 +499,9 @@ rolling for sickness should give an option to roll a bunch of dice for bearers, 
 when in camp/cache editing, remember if bearers or askari are sick and adjust numbers accordingly
 
 `Outcome: One slice (048, G-195): the camp panel shows the sick under a type's count ("4", "3 sick"), "dismiss" sends the well away and a new "dismiss sick" the sick (the log tells them apart: "1 bearer, 3 sick bearers dismissed"), the sick count never exceeds the men or animals left, and the panel's movement line counts the sick as the board does (a sick bearer carries nothing, each sick man twenty units carried) and says when they cannot all be carried.`
+
+## 77. 2026-11-13
+
+Encountering natives only happens when you enter a hex, or choose to remain in the hex.  therefore, don't do the native encounter at the start of the next turn, unless the player is choosing to remain in the hex.
+
+`Outcome: One slice (016, G-196): a turn begun in a tribe's hex no longer opens on the policy panel; the expedition may walk away unmet. Ending the turn there is remaining: the policy is asked then, the expedition stays, and the turn ends after it. The prompt at the edge reads "Natives here. Pick a hex to move into, or REMAIN". Scenarios 017-020, 022 and 026 remain by the end-turn control; a zoologist's study now comes before the natives (022).`

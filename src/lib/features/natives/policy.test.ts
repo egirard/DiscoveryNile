@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { reduce } from '$lib/game/reduce';
 import { created, event, resetSequence } from '$lib/game/test-fixtures';
 import { card } from '$features/cards/deck';
+import { moveTargets } from '$features/exploration/reducer';
+import { remainsAmongNatives } from '$features/turn/reducer';
 
 beforeEach(resetSequence);
 
@@ -64,7 +66,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(ignore.turn).toMatchObject({ phase: 'act', policy: 4, moved: false });
     expect(ignore.turn!.log.at(-1)).toMatchObject({ kind: 'reaction', outcome: 'not hostile: 3 on the dice, within the target of 5' });
   });
-  it('policy 1 holds the expedition in place and forbids hunting; staying in the hex asks again next turn', () => {
+  it('policy 1 holds the expedition in place and forbids hunting; staying in the hex asks again when the next turn ends there', () => {
     const { events, pass } = intoTheVeldt();
     const stand = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 1 })]);
     expect(stand.turn).toMatchObject({ phase: 'act', policy: 1, moved: true });
@@ -73,8 +75,38 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(ended.explorers[0].lastMeal!.rolls[0].value).toBe(6);
     expect(ended.explorers[0].lastMeal!.outcome).toBe('no hunting on a defensive stand: no game, 12 men ate (12 from the stores)');
     const dealt = reduce([...ev, ...pass('top-1', ended)]);
-    expect(dealt.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { then: 'natives' } }); // the card is read first (prompt 34)
-    const next = reduce([...ev, ...pass('top-1', ended), event('disaster/faced', { seat: 'bottom-1' })]);
-    expect(next.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'natives' });
+    expect(dealt.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { then: 'act' } }); // the card is read first (prompt 34)
+    // The turn begun among the natives is free to leave them (prompt 77): no policy is asked until the expedition remains.
+    const begun = [...ev, ...pass('top-1', ended), event('disaster/faced', { seat: 'bottom-1' })];
+    const next = reduce(begun);
+    expect(next.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'act', policy: null, moved: false });
+    expect(remainsAmongNatives(next)).toBe(true);
+    expect(moveTargets(next, next.explorers[0]).length).toBeGreaterThan(0);
+    // Ending the turn there is remaining: the policy is asked, the expedition stays, and the turn ends only after it.
+    const remain = [...begun, event('turn/ended', { seat: 'bottom-1' })];
+    const asked = reduce(remain);
+    expect(asked.diagnostics).toEqual([]);
+    expect(asked.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'natives', policy: null, moved: true });
+    const met = reduce([...remain, event('natives/policy', { seat: 'bottom-1', policy: 4 })]);
+    expect(met.turn).toMatchObject({ current: 'bottom-1', phase: 'act', policy: 4, moved: true });
+    expect(remainsAmongNatives(met)).toBe(false);
+    const over = reduce([...remain, event('natives/policy', { seat: 'bottom-1', policy: 4 }), event('turn/ended', { seat: 'bottom-1' })]);
+    expect(over.diagnostics).toEqual([]);
+    expect(over.turn!.current).toBe('top-1');
+  });
+  it('a turn begun among the natives may walk away without meeting them', () => {
+    const { events, pass } = intoTheVeldt();
+    const ev = [...events, event('natives/policy', { seat: 'bottom-1', policy: 4 }), event('turn/ended', { seat: 'bottom-1' })];
+    const begun = [...ev, ...pass('top-1', reduce(ev)), event('disaster/faced', { seat: 'bottom-1' })];
+    const away = reduce([...begun, event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]);
+    expect(away.diagnostics).toEqual([]);
+    expect(away.explorers[0].location).toEqual({ kind: 'hex', hex: 'c25r12' });
+    expect(away.turn).toMatchObject({ phase: 'act', policy: null });
+    expect(away.turn!.log.filter((l) => l.kind === 'reaction')).toEqual([]);
+    expect(remainsAmongNatives(away)).toBe(false);
+    // A game recorded before prompt 77 chose its policy at the start of the turn: the event still plays, and the step after it.
+    const old = reduce([...begun, event('natives/policy', { seat: 'bottom-1', policy: 4 }), event('expedition/moved', { seat: 'bottom-1', path: ['c25r12'] })]);
+    expect(old.diagnostics).toEqual([]);
+    expect(old.turn).toMatchObject({ policy: 4 });
   });
 });

@@ -36,3 +36,13 @@ export async function faceDisasterIfDrawn(page: Page, after: number) {
   await page.getByTestId(`face-disaster-${turn.current}`).click();
   await expect(page.getByTestId(`face-disaster-${turn.current}`)).toHaveCount(0);
 }
+
+/**
+ * A turn begun in a hex with natives is free to leave it (PROMPTS.md, prompt 77): the scenario remains instead, by
+ * the rail's end-turn control, and the policy panel opens before the turn can end.
+ */
+export async function remainAmongNatives(page: Page, seat: string) {
+  await expect(page.getByTestId(`policy-panel-${seat}`)).toHaveCount(0);
+  await pressEndTurn(page, seat);
+  await expect(page.getByTestId(`policy-panel-${seat}`)).toBeVisible();
+}

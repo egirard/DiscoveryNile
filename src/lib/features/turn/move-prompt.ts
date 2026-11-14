@@ -5,11 +5,14 @@
 import type { GameState } from '$lib/game/state';
 import type { SeatId } from '$lib/tabletop/seats';
 import { moveTargets } from '$features/exploration/reducer';
+import { remainsAmongNatives } from './reducer';
 
 export interface MovePrompt {
   seat: SeatId;
   /** Movement points left this turn; null before the first step, which settles how the expedition travels. */
   left: number | null;
+  /** The expedition stands among natives it has not met this turn (prompt 77): ending the turn is remaining, and meets them. */
+  natives?: true;
 }
 
 /** The seat to prompt for a move: its turn, free to act, nothing held for dice, a hex open to its expedition. */
@@ -19,11 +22,12 @@ export function movePromptFor(state: GameState): MovePrompt | null {
   const explorer = state.explorers.find((e) => e.seat === t.current && e.location.kind !== 'dead');
   if (!explorer || moveTargets(state, explorer).length === 0) return null;
   const mv = t.movement;
-  return { seat: t.current, left: mv ? (mv.halted ? 0 : mv.points - mv.spent) : null };
+  return { seat: t.current, left: mv ? (mv.halted ? 0 : mv.points - mv.spent) : null, ...(remainsAmongNatives(state) ? { natives: true as const } : {}) };
 }
 
-/** The words before the END TURN control: "You have 2 MP: pick a hex to move into, or". */
-export function movePromptText(left: number | null): string {
+/** The words before the END TURN control: "You have 2 MP: pick a hex to move into, or"; among natives not yet met, before REMAIN. */
+export function movePromptText(left: number | null, natives = false): string {
   const pick = 'pick a hex to move into, or';
-  return left === null ? `P${pick.slice(1)}` : `You have ${left} MP: ${pick}`;
+  const text = left === null ? `P${pick.slice(1)}` : `You have ${left} MP: ${pick}`;
+  return natives ? `Natives here. ${text}` : text;
 }

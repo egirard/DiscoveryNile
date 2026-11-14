@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
-import { endTurnFromRail } from '../helpers/turn';
+import { endTurnFromRail, remainAmongNatives } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -77,6 +77,7 @@ test.describe('020 - Tribe attitude', () => {
 
     await passTurn(page);
     await passTurn(page);
+    await remainAmongNatives(page, 'bottom-1'); // the turn begins free to leave (prompt 77): the expedition remains
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
 
     await steps.step('remembered', {

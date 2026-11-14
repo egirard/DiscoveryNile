@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
-import { endTurnFromRail } from '../helpers/turn';
+import { endTurnFromRail, remainAmongNatives } from '../helpers/turn';
 
 async function commission(page: Page, seat: string, specialties: string[] = []) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -99,12 +99,10 @@ test.describe('022 - Specialties in the field', () => {
     await page.getByTestId('trade-done-bottom-1').click();
     await passTurn(page);
     await passTurn(page);
-    await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
-    await expect(page.getByTestId('tribe-attitude-bottom-1')).toHaveText('· attitude +5');
-    await page.getByTestId('policy-4-bottom-1').click();
+    await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
 
     await steps.step('study-owed', {
-      description: 'Next turn the tribe is calmer for the sermon. The zoologist owes this unpublished hex a turn of study: no move is offered, only the study control at the rail',
+      description: 'Next turn no policy is asked of an expedition free to leave (prompt 77). The zoologist owes this unpublished hex a turn of study: no move is offered, only the study control at the rail',
       verifications: [
         { spec: 'No move targets; the zoology study control is at the rail', check: async () => {
           await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
@@ -131,6 +129,25 @@ test.describe('022 - Specialties in the field', () => {
           expect(e.specimens).toEqual({ zoology: 1, geology: 0 });
           expect(e.research).toEqual({ hex: 'c24r12', done: ['zoology'] });
           expect(s.turn!.moved).toBe(true);
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    // The study done, the expedition remains among the natives (prompt 77): the policy is asked before the turn ends.
+    await remainAmongNatives(page, 'bottom-1');
+    await expect(page.getByTestId('tribe-attitude-bottom-1')).toHaveText('· attitude +5');
+    await page.getByTestId('policy-4-bottom-1').click();
+
+    await steps.step('remained', {
+      description: 'Ending the turn in the tribe\'s hex is remaining: the policy panel shows the tribe calmer for the sermon (attitude +5), and policy 4 is met without hostility',
+      verifications: [
+        { spec: 'The policy is chosen after the study, the turn still to end', check: async () => {
+          await expect(page.getByTestId('policy-panel-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
+          const s = await state(page);
+          expect(s.turn).toMatchObject({ round: 4, phase: 'act', policy: 4, moved: true });
+          expect(s.turn!.log.at(-1)!.kind).toBe('reaction');
           expect(s.diagnostics).toEqual([]);
         } }
       ]

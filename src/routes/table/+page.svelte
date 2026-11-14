@@ -715,7 +715,7 @@
     const seat = p && seats.find((s) => s.id === p.seat);
     if (!p || !seat || busySeats.has(seat.id) || unseenAt(seat.id).length > 0) return null;
     if (reveal || revealQueue.length || endingItself || sailingSeat === seat.id || publishingSeat === seat.id) return null;
-    return { seat, left: p.left };
+    return { seat, left: p.left, natives: p.natives === true };
   });
   // The hexes open to a step, as they lie on the page: the prompt to move, and an explored hex's result, stand clear of them.
   let targetsRect = $state<{ x: number; y: number; w: number; h: number } | null>(null);
@@ -840,7 +840,7 @@
   {:else if movePrompt}
     <!-- Nothing asked, nothing just decided: the turn's record prompts for the next step or the end of the turn (prompt 74). -->
     <EdgePanel seat={movePrompt.seat} {viewport} inset={railDepth + target * 0.4} testid="move-prompt-edge-{movePrompt.seat.id}" clear={[trayRect, targetsRect]}>
-      <MovePrompt seat={movePrompt.seat.id} left={movePrompt.left} onend={() => endTurn(movePrompt!.seat)} />
+      <MovePrompt seat={movePrompt.seat.id} left={movePrompt.left} natives={movePrompt.natives} onend={() => endTurn(movePrompt!.seat)} />
     </EdgePanel>
   {/if}
   {#if starting}

@@ -32,18 +32,18 @@ async function outfit(page: Page, seat: string, purchases: Record<string, number
 }
 
 test.describe('016 - Natives discovered and the explorer\'s policy', () => {
-  test('entering a new hex may find natives: a numbered tribe goes on the board and the explorer must choose a policy; retreat and ignore are played', async ({ page }, testInfo) => {
+  test('entering a new hex may find natives: a numbered tribe goes on the board and the explorer must choose a policy; retreat and ignore are played; a turn begun among them meets them only by remaining', async ({ page }, testInfo) => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Natives discovered and the explorer\'s policy',
-      'The first time an explorer enters an unpublished hex two dice are rolled for natives by the terrain (lake 2–3; veldt, swamp, jungle 2–4; mountain 5–6; 7 with a river or oasis). Found, the tribe\'s warriors are the product of three dice with the greatest capped at the distance to the nearest port, a numbered marker goes on the hex, and the turn pauses until the player chooses a policy on a panel at their edge: defensive stand, retreat, show of force, ignore, or friendly approach. Retreat returns to the previous hex and removes the marker. Re-entering a hex with a known tribe asks again without a roll.'
+      'The first time an explorer enters an unpublished hex two dice are rolled for natives by the terrain (lake 2–3; veldt, swamp, jungle 2–4; mountain 5–6; 7 with a river or oasis). Found, the tribe\'s warriors are the product of three dice with the greatest capped at the distance to the nearest port, a numbered marker goes on the hex, and the turn pauses until the player chooses a policy on a panel at their edge: defensive stand, retreat, show of force, ignore, or friendly approach. Retreat returns to the previous hex and removes the marker. Re-entering a hex with a known tribe asks again without a roll. A turn begun in the tribe\'s hex may leave it without meeting the natives (prompt 77); ending the turn there is remaining, and asks for a policy first.'
     );
 
     // Seed 18 (found by search under this script): bottom-1 holds a free ticket to Mombasa and $905. Main dice: roll-off 6,6,6,6 / 1,1,1,1, then the
     // step into c24r12: lost check 6 (found), terrain direction 2 (copies Mombasa's veldt), water 1 (no source). Natives
     // dice: 1,2 (3: natives on the veldt) then warriors 3,4,5, the 5 capped at distance 1 from Mombasa → 12 warriors.
     // Combat dice 1,1,1: the natives are not hostile when ignored (since 017).
-    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1&dice-combat=1,1,1');
+    await page.goto('/table/?new=1&gameId=ABCDE&seed=18&dice=6,6,6,6,1,1,1,1,6,2,1&dice-natives=1,2,3,4,5&dice-hunting=1,1&dice-combat=1,1,1,1,1,1');
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
@@ -121,6 +121,62 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'act', policy: 4, moved: false });
           await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('not hostile: 3 on the dice, within the target of 5');
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await passTurn(page);
+    await passTurn(page);
+    await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
+
+    await steps.step('free-to-leave', {
+      description: 'The next turn begins in the tribe\'s hex (prompt 77): no policy is asked. The record at the edge reads "Natives here. Pick a hex to move into, or REMAIN", and the hexes around are open to a step',
+      verifications: [
+        { spec: 'No policy panel; the turn is free to act with no policy chosen', check: async () => {
+          await expect(page.getByTestId('policy-panel-bottom-1')).toHaveCount(0);
+          await expect(page.getByTestId('policy-prompt-bottom-1')).toHaveCount(0);
+          const s = await state(page);
+          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'act', policy: null, moved: false });
+          expect(s.diagnostics).toEqual([]);
+        } },
+        { spec: 'The prompt to move names the natives and offers REMAIN; hexes are open to a step', check: async () => {
+          await expect(page.getByTestId('move-prompt-bottom-1')).toHaveAttribute('data-natives', 'true');
+          await expect(page.getByTestId('move-prompt-text-bottom-1')).toHaveText('Natives here. Pick a hex to move into, or');
+          await expect(page.getByTestId('move-prompt-end-bottom-1')).toHaveText('REMAIN');
+          expect(await page.locator('[data-testid^="move-target-"]').count()).toBeGreaterThan(0);
+        } }
+      ]
+    });
+
+    await page.getByTestId('move-prompt-end-bottom-1').click();
+
+    await steps.step('remaining', {
+      description: 'REMAIN: the expedition stays among the natives, so the policy panel opens before the turn can end, and no hex is open to a step any more',
+      verifications: [
+        { spec: 'The policy panel is up for tribe 1; the turn waits in the natives phase, the expedition held', check: async () => {
+          await expect(page.getByTestId('policy-panel-bottom-1')).toHaveAttribute('data-tribe', '1');
+          await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
+          await expect(page.getByTestId('end-turn-bottom-1')).toHaveCount(0);
+          const s = await state(page);
+          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'natives', policy: null, moved: true });
+          expect(s.diagnostics).toEqual([]);
+        } }
+      ]
+    });
+
+    await page.getByTestId('policy-4-bottom-1').click();
+
+    await steps.step('met-by-remaining', {
+      description: 'Policy 4 again: the natives react (not hostile), and the turn, its movement spent by remaining, is left to end',
+      verifications: [
+        { spec: 'The reaction is rolled, the policy stands, and only the end of the turn is left', check: async () => {
+          await expect(page.getByTestId('reaction-note-bottom-1')).toHaveText('not hostile: 3 on the dice, within the target of 5');
+          await expect(page.getByTestId('policy-panel-bottom-1')).toHaveCount(0);
+          await expect(page.locator('[data-testid^="move-target-"]')).toHaveCount(0);
+          await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();
+          const s = await state(page);
+          expect(s.turn).toMatchObject({ current: 'bottom-1', round: 5, phase: 'act', policy: 4, moved: true });
           expect(s.diagnostics).toEqual([]);
         } }
       ]

@@ -42,4 +42,8 @@ describe('the prompt to move', () => {
   it('asks only for the hex before the first step', () => {
     expect(movePromptText(null)).toBe('Pick a hex to move into, or');
   });
+  it('says so when the expedition stands among natives it has not met this turn (prompt 77)', () => {
+    expect(movePromptText(null, true)).toBe('Natives here. Pick a hex to move into, or');
+    expect(movePromptText(1, true)).toBe('Natives here. You have 1 MP: pick a hex to move into, or');
+  });
 });

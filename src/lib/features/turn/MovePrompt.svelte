@@ -7,14 +7,16 @@
   interface Props {
     seat: string;
     left: number | null;
+    /** Among natives not met this turn (prompt 77): the control is REMAIN, which meets them before the turn ends. */
+    natives?: boolean;
     onend: () => void;
   }
-  let { seat, left, onend }: Props = $props();
+  let { seat, left, natives = false, onend }: Props = $props();
 </script>
 
-<p class="move" data-testid="move-prompt-{seat}" data-left={left ?? ''} role="status">
-  <span data-testid="move-prompt-text-{seat}">{movePromptText(left)}</span>
-  <button type="button" class="end" data-testid="move-prompt-end-{seat}" aria-label="End the turn" onclick={onend}>END TURN</button>
+<p class="move" data-testid="move-prompt-{seat}" data-left={left ?? ''} data-natives={natives} role="status">
+  <span data-testid="move-prompt-text-{seat}">{movePromptText(left, natives)}</span>
+  <button type="button" class="end" data-testid="move-prompt-end-{seat}" aria-label={natives ? 'Remain here and meet the natives' : 'End the turn'} onclick={onend}>{natives ? 'REMAIN' : 'END TURN'}</button>
 </p>
 
 <style>

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { TestStepHelper } from '../helpers/test-step-helper';
 import { takeCards } from '../helpers/cards';
-import { endTurnFromRail } from '../helpers/turn';
+import { endTurnFromRail, remainAmongNatives } from '../helpers/turn';
 
 async function commission(page: Page, seat: string) {
   await page.getByTestId(`seat-join-${seat}`).click();
@@ -63,6 +63,7 @@ test.describe('026 - Death and retirement', () => {
     await passTurn(page);
     await passTurn(page);
     await expect(page.getByTestId('tribe-c24r12')).toBeVisible();
+    await remainAmongNatives(page, 'bottom-1'); // the turn begins free to leave (prompt 77): the expedition remains
     await page.getByTestId('policy-4-bottom-1').click();
 
     await steps.step('killed', {

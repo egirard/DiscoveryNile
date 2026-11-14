@@ -157,12 +157,11 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
   }
   if (explorer.location.kind === 'captive') return escapeAttempt(state, explorer);
   if (explorer.location.kind === 'hex') {
-    const hex = explorer.location.hex;
     state = villageRetry(state, explorer);
     explorer = currentExplorer(state)!;
     const rechecked = oasisRecheck(state, explorer);
-    // Remaining in a hex with natives: a policy is chosen again (rules §8.1), unless the village's spoils are being dealt with.
-    const then: Phase = rechecked.turn!.phase === 'spoils' ? 'spoils' : rechecked.map[hex]?.tribe != null ? 'natives' : 'act';
+    // A turn begun in a hex with natives is free to leave it (prompt 77): they are met again only by remaining, at the turn's end.
+    const then: Phase = rechecked.turn!.phase === 'spoils' ? 'spoils' : 'act';
     // The disaster card is dealt and shown first (prompt 34); the turn goes on to `then` once it is faced.
     return dealDisaster(rechecked, currentExplorer(rechecked)!, then) ?? { ...rechecked, turn: { ...rechecked.turn!, phase: then } };
   }
@@ -179,6 +178,19 @@ function beginTurn(state: GameState, seat: SeatId): GameState {
 }
 
 export { replaceExplorer };
+
+/**
+ * The current explorer would remain among natives by ending the turn now (PROMPTS.md, prompt 77): free to act, in a
+ * hex with a tribe, and no policy chosen towards it this turn. Natives are met on entering a hex or on remaining in
+ * it (rules §8.1); a turn begun in their hex may leave it without meeting them, and the end of the turn there is
+ * the choice to remain.
+ */
+export function remainsAmongNatives(state: GameState): boolean {
+  const t = state.turn;
+  if (!t || t.phase !== 'act' || t.policy !== null) return false;
+  const explorer = currentExplorer(state);
+  return explorer?.location.kind === 'hex' && state.map[explorer.location.hex]?.tribe != null;
+}
 
 /**
  * A lost check that failed ends the turn there and then (PROMPTS.md, prompt 20): nothing else can be done
@@ -524,6 +536,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (state.turn.phase === 'spoils') return 'deal with the prisoners and the village first';
       if (state.turn.phase === 'negotiate' || state.turn.phase === 'trade') return 'finish with the chief first';
       if (state.turn.phase !== 'act') return 'cannot end the turn while discarding';
+      // Remaining in a hex with natives (rules §8.1, prompt 77): a policy is chosen before the turn can end, and the expedition stays.
+      if (remainsAmongNatives(state)) return { ...state, turn: { ...state.turn, phase: 'natives', moved: true } };
       return advance(eatAndHunt(state, ending));
     }
     case 'disaster/faced': {
@@ -653,7 +667,8 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const { seat, policy } = event.payload as { seat?: string; policy?: unknown };
       if (!state.turn) return 'game not started';
       if (seat !== state.turn.current) return `it is not ${seat}'s turn`;
-      if (state.turn.phase !== 'natives') return 'no natives to face';
+      // A policy chosen unasked while free to act: how a game recorded before prompt 77 met the natives at the start of a turn, and still replays.
+      if (state.turn.phase !== 'natives' && !remainsAmongNatives(state)) return 'no natives to face';
       if (typeof policy !== 'number' || !Number.isInteger(policy) || policy < 1 || policy > 5) return 'natives/policy needs a policy from 1 to 5';
       const explorer = currentExplorer(state)!;
       const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
