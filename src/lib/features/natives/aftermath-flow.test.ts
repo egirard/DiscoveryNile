@@ -35,7 +35,7 @@ describe('victory: prisoners, the village and the loot (rules §8.4)', () => {
     const won = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 3 })]);
     expect(won.diagnostics).toEqual([]);
     expect(won.turn!.phase).toBe('spoils');
-    expect(won.turn!.log.at(-1)).toMatchObject({ kind: 'victory', outcome: 'prisoners: 5 askaris − 1 = 4 taken; village 3 + 4 = 7, within 4 prisoners + policy 3 = 7: the village is found' });
+    expect(won.turn!.log.at(-1)).toMatchObject({ kind: 'victory', outcome: 'prisoners: 5 askaris − 1 = 4, 4 taken; the prisoners carry as bearers; village 3 + 4 = 7, within 4 prisoners + policy 3 = 7: the village is found' });
     expect(won.explorers[0].chart).toMatchObject({ askaris: 5, bearers: 10 });
     expect(won.tribes[1]).toMatchObject({ warriors: 2, pending: { by: 'bottom-1', prisoners: 4, policy: 3, original: 12 } });
     expect(reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('turn/ended', { seat: 'bottom-1' })]).diagnostics.at(-1)?.reason).toBe('deal with the prisoners and the village first');
@@ -55,7 +55,7 @@ describe('victory: prisoners, the village and the loot (rules §8.4)', () => {
     const { events, pass } = facingTheTribe(combat);
     const won = reduce([...events, event('natives/policy', { seat: 'bottom-1', policy: 3 })]);
     expect(won.turn!.phase).toBe('act');
-    expect(won.turn!.log.at(-1)).toMatchObject({ outcome: 'prisoners: 5 askaris − 1 = 4 taken; village 6 + 6 = 12, over 4 prisoners + policy 3 = 7: the village cannot be found' });
+    expect(won.turn!.log.at(-1)).toMatchObject({ outcome: 'prisoners: 5 askaris − 1 = 4, 4 taken; the prisoners carry as bearers; village 6 + 6 = 12, over 4 prisoners + policy 3 = 7: the village cannot be found' });
     const ev = [...events, event('natives/policy', { seat: 'bottom-1', policy: 3 }), event('turn/ended', { seat: 'bottom-1' })];
     expect(reduce([...ev, ...pass('top-1', reduce(ev))]).turn).toMatchObject({ round: 4, phase: 'disaster', disaster: { then: 'spoils' } }); // the card is read first (prompt 34)
     const next = reduce([...ev, ...pass('top-1', reduce(ev)), event('disaster/faced', { seat: 'bottom-1' })]);
@@ -73,7 +73,7 @@ describe('defeat: captivity, escape and death', () => {
     expect(beaten.diagnostics).toEqual([]);
     expect(beaten.turn!.log.filter((l) => l.kind === 'combat' || l.kind === 'defeat').map((l) => l.outcome)).toEqual([
       "hostile; nerve 2 × 5 askaris ÷ policy 4 = 2, not more than 2 warriors: the natives attack; surprise 1 + 1 = 2, under policy 4: the expedition is surprised; the natives strike: 2 warriors ÷ 1 = 2 askaris fall; the askaris' nerve 3 × 2 fallen = 6, over the 5 that stood: the askaris break and run: defeat",
-      'defeat 2: the explorer is held prisoner'
+      'defeat 2: the explorer is held prisoner and the expedition is lost; an escape is rolled for each turn'
     ]);
     const e4 = beaten.explorers[0];
     expect(e4.location).toMatchObject({ kind: 'captive', hex: 'c24r12', tribe: 1 });
@@ -120,7 +120,7 @@ describe('tribe attitude (rules §8.6)', () => {
     expect(s3.tribes[1]).toMatchObject({ attitude: 0, regard: { 'bottom-1': 3 } });
     const s4 = reduce([...ev3, ...pass('top-1', s3), event('natives/policy', { seat: 'bottom-1', policy: 5 })]);
     const reaction = s4.turn!.log.find((l) => l.kind === 'reaction')!;
-    expect(reaction.modifiers).toEqual([{ label: 'distance to port', value: 1 }, { label: 'policy 5', value: 5 }, { label: 'regard for you', value: 3 }]);
+    expect(reaction.modifiers).toEqual([{ label: 'hex to the nearest port', value: 1 }, { label: 'policy 5, friendly approach', value: 5 }, { label: 'regard for you', value: 3 }]);
     expect(reaction.outcome).toBe('not hostile: 3 on the dice, within the target of 9');
     expect(s4.turn!.phase).toBe('negotiate');
   });

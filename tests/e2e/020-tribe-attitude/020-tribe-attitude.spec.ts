@@ -65,7 +65,7 @@ test.describe('020 - Tribe attitude', () => {
       description: 'After the victory the four prisoners are released: the village is left alone, the prisoners rejoin the tribe, and its regard for the bottom seat rises by three',
       verifications: [
         { spec: 'The rail notes the release; the chart is back to 6 bearers; the tribe records regard +3 for bottom-1 only', check: async () => {
-          await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('4 prisoners released: the tribe is grateful');
+          await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('4 prisoners released: the tribe is grateful (attitude +3 toward you), the village left alone');
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '6');
           const s = await state(page);
           expect(s.tribes[1]).toMatchObject({ warriors: 6, attitude: 0, regard: { 'bottom-1': 3 }, pending: null });
@@ -96,7 +96,7 @@ test.describe('020 - Tribe attitude', () => {
       description: 'A friendly approach: the reaction dice (1, 1, 1) are weighed against distance 1, policy 5 and regard 3; the tribe is calm and the chief receives the explorer',
       verifications: [
         { spec: 'The reaction modifiers at the rail include the regard and the negotiation opens', check: async () => {
-          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /regard for you \+3 = 3; not hostile: 3 on the dice, within the target of 9/);
+          await expect(page.getByTestId('roll-reaction-bottom-1')).toHaveAttribute('aria-label', /\+3 regard for you; not hostile: 3 on the dice, within the target of 9/);
           await expect(page.getByTestId('negotiation-panel-bottom-1')).toBeVisible();
           const s = await state(page);
           expect(s.turn).toMatchObject({ round: 4, phase: 'negotiate', policy: 5 });

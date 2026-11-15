@@ -78,7 +78,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
   // Mountain peaks (rules §7.5): whenever mountain terrain is discovered.
   let peakFeet: number | null = null;
   if (hasPart(terrain, 'mountain')) {
-    const r = dice(rng, 3, 'main', { what: "for the mountain's height", hint: 'the product plus 100, in hundreds of feet; over 15,000 ft is a recorded peak', result: (vs) => { const feet = (vs.reduce((a, b) => a * b, 1) + 100) * 100; return `${feet.toLocaleString('en-US')} ft${feet > 15000 ? ': a recorded peak' : ': no record'}`; } });
+    const r = dice(rng, 3, 'main', { what: "for the mountain's height", hint: 'the three dice multiplied, plus 100, in hundreds of feet: over 15,000 ft is a recorded peak', result: (vs) => { const feet = (vs.reduce((a, b) => a * b, 1) + 100) * 100; return `${vs.join(' × ')} + 100 = ${feet / 100} hundred: ${feet.toLocaleString('en-US')} ft, ${feet > 15000 ? 'a recorded peak' : 'no record'}`; } });
     rng = r.state;
     r.values.forEach((v, i) => rolls.push({ label: `peak die ${i + 1}`, value: v }));
     const product = r.values.reduce((a, b) => a * b, 1);
@@ -126,7 +126,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
       river = { in: inflows, out, source: false, cataract: false, waterfallFeet: null };
       notes.push('the rivers connect');
     } else {
-      const d = roll('where the river comes from', { what: 'for where the river comes from', hint: 'a direction around the hex', result: ([x]) => (candidate(x as Direction) ? `it comes from direction ${x}` : `nothing to come from in direction ${x}: the river rises here`) }) as Direction;
+      const d = roll('where the river comes from', { what: 'for where the river comes from', hint: 'it comes from water or unexplored country that way; from mapped land it cannot, and rises here', result: ([x]) => (candidate(x as Direction) ? `it comes from direction ${x}` : `nothing to come from in direction ${x}: the river rises here`) }) as Direction;
       if (candidate(d)) {
         river = { in: [d], out, source: false, cataract: false, waterfallFeet: null };
         notes.push(`the river comes from the ${nb(d)!.mapped ? 'water' : 'unexplored hex'} in direction ${d}`);
@@ -145,7 +145,7 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     let out: Direction | null = null;
     const passed: Direction[] = [];
     for (let i = 0; i < 12 && out === null; i++) {
-      const d = roll('where the river goes', { what: 'for where the river flows on to', hint: 'a direction around the hex, rolled again until the river can go that way', result: ([x]) => (exits.includes(x as Direction) ? `it flows on in direction ${x}` : `it cannot go in direction ${x}: rolled again`) }) as Direction;
+      const d = roll('where the river goes', { what: 'for where the river flows on to', hint: 'it flows on into water or unexplored country that way; toward mapped land it cannot, and the die is rolled again', result: ([x]) => (exits.includes(x as Direction) ? `it flows on in direction ${x}` : `it cannot go in direction ${x}: rolled again`) }) as Direction;
       if (exits.includes(d)) out = d;
       else passed.push(d);
     }
@@ -154,9 +154,9 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
     notes.push(`the river flows on in direction ${out}${passed.length ? ` (not ${passed.join(', ')}: mapped land there)` : ''}`);
   } else {
     // No rivers known in or out: maybe a source (an oasis in desert).
-    const v = roll('a river source?', { what: 'for a river source', hint: 'an even roll means a river rises here', result: ([x]) => (x % 2 === 0 ? `even: ${terrain === 'desert' ? 'an oasis' : 'a river'}, if it has somewhere to flow` : 'odd: no river') });
+    const v = roll('a river source?', { what: terrain === 'desert' ? 'for an oasis in this desert' : 'for a river source', hint: terrain === 'desert' ? 'even and there is an oasis here, if the next die points at water or unexplored country; odd and there is none' : 'even and a river rises here, if the next die gives it somewhere to flow; odd and there is none', result: ([x]) => (x % 2 === 0 ? `even: ${terrain === 'desert' ? 'an oasis' : 'a river'}, if the next die allows` : `odd: no ${terrain === 'desert' ? 'oasis' : 'river'}`) });
     if (v % 2 === 0) {
-      const d = roll('which way it flows', { what: 'for which way the river flows', hint: 'a direction around the hex', result: ([x]) => { const to = nb(x as Direction); return to && (!to.mapped || isWater(to.terrain)) ? (terrain === 'desert' ? 'an oasis' : `it flows in direction ${x}`) : `direction ${x} is mapped land: no river`; } }) as Direction;
+      const d = roll('which way it flows', { what: terrain === 'desert' ? 'to confirm the oasis' : 'for which way the river flows', hint: terrain === 'desert' ? 'water or unexplored country that way and the oasis is here; mapped land and there is none' : 'it flows into water or unexplored country that way; toward mapped land there is no river after all', result: ([x]) => { const to = nb(x as Direction); return to && (!to.mapped || isWater(to.terrain)) ? (terrain === 'desert' ? 'an oasis' : `it flows in direction ${x}`) : `direction ${x} is mapped land: no river`; } }) as Direction;
       const n = nb(d);
       if (n && (!n.mapped || isWater(n.terrain))) {
         if (terrain === 'desert') {
@@ -171,11 +171,11 @@ export function resolveWater(rng: RngState, id: HexId, terrain: Terrain, know: K
 
   // Cataracts (rules §7.5) whenever a river is mapped in a hex that is not water.
   if (river) {
-    const v = roll('cataract?', { what: 'for a cataract', hint: hasPart(terrain, 'mountain') ? '2, 3 or 4 means a cataract' : terrain === 'desert' ? '1 or 2 means a cataract' : '1 means a cataract', result: ([x]) => ((hasPart(terrain, 'mountain') ? x >= 2 && x <= 4 : terrain === 'desert' ? x <= 2 : x === 1) ? 'a cataract' : 'no cataract') });
+    const v = roll('cataract?', { what: 'for a cataract', hint: hasPart(terrain, 'mountain') ? 'on a river in mountain 2, 3 or 4 is a cataract, anything else none' : terrain === 'desert' ? 'on a river in desert 1 or 2 is a cataract, anything else none' : `on a river in ${terrain.replace(/-/g, ' ')} 1 is a cataract, anything else none`, result: ([x]) => ((hasPart(terrain, 'mountain') ? x >= 2 && x <= 4 : terrain === 'desert' ? x <= 2 : x === 1) ? 'a cataract, its fall measured next' : 'no cataract') });
     const found = hasPart(terrain, 'mountain') ? v >= 2 && v <= 4 : terrain === 'desert' ? v <= 2 : v === 1;
     if (found) {
       river.cataract = true;
-      const h = dice(rng, 4, 'main', { what: "for the waterfall's height", hint: 'the product in feet; 400 ft or more is recorded', result: (vs) => { const ft = vs.reduce((a, b) => a * b, 1); return `${vs.join(' × ')} = ${ft} ft: ${ft >= 400 ? 'a recorded fall' : 'under the 400 recorded'}`; } });
+      const h = dice(rng, 4, 'main', { what: "for the waterfall's height", hint: 'the four dice multiplied, in feet: 400 ft or more is a recorded fall', result: (vs) => { const ft = vs.reduce((a, b) => a * b, 1); return `${vs.join(' × ')} = ${ft} ft: ${ft >= 400 ? 'a recorded fall' : 'under the 400 recorded'}`; } });
       rng = h.state;
       h.values.forEach((x, i) => rolls.push({ label: `waterfall die ${i + 1}`, value: x }));
       const feet = h.values.reduce((a, b) => a * b, 1);

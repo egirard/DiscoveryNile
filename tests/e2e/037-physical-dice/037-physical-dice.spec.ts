@@ -47,7 +47,7 @@ test.describe('037 - Physical dice', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Physical dice',
-      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; 2+ means you\'re okay"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, each die judged on its own so a die tossed in beside those already lying there is the throw, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game. Every ask after the first shows what the dice before it decided, and once the last die of an action is in, what the dice decided stays at the seat\'s edge for two seconds before the table goes on (prompts 54 to 56).'
+      'The options screen turns physical dice on: from then on the table rolls nothing itself. Whenever a rule calls for dice the game stands still and the seat whose roll it is reads what to roll and why at its edge ("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here"), with the throws already made for the same action. The dicecam in the corner of the board shows the table\'s camera on a canvas, the tray and the dice as WebCamTool\'s engine reads them drawn over the picture; two agreeing readings enter the roll, each die judged on its own so a die tossed in beside those already lying there is the throw, and a tap on one of the six faces enters it by hand. Each roll becomes a dice/rolled event, so the log replays the same game. The roll for first player, a lost check, the terrain, a river source and the natives are rolled this way in one game. Every ask after the first shows what the dice before it decided, and once the last die of an action is in, what the dice decided stays at the seat\'s edge for two seconds before the table goes on (prompts 54 to 56).'
     );
 
     // Seed 34: with the roll for first player made at the table (reading no generator dice), bottom-1's opening hand
@@ -98,7 +98,7 @@ test.describe('037 - Physical dice', () => {
       description: 'The game starts with the roll for first player: the table stands still and asks bottom-1, at its edge, for four dice; the dicecam is watching for them, and the six faces are there to tap instead',
       verifications: [
         { spec: 'The ask names the throw and what it decides; the game has not started', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first; a tie is rolled again');
           const s = await state(page);
           expect(s.turn).toBeNull();
           expect(s.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 4, rolled: [] });
@@ -170,7 +170,7 @@ test.describe('037 - Physical dice', () => {
       description: 'The dicecam reads four sixes twice over and the throw is in: bottom-1\'s four sixes and their total stand in front of bottom-1\'s own station, and the ask moves to top-1',
       verifications: [
         { spec: 'bottom-1\'s four sixes are a dice/rolled event, shown at bottom-1\'s station and not in top-1\'s prompt; the ask is now top-1\'s', check: async () => {
-          await expect(page.getByTestId('dice-ask-top-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first');
+          await expect(page.getByTestId('dice-ask-top-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first; a tie is rolled again');
           await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-total', '24');
           await expect(page.getByTestId('first-player-roll-bottom-1')).toHaveAttribute('data-decided', 'false');
           await expect(page.getByTestId('first-player-edge-bottom-1')).toHaveAttribute('data-seat', 'bottom-1');
@@ -271,7 +271,7 @@ test.describe('037 - Physical dice', () => {
       description: 'The first step into a blank hex: the table asks for the lost check in the rules\' words, with the die it takes to find the way out of veldt',
       verifications: [
         { spec: 'The ask is the lost check with its threshold; the step is held until the die is rolled', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here");
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Watching the dicecam for one die');
           await expect(page.getByTestId('dice-taps-bottom-1')).toHaveCount(0);
           const s = await state(page);
@@ -288,20 +288,20 @@ test.describe('037 - Physical dice', () => {
     await steps.step('lost', {
       description: 'The dicecam reads a one: the expedition is lost and its turn ends there and then; at a port there is no hunt. The ask stays at the edge for a moment as the result (prompt 56): the check with the die, what it needed, and the notice that no hunting was needed at Mombasa; the same line is the rail\'s latest',
       verifications: [
-        { spec: 'The result panel is titled by the ask and holds the one line, lost, while the turn has already passed', check: async () => {
+        { spec: 'The result panel is titled by its segment, the step, and holds the one line, lost, while the turn has already passed', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('To see if you are lost');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The step into c24r12');
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '1');
-          await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('lost; no hunting needed at Mombasa');
+          await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa');
         } },
         { spec: 'The lost check is logged with the physical die and the notice, the expedition stayed put, and the turn passed to top-1', check: async () => {
           const s = await state(page);
           expect(s.awaiting).toBeNull();
           expect(s.turn!.current).toBe('top-1');
-          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', rolls: [{ label: 'lost check', value: 1 }], outcome: 'lost; no hunting needed at Mombasa' });
+          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', rolls: [{ label: 'lost check', value: 1 }], outcome: 'lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa' });
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
           await expect(page.getByTestId('lost-check-needed-bottom-1')).toHaveText('needs 2+');
-          await expect(page.getByTestId('lost-check-note-bottom-1')).toHaveText('lost; no hunting needed at Mombasa');
+          await expect(page.getByTestId('lost-check-note-bottom-1')).toHaveText('lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
           expect(s.diagnostics).toEqual([]);
         } }
@@ -313,21 +313,21 @@ test.describe('037 - Physical dice', () => {
     await endTurn(page, 'top-1');
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
     await page.getByTestId('move-target-c24r12').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here");
     await dicecamReads(page, 'throw-3', [4]);
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour that way is copied; nothing mapped there and the die is rolled once more');
 
     await steps.step('terrain-asked', {
       description: 'Next turn the way is found on a four, and the same step goes straight on to the next roll: the direction of the terrain to copy, with the lost check listed as already rolled, its verdict on the same line, and the compass on the board to read the direction from',
       verifications: [
         { spec: 'The step is still held, now at the terrain roll, and its lost check is listed above the dicecam line as a log line: the die and "not lost"', check: async () => {
           const s = await state(page);
-          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [4] }] });
+          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here", values: [4] }] });
           expect(s.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, outcome: 'not lost' })]);
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
           await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-outcome', 'not lost');
           // The ask answered stays in its words under its line, with its die and what it meant (prompt 81).
-          await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+          await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here");
           await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1')).toHaveAttribute('data-values', '4');
           await expect(page.getByTestId('so-far-ask-lost-check-0-bottom-1-result')).toHaveText('4 − 1 = 3: not lost');
           await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('not lost');
@@ -342,12 +342,12 @@ test.describe('037 - Physical dice', () => {
 
     // Direction 2 points at Mombasa's veldt; an odd roll finds no river source; 3 + 3 is not a natives number for veldt.
     await page.getByTestId('die-face-2-bottom-1').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for a river source; an even roll means a river rises here');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for a river source; even and a river rises here, if the next die gives it somewhere to flow; odd and there is none');
     // Each ask lists the lines so far (prompt 56): the terrain's says which direction was rolled and what was copied.
     await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(2);
     await expect(page.getByTestId('so-far-terrain-note-bottom-1')).toHaveText('mapped veldt: veldt copied from the neighbour in direction 2');
     await page.getByTestId('die-face-1-bottom-1').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 2 D6 for natives; natives on 2, 3, 4');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 2 D6 for natives; a total of 2, 3 or 4 finds natives in veldt; anything else, none');
     await expect(page.getByTestId('so-far-water-note-bottom-1')).toHaveText('1 is odd: no river');
     await dicecamReads(page, 'throw-4', [3, 3]);
     await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
@@ -355,23 +355,23 @@ test.describe('037 - Physical dice', () => {
     await steps.step('step-explained', {
       description: 'The last dice of the step are in and the hex is mapped, but the ask stays at bottom-1\'s edge for a moment with what every die of the step decided (prompt 56): the way found on a four, the veldt copied from direction 2, the one that is odd so no river, and the three and three that find no natives; a tap, or two seconds, and the table goes on',
       verifications: [
-        { spec: 'The result panel is titled by the last ask and holds the four lines of the step, each explained; the dice prompt is gone', check: async () => {
+        { spec: 'The result panel is titled by its segment, the step into the hex, and holds the four lines of the step, each explained; the dice prompt is gone', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('Natives');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText(/^The step into c\d+r\d+$/);
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '4');
           await expect(page.getByTestId('result-lost-check-note-bottom-1')).toHaveText('not lost');
           await expect(page.getByTestId('result-terrain-note-bottom-1')).toHaveText('mapped veldt: veldt copied from the neighbour in direction 2');
           // Every ask of the step is kept in its words with its result (prompt 81): before the roll and after it.
-          await expect(page.getByTestId('result-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+          await expect(page.getByTestId('result-ask-lost-check-0-bottom-1-text')).toHaveText("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here");
           await expect(page.getByTestId('result-ask-lost-check-0-bottom-1-result')).toHaveText('4 − 1 = 3: not lost');
-          await expect(page.getByTestId('result-ask-terrain-0-bottom-1-text')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied');
+          await expect(page.getByTestId('result-ask-terrain-0-bottom-1-text')).toHaveText('Roll a D6 for the direction of the terrain to copy; a mapped neighbour that way is copied; nothing mapped there and the die is rolled once more');
           await expect(page.getByTestId('result-ask-terrain-0-bottom-1-result')).toHaveText('veldt, copied from direction 2');
           await expect(page.getByTestId('result-ask-water-0-bottom-1-result')).toHaveText('odd: no river');
-          await expect(page.getByTestId('result-ask-natives-0-bottom-1-text')).toHaveText('Roll 2 D6 for natives; natives on 2, 3, 4');
+          await expect(page.getByTestId('result-ask-natives-0-bottom-1-text')).toHaveText('Roll 2 D6 for natives; a total of 2, 3 or 4 finds natives in veldt; anything else, none');
           await expect(page.getByTestId('result-ask-natives-0-bottom-1-result')).toHaveText('3 + 3 = 6: no natives');
           await expect(page.getByTestId('result-water-note-bottom-1')).toHaveText('1 is odd: no river');
           await expect(page.getByTestId('result-natives-note-bottom-1')).toHaveText('no natives (3 + 3 = 6)');
-          await expect(page.getByTestId('result-natives-needed-bottom-1')).toHaveText('needs 2, 3, 4');
+          await expect(page.getByTestId('result-natives-needed-bottom-1')).toHaveCount(0); // the ask under the line says what was needed (prompt 85)
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveCount(0);
         } }
       ]
@@ -408,7 +408,7 @@ test.describe('037 - Physical dice', () => {
 
     // The turn ends in the field: the hunt's die is asked for; top-1 waits in Europe; bottom-1 tries the unknown again.
     await endTurn(page, 'bottom-1');
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags one ration per hunter at 2, two at 4, three at 6');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; 1 or less bags nothing, 2–3 one ration a hunter, 4–5 two, 6 or more three; 6 hunters');
     await dicecamReads(page, 'throw-5', [5]);
     await expect(page.getByTestId('turn-marker-top-1')).toHaveAttribute('data-current', 'true');
     // The hunt's result stays in view (prompt 54) until tapped away; the second hunt below shows it as a step.
@@ -418,20 +418,20 @@ test.describe('037 - Physical dice', () => {
     await endTurn(page, 'top-1');
     await expect(page.getByTestId('turn-marker-bottom-1')).toHaveAttribute('data-current', 'true');
     await page.getByTestId('move-target-c24r11').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; 2+ means you're okay");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here");
     await dicecamReads(page, 'throw-6', [1]);
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags one ration per hunter at 2, two at 4, three at 6');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; 1 or less bags nothing, 2–3 one ration a hunter, 4–5 two, 6 or more three; 6 hunters');
 
     await steps.step('straight-to-the-hunt', {
       description: 'Lost in the field, the expedition can do nothing more this turn: the table goes straight on to the hunt, the lost check listed above the dicecam line as already rolled and lost',
       verifications: [
         { spec: 'The same step is held at the hunt roll, with the lost check already rolled and its line saying lost; the token stayed where it was', check: async () => {
           const s = await state(page);
-          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [1] }] });
+          expect(s.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, rolled: [{ prompt: "Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here", values: [1] }] });
           expect(s.awaiting!.event.type).toBe('expedition/moved');
           await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
           await expect(page.getByTestId('so-far-roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
-          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('lost');
+          await expect(page.getByTestId('so-far-lost-check-note-bottom-1')).toHaveText('lost: the expedition stays where it is and the turn ends');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
         } }
       ]
@@ -446,7 +446,7 @@ test.describe('037 - Physical dice', () => {
       verifications: [
         { spec: 'The reading is ignored: the status line waits for a D6 roll, no throw is taken and the hunt is still asked', check: async () => {
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Waiting for a D6 roll');
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; the die bags one ration per hunter at 2, two at 4, three at 6');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the hunt; 1 or less bags nothing, 2–3 one ration a hunter, 4–5 two, 6 or more three; 6 hunters');
           const rolled = (await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => (e.payload as { values: number[] }).values);
           expect(rolled.at(-1)).toEqual([1]);
           expect((await state(page)).awaiting).toMatchObject({ seat: 'bottom-1', rolled: [{ values: [1] }] });
@@ -473,7 +473,7 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dice-result-segment-step-bottom-1')).toHaveText(/^The step into c\d+r\d+$/);
           await expect(page.getByTestId('dice-result-ok-bottom-1')).toHaveText('OK');
           await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('two per hunter: 12 rations bagged, ');
-          await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('from the stores)');
+          await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('from the stores, ');
           await expect(page.getByTestId('result-meal-total-bottom-1')).toHaveCount(0); // no modifier at this camp: the die stands alone
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveCount(0);
           expect((await state(page)).turn!.current).toBe('top-1');

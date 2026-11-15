@@ -71,7 +71,7 @@ describe('dice/corrected', () => {
     const fixed = reduce([...base, one, event('dice/corrected', { seat: 'bottom-1', eventId: one.id, index: 0, value: 4 })]);
     expect(fixed.diagnostics).toEqual([]);
     expect(fixed.turn!.current).toBe('bottom-1');
-    expect(fixed.awaiting).toMatchObject({ seat: 'bottom-1', prompt: 'Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied', rolled: [{ values: [4] }] });
+    expect(fixed.awaiting).toMatchObject({ seat: 'bottom-1', prompt: 'Roll a D6 for the direction of the terrain to copy; a mapped neighbour that way is copied; nothing mapped there and the die is rolled once more', rolled: [{ values: [4] }] });
     expect(fixed.awaiting!.sofar).toEqual([expect.objectContaining({ kind: 'lost-check', lost: false, rolls: [{ label: 'lost check', value: 4, from: { eventId: one.id, index: 0, corrected: true } }] })]);
     // The stored throw is untouched: the correction is its own event, and a replay applies it again.
     expect(one.payload).toEqual({ seat: 'bottom-1', values: [1] });
@@ -84,7 +84,7 @@ describe('dice/corrected', () => {
     const mapped = [...base, four, two];
     const s = reduce(mapped);
     expect(s.diagnostics).toEqual([]);
-    expect(s.awaiting).toMatchObject({ prompt: 'Roll a D6 for a river source; an even roll means a river rises here' });
+    expect(s.awaiting).toMatchObject({ prompt: 'Roll a D6 for a river source; even and a river rises here, if the next die gives it somewhere to flow; odd and there is none' });
     // The lost check was really a one: lost, the turn would have ended, and the terrain's two would have had no ask to answer.
     const refused = reduce([...mapped, event('dice/corrected', { seat: 'bottom-1', eventId: four.id, index: 0, value: 1 })]);
     expect(refused.diagnostics).toEqual([{ eventId: expect.stringMatching(/-00000018$/), reason: 'the die stays a 4: the dice/rolled that followed would be refused (no roll was asked for)' }]);

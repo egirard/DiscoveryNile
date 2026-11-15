@@ -541,3 +541,15 @@ end this game on the options screen falls off of a 15" screen
 I'd like to take a direct and complete approach to reviewing the turn interactions.  Please create a sample-turn-text.md in the docs directory, and include all of the current text samples.  Include each (major) substep so that we can see the initial prompt, the updated text as the die rolls or other steps resolve the action, and how the text gets summarized in the turn interaction record after the next operation starts.  If there are major variations in the step (such as lost or not lost) then please document both paths.  We don't need every single variation (IE: rolling a D6 for a terrain type only needs one or two potential results documented - include one that has sub-types like jungle+swamp).  We can then edit that document to fully spec out the interaction flow.
 
 `Outcome: docs/sample-turn-text.md, no code changed: fifteen sample sequences taken from the game's own rules played with table dice (a step into a hex four ways, the disaster card and a lost step, natives ten ways), each step with the ask, the lines so far, the result panel, the log lines and the rail's one line; a list of what was noticed, and of the text not sampled.`
+
+## 84. 2026-11-15
+
+I'm about to give you a prompt but want you to review it and recommend improvements before executing on the prompt.  Here it is: Please review the sample-turn-text.md for correctness.  Ensure that the initial prompt informs the user of what the roll is for and what the outcomes mean in a complete yet concise manner; ensure that the die result or decision is captured and the outcome is fully reflected in the finished statement.  If there are gaps identified, please correct them in the code or prompt for a proper resolution.  You can add a "[NEEDS RESOLUTION]" flag in the document in order to seek clarification.
+
+`Outcome: nothing executed: recommendations on the prompt (name what "correct" is measured against, cover all 60 asks rather than the sampled ones, define the test for each text, split wording fixes from behaviour changes, keep the document regenerable, say how flags and commits should go) and a rewritten prompt offered.`
+
+## 85. 2026-11-15
+
+go ahead with your suggested prompt, except that we want a fix wherever possible, and a flag only if a fix is impossible.
+
+`Outcome: every dice ask and decision reviewed against docs/rules.md and reworded where it fell short: asks name their modifiers and every outcome, results carry their sums, log lines say what changed; the reaction line shows its target, panel lines are summaries over their asks, the result panel is titled by its segment, a captive's ask no longer shows another seat's action, minus signs and modifier order fixed, the hint drawn lighter under the ask. docs/sample-turn-text.md is now generated (bun run docs:turn-text) with four more sequences. Two gaps in what the game does are flagged [NEEDS RESOLUTION] there: disaster cards 16, 18, 29 and 46 are not played out, and rivers neither branch nor follow the Drainage Basin Rule.`

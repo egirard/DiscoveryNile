@@ -27,7 +27,7 @@ describe('disaster card contexts (rules §10)', () => {
   });
   it('a card for another terrain has no effect and the blanks never do', () => {
     const r = resolve(7, veldt, FOOT);
-    expect(r).toMatchObject({ applies: false, outcome: 'not here: lake', chart: FOOT, rolls: [] });
+    expect(r).toMatchObject({ applies: false, outcome: 'no effect here: a card for lake', chart: FOOT, rolls: [] });
     expect(resolve(4, veldt, FOOT)).toMatchObject({ applies: false, outcome: 'no disaster on this card' });
   });
 });

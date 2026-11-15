@@ -72,7 +72,7 @@ test.describe('018 - Defeat, escape and victory', () => {
       verifications: [
         { spec: 'The victory note reads four prisoners and the village found; the chart already counts the prisoners as bearers', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('prisoners: 5 askaris − 1 = 4 taken; village 3 + 4 = 7, within 4 prisoners + policy 3 = 7: the village is found');
+            await expect(page.getByTestId('victory-note-bottom-1').last()).toHaveText('prisoners: 5 askaris − 1 = 4, 4 taken; the prisoners carry as bearers; village 3 + 4 = 7, within 4 prisoners + policy 3 = 7: the village is found');
           });
           await expect(page.getByTestId('have-bearers-bottom-1')).toHaveAttribute('data-count', '10');
           await expect(page.getByTestId('spoils-prompt-bottom-1')).toBeVisible();
@@ -169,9 +169,9 @@ test.describe('018 - Defeat, escape and victory', () => {
     await steps.step('loot-explained', {
       description: 'The twelve dice are in: the ask stays at bottom-1\'s edge for a moment as the result (prompt 56), the loot\'s line with its twelve dice and the table that read them, before the table goes on',
       verifications: [
-        { spec: 'The result panel is titled The loot and holds the one line, the loot with the table it was read by', check: async () => {
+        { spec: 'The result panel is titled The natives, its segment, and holds the one line, the loot with the table it was read by', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The loot');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The natives');
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '1');
           await expect(page.getByTestId('result-loot-note-bottom-1')).toHaveText('looted 10 rations, 2 gifts (a die a warrior: 1 to 4 that many rations, 5 a gift, 6 nothing)');
         } }
@@ -225,7 +225,7 @@ test.describe('018 - Defeat, escape and victory', () => {
         { spec: 'The combat and defeat notes tell the rout and the capture; the token shows the captive mark', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText("hostile; nerve 2 × 5 askaris ÷ policy 4 = 2, not more than 2 warriors: the natives attack; surprise 1 + 1 = 2, under policy 4: the expedition is surprised; the natives strike: 2 warriors ÷ 1 = 2 askaris fall; the askaris' nerve 3 × 2 fallen = 6, over the 5 that stood: the askaris break and run: defeat");
-            await expect(page.getByTestId('defeat-note-bottom-1').last()).toHaveText('defeat 2: the explorer is held prisoner');
+            await expect(page.getByTestId('defeat-note-bottom-1').last()).toHaveText('defeat 2: the explorer is held prisoner and the expedition is lost; an escape is rolled for each turn');
           });
           await expect(page.getByTestId('captive-bottom-1')).toBeVisible();
           await expect(page.getByTestId('chart-summary-bottom-1')).toHaveCount(0);

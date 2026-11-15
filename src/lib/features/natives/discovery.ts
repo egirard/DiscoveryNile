@@ -15,6 +15,9 @@ export function nativesOn(terrain: Terrain, water: boolean): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
+/** "2, 3 or 4": the totals a check passes on, as a hint says them. */
+export const orList = (ns: number[]): string => (ns.length < 2 ? ns.join('') : `${ns.slice(0, -1).join(', ')} or ${ns.at(-1)}`);
+
 export function distanceToNearestPort(hex: HexId): number {
   return Math.min(...PORTS.map((p) => distance(hex, p.hex)));
 }
@@ -40,7 +43,7 @@ export interface DiscoveryResult {
 export function discoverNatives(rng: RngState, terrain: Terrain, water: boolean, hex: HexId): { rng: RngState; result: DiscoveryResult } {
   const on = nativesOn(terrain, water);
   if (on.length === 0) return { rng, result: { rolls: [], needed: 'none here', found: false, warriors: 0, summary: 'no natives: none in a dry desert' } };
-  const two = dice(rng, 2, 'natives', { what: 'for natives', hint: `natives on ${on.join(', ')}`, result: ([a, b]) => `${a} + ${b} = ${a + b}: ${on.includes(a + b) ? 'natives' : 'no natives'}` });
+  const two = dice(rng, 2, 'natives', { what: 'for natives', hint: `a total of ${orList(on)} finds natives in ${terrain.replace(/-/g, ' ')}${water ? ' on water' : ''}; anything else, none`, result: ([a, b]) => `${a} + ${b} = ${a + b}: ${on.includes(a + b) ? 'natives' : 'no natives'}` });
   rng = two.state;
   const rolls: Roll[] = two.values.map((value) => ({ label: 'natives', value }));
   const sum = two.values[0] + two.values[1];
@@ -50,13 +53,16 @@ export function discoverNatives(rng: RngState, terrain: Terrain, water: boolean,
   const port = nearestPort(hex);
   const cap = port.distance;
   // The warriors asked for at the table: the two dice that found the tribe go with the ask, explained (prompt 56).
-  const three = noting(() => dice(rng, 3, 'natives', { what: 'for the warriors', hint: `the product, the largest die no more than ${cap}`, result: (vs) => { const s = [...vs].sort((x, y) => y - x); const top = Math.min(s[0], cap); return `${top} × ${s[1]} × ${s[2]} = ${top * s[1] * s[2]} warriors${s[0] > cap ? `, the ${s[0]} cut to ${cap}` : ''}`; } }), { making: () => ({ kind: 'natives', rolls: [...rolls], needed, outcome: `natives on ${sum}: a tribe is here, its warriors next` }) });
+  const three = noting(() => dice(rng, 3, 'natives', { what: 'for the warriors', hint: `the three dice multiplied; the largest counts no more than ${cap}, the hex${cap === 1 ? '' : 'es'} to ${port.name}`, result: (vs) => { const s = [...vs].sort((x, y) => y - x); const top = Math.min(s[0], cap); return `${top} × ${s[1]} × ${s[2]} = ${top * s[1] * s[2]} warriors${s[0] > cap ? `, the ${s[0]} cut to ${cap}` : ''}`; } }), { making: () => ({ kind: 'natives', rolls: [...rolls], needed, outcome: `natives on ${sum}: a tribe is here, its warriors next` }) });
   rng = three.state;
   three.values.forEach((value) => rolls.push({ label: 'warriors', value }));
   const sorted = [...three.values].sort((a, b) => b - a);
   const largest = sorted[0];
   sorted[0] = Math.min(sorted[0], cap);
   const warriors = sorted[0] * sorted[1] * sorted[2];
-  const cut = largest > cap ? `, the ${largest} cut to ${cap} for the distance to ${port.name}` : '';
-  return { rng, result: { rolls, needed, found, warriors, summary: `natives on ${sum}: a tribe of ${warriors} warriors, ${three.values.join(' × ')}${cut}` } };
+  // The dice as they count, in the order thrown, the largest cut to the cap where it lay.
+  const counted = [...three.values];
+  counted[counted.indexOf(largest)] = sorted[0];
+  const cut = largest > cap ? `, the ${largest} cut to ${cap}, the hex${cap === 1 ? '' : 'es'} to ${port.name}` : '';
+  return { rng, result: { rolls, needed, found, warriors, summary: `natives on ${sum}: a tribe of ${warriors} warriors, ${counted.join(' × ')}${cut}` } };
 }

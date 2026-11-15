@@ -43,7 +43,9 @@ async function answerAsks(page: Page, answered: string[] = []) {
     const ask = page.getByTestId('dice-ask-bottom-1');
     if (!(await ask.count())) return answered;
     const text = (await ask.textContent()) ?? '';
-    const face = /lost/.test(text) ? 6 : /direction/.test(text) ? 5 : /jungle/.test(text) ? 1 : /natives|tribe/.test(text) ? 6 : /hunt/.test(text) ? 1 : 6;
+    // By what the roll is for, the words before the hint: the hint names terrains and outcomes of its own (prompt 85).
+    const what = text.split(';')[0];
+    const face = /lost/.test(what) ? 6 : /direction/.test(what) ? 5 : /jungle|for the terrain/.test(what) ? 1 : /natives|tribe/.test(what) ? 6 : /hunt/.test(what) ? 1 : 6;
     answered.push(`${text.split(';')[0]} -> ${face}`);
     await page.getByTestId(`die-face-${face}-bottom-1`).click();
     await expect(ask).not.toHaveText(text, { timeout: 5000 }).catch(() => {});

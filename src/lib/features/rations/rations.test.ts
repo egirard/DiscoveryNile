@@ -11,9 +11,9 @@ const FOOT = chart({ askaris: 5, bearers: 15, food: 100 });
 describe('hunting (rules §11, RQ-7)', () => {
   it('modifies the die by terrain, composites adding their parts, river or oasis once', () => {
     expect(huntingModifiers(veldt)).toEqual([]);
-    expect(huntingModifiers({ terrain: 'desert', river: false, oasis: true })).toEqual([{ label: 'desert', value: -4 }, { label: 'oasis', value: 2 }]);
-    expect(huntingModifiers({ terrain: 'jungle-swamp', river: true, oasis: false })).toEqual([{ label: 'swamp', value: -1 }, { label: 'jungle', value: 1 }, { label: 'river', value: 2 }]);
-    expect(huntingModifiers({ terrain: 'lake', river: false, oasis: false })).toEqual([{ label: 'lake', value: -3 }]);
+    expect(huntingModifiers({ terrain: 'desert', river: false, oasis: true })).toEqual([{ label: 'in desert', value: -4 }, { label: 'at an oasis', value: 2 }]);
+    expect(huntingModifiers({ terrain: 'jungle-swamp', river: true, oasis: false })).toEqual([{ label: 'in swamp', value: -1 }, { label: 'in jungle', value: 1 }, { label: 'by a river', value: 2 }]);
+    expect(huntingModifiers({ terrain: 'lake', river: false, oasis: false })).toEqual([{ label: 'on a lake', value: -3 }]);
   });
   it('yields 0, 1, 2 or 3 rations per hunter by the modified total', () => {
     expect([0, 1, 2, 3, 4, 5, 6, 7].map(rationsPerHunter)).toEqual([0, 0, 1, 1, 2, 2, 3, 3]);
@@ -33,7 +33,7 @@ describe('the meal', () => {
     const m = feed(FOOT, NO_SICKNESS, veldt, 12);
     expect(m).toMatchObject({ men: 21, fromGame: 12, fromStore: 9, hungryMen: 0 });
     expect(m.chart.food).toBe(91);
-    expect(m.summary).toBe('12 rations bagged, 21 men ate (9 from the stores)');
+    expect(m.summary).toBe('12 rations bagged, 21 men ate (9 from the stores, 91 left)');
     expect(feed(FOOT, NO_SICKNESS, veldt, 40).chart.food).toBe(100);
   });
   it('horses eat four rations each in the desert', () => {
@@ -48,7 +48,7 @@ describe('the meal', () => {
     const m = feed(short, NO_SICKNESS, veldt, 0);
     expect(m.shot).toEqual({ horses: 1, camels: 1 });
     expect(m.chart).toMatchObject({ horses: 0, camels: 0, food: 23 - 15 });
-    expect(m.summary).toBe('no game, 15 men ate (15 from the stores), shot for food: 1 horse and 1 camel');
+    expect(m.summary).toBe('no game, 15 men ate (15 from the stores, 8 left), shot for food: 1 horse and 1 camel');
     const starving = feed(chart({ askaris: 4, bearers: 10, food: 3 }), NO_SICKNESS, veldt, 0);
     expect(starving).toMatchObject({ hungryMen: 12 });
     expect(starving.chart.food).toBe(0);
@@ -137,7 +137,7 @@ describe('sickness rolls', () => {
     const sick = { ...NO_SICKNESS, bearers: 3, askaris: 2 };
     const men = chart({ bearers: 5, askaris: 4 });
     const bearers = asked(() => sicknessRound(physical([]), men, sick, fed, false));
-    expect(bearers).toMatchObject({ stream: 'sickness', count: 3, at: 0, ask: { what: 'for the 3 sick bearers, a die a man', hint: '1 or less recovers, 5 or more dies', parts: true } });
+    expect(bearers).toMatchObject({ stream: 'sickness', count: 3, at: 0, ask: { what: 'for the 3 sick bearers, a die a man', hint: '1 or less recovers, 5 or more dies, anything between is still sick', parts: true } });
     const askaris = asked(() => sicknessRound(physical([1, 3, 6]), men, sick, fed, false));
     expect(askaris).toMatchObject({ count: 2, at: 3, ask: { what: 'for the 2 sick askaris, a die a man', parts: true } });
     // All in: the dice are read as they always were, a die a man in order.
@@ -147,9 +147,9 @@ describe('sickness rolls', () => {
     // One man is one die, asked for as before; the starving sick are thrown for apart from the fed, the well starving last.
     expect(asked(() => sicknessRound(physical([]), men, { ...NO_SICKNESS, askaris: 1 }, fed, false))).toMatchObject({ count: 1, ask: { what: 'for the sick askari' } });
     const hungry = { guides: 0, bearers: 4, askaris: 0, explorer: false };
-    expect(asked(() => sicknessRound(physical([]), men, sick, hungry, false)).ask).toMatchObject({ what: 'for the 3 sick bearers, a die a man', hint: 'no recovery, 2 or more dies' });
+    expect(asked(() => sicknessRound(physical([]), men, sick, hungry, false)).ask).toMatchObject({ what: 'for the 3 sick bearers, a die a man', hint: 'starving too, none can recover, 2 or more dies, anything between is still sick' });
     expect(asked(() => sicknessRound(physical([]), men, sick, { ...hungry, bearers: 2 }, false)).ask.what).toBe('for the 2 sick bearers who starve, a die a man');
-    expect(asked(() => sicknessRound(physical([6, 6, 6, 3, 3]), men, sick, hungry, false))).toMatchObject({ count: 1, ask: { what: 'for the starving bearer', hint: '4+ and he falls sick' } });
+    expect(asked(() => sicknessRound(physical([6, 6, 6, 3, 3]), men, sick, hungry, false))).toMatchObject({ count: 1, ask: { what: 'for the starving bearer', hint: '4 or more and he falls sick, less and he stays well' } });
   });
   it('sick men must be carried or the expedition halts', () => {
     expect(sickCarried(chart({ bearers: 4 }), { ...NO_SICKNESS, bearers: 3 })).toEqual({ sickMen: 3, carriers: 0, halted: true });

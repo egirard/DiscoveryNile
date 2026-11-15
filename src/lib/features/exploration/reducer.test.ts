@@ -95,7 +95,7 @@ describe('expedition/moved into a blank hex', () => {
       if (s.diagnostics.length) continue;
       const lost = rolls(s)[0];
       expect(lost.kind).toBe('lost-check');
-      expect(lost.modifiers![0]).toEqual({ label: 'veldt', value: -1 });
+      expect(lost.modifiers![0]).toEqual({ label: 'leaving veldt', value: -1 });
       if (!lost.lost) hit = { s, first };
     }
     expect(hit).not.toBeNull();
@@ -125,7 +125,7 @@ describe('expedition/moved into a blank hex', () => {
       expect(s.turn!.current).not.toBe(first);
       const played = s.history.filter((t) => t.seat === first).at(-1)!;
       expect(played.log.filter((r) => r.kind !== 'action')).toHaveLength(1);
-      expect(played.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, outcome: 'lost; no hunting needed at Mombasa' });
+      expect(played.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, outcome: 'lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa' });
       const again = reduce([...events, event('expedition/moved', { seat: first, path: ['c24r12'] })]);
       expect(again.history).toEqual(s.history);
     }

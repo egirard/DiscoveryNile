@@ -2,7 +2,7 @@
 import { load, mountedCarry, overlandCarry, type Chart } from '$features/expedition/prices';
 import type { Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
-import { hasPart, type Modifier, type Roll } from '$features/map/generate';
+import { hasPart, modifierText, num, type Modifier, type Roll } from '$features/map/generate';
 import { d6, dice, type DiceAsk, type RngState } from '$lib/game/random';
 
 export interface Camp {
@@ -92,11 +92,11 @@ export function drink(chart: Chart, camp: Camp, explorers = 1): DrinkResult | nu
 export function huntingModifiers(camp: Camp): Modifier[] {
   const out: Modifier[] = [];
   const t = camp.terrain;
-  if (hasPart(t, 'desert')) out.push({ label: 'desert', value: -4 });
-  if (hasPart(t, 'lake')) out.push({ label: 'lake', value: -3 });
-  if (hasPart(t, 'swamp')) out.push({ label: 'swamp', value: -1 });
-  if (hasPart(t, 'jungle')) out.push({ label: 'jungle', value: 1 });
-  if (camp.river || camp.oasis) out.push({ label: camp.river ? 'river' : 'oasis', value: 2 });
+  if (hasPart(t, 'desert')) out.push({ label: 'in desert', value: -4 });
+  if (hasPart(t, 'lake')) out.push({ label: 'on a lake', value: -3 });
+  if (hasPart(t, 'swamp')) out.push({ label: 'in swamp', value: -1 });
+  if (hasPart(t, 'jungle')) out.push({ label: 'in jungle', value: 1 });
+  if (camp.river || camp.oasis) out.push({ label: camp.river ? 'by a river' : 'at an oasis', value: 2 });
   return out;
 }
 
@@ -125,7 +125,7 @@ export interface HuntResult {
 export function hunt(rng: RngState, camp: Camp, askaris: number, zoologist: boolean): { rng: RngState; result: HuntResult } {
   const modifiers = huntingModifiers(camp);
   const bonus = modifiers.reduce((a, m) => a + m.value, 0);
-  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `the die${bonus ? ` ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} for the camp` : ''} bags one ration per hunter at 2, two at 4, three at 6`, result: ([v]) => `${bonus ? `${v} ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} = ${v + bonus}: ` : ''}${RATE[rationsPerHunter(v + bonus)]}${rationsPerHunter(v + bonus) ? ' per hunter' : ' bagged'}` });
+  const r = d6(rng, 'hunting', { what: 'for the hunt', hint: `${modifiers.length ? `${modifiers.map(modifierText).join(', ')}: ` : ''}1 or less bags nothing, 2–3 one ration a hunter, 4–5 two, 6 or more three; ${askaris + 1} hunter${askaris ? 's' : ''}`, result: ([v]) => `${bonus ? `${v} ${bonus > 0 ? '+' : '−'} ${Math.abs(bonus)} = ${num(v + bonus)}: ` : ''}${RATE[rationsPerHunter(v + bonus)]}${rationsPerHunter(v + bonus) ? ` per hunter${rationsPerHunter(v + bonus + (zoologist ? 1 : 0)) !== rationsPerHunter(v + bonus) ? `, ${RATE[rationsPerHunter(v + bonus + 1)]} for the zoologist` : ''}: ${rationsPerHunter(v + bonus) * askaris + rationsPerHunter(v + bonus + (zoologist ? 1 : 0))} bagged` : ' bagged'}` });
   const total = r.value + modifiers.reduce((a, m) => a + m.value, 0);
   const perHunter = rationsPerHunter(total), explorerShare = rationsPerHunter(total + (zoologist ? 1 : 0));
   const game = perHunter * askaris + explorerShare;
@@ -139,7 +139,7 @@ const RATE = ['nothing', 'one', 'two', 'three'];
  *  hunter", or none on a defensive stand (rules §8.1). */
 export function huntRate(h: HuntResult, defensive: boolean): string {
   if (defensive) return 'no hunting on a defensive stand';
-  if (h.game === 0) return 'nothing per hunter';
+  if (h.game === 0) return 'the hunt fails';
   const zoology = h.explorerShare !== h.perHunter ? `, ${RATE[h.explorerShare]} for the zoologist` : '';
   return `${RATE[h.perHunter]} per hunter${zoology}`;
 }
@@ -184,7 +184,7 @@ export function feed(chart: Chart, sick: Sickness, camp: Camp, game: number, exp
   const hungryHorses = Math.ceil((forHorses - horsesFed) / 4);
   const parts: string[] = [];
   parts.push(game ? `${game} rations bagged` : 'no game');
-  parts.push(`${men} men ate${fromGame < men ? ` (${menFromStore} from the stores)` : ''}`);
+  parts.push(`${men} men ate${fromGame < men ? ` (${menFromStore} from the stores, ${next.food} left)` : ''}`);
   if (forHorses) parts.push(`${next.horses} horses ate ${horsesFed}`);
   if (shot.horses || shot.camels) parts.push(`shot for food: ${[shot.horses ? `${shot.horses} horse${shot.horses > 1 ? 's' : ''}` : '', shot.camels ? `${shot.camels} camel${shot.camels > 1 ? 's' : ''}` : ''].filter(Boolean).join(' and ')}`);
   if (hungryMen) parts.push(`${hungryMen} men go hungry`);
@@ -273,7 +273,7 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
     const shift = (doc ? 1 : 0) - (isStarving ? 3 : 0);
     const lo = 1 + shift;
     const hi = 5 + shift;
-    return `${lo >= 1 ? `${lo} or less recovers` : 'no recovery'}, ${hi <= 6 ? `${hi} or more dies` : 'no death'}`;
+    return `${doc ? 'with the doctor, ' : ''}${isStarving ? 'starving too, ' : ''}${lo >= 1 ? `${lo} or less recovers` : 'none can recover'}, ${hi <= 6 ? `${hi} or more dies` : 'none dies'}, anything between is still sick`;
   };
   // A die a man, asked for by the bunch (PROMPTS.md, prompt 75): the sick bearers together, then the sick askaris,
   // thrown at once or one by one as the player likes (`parts`). The dice are read in the order they always were.
@@ -324,11 +324,11 @@ export function sicknessRound(rng: RngState, chart: Chart, sick: Sickness, starv
   for (const t of MEN) {
     let fell = 0;
     const wellStarving = Math.max(0, starving[t] - sick[t]);
-    for (const d of rollMen(wellStarving, `starving ${t.slice(0, -1)}`, `starving ${t}`, '4+ and he falls sick', starvingRead)) if (d >= 4) fell++;
+    for (const d of rollMen(wellStarving, `starving ${t.slice(0, -1)}`, `starving ${t}`, '4 or more and he falls sick, less and he stays well', starvingRead)) if (d >= 4) fell++;
     nextSick[t] += fell;
     if (fell) notes.push(`${fell} starving ${fell === 1 ? t.slice(0, -1) : t} fall${fell === 1 ? 's' : ''} sick`);
   }
-  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer', { what: 'for the starving explorer', hint: '4+ and he falls sick', result: ([d]) => starvingRead(d) }) >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
+  if (starving.explorer && !sick.explorer && !explorerDied && roll('starving explorer', { what: 'for the starving explorer', hint: '4 or more and he falls sick, less and he stays well', result: ([d]) => starvingRead(d) }) >= 4) { nextSick.explorer = true; notes.push('the starving explorer falls sick'); }
   return { rng, rolls, chart: next, sick: nextSick, died, explorerDied, summary: notes.join(', ') };
 }
 

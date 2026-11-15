@@ -72,7 +72,7 @@ test.describe('019 - Negotiation and trade', () => {
         { spec: 'The rail tells the offer and the permission with the prices', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied');
-            await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
+            await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('the chief permits trade: 3 rations a gift, a bearer 2 gifts, a guide 4 gifts, an askari 1 gift and a musket');
           });
           await expect(page.getByTestId('trade-prompt-bottom-1')).toBeVisible();
         } },
@@ -137,7 +137,7 @@ test.describe('019 - Negotiation and trade', () => {
           await expect(page.getByTestId('trade-have-bearers-bottom-1')).toHaveAttribute('data-count', '7');
           await expect(page.getByTestId('trade-note-bottom-1').last()).toHaveText('bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts'); // one line for the trading (prompt 41)
           const s = await state(page);
-          expect(s.turn!.log.filter((l) => l.kind === 'trade').map((l) => l.outcome)).toEqual(['the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1', 'bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts']);
+          expect(s.turn!.log.filter((l) => l.kind === 'trade').map((l) => l.outcome)).toEqual(['the chief permits trade: 3 rations a gift, a bearer 2 gifts, a guide 4 gifts, an askari 1 gift and a musket', 'bought 1 bearer for 2 gifts; sold 6 rations for 2 gifts']);
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -158,7 +158,7 @@ test.describe('019 - Negotiation and trade', () => {
       verifications: [
         { spec: 'The reaction counts the local knowledge; the chart keeps the men, 18 gifts and nothing else', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /local knowledge \+1/);
+            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /\+1 local knowledge/);
             await expect(page.getByTestId('negotiation-note-bottom-1').last()).toHaveText('everything given: the chief is satisfied and returns 18 gifts');
           });
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '18');

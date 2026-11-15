@@ -39,7 +39,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     expect(s.turn).toMatchObject({ current: 'bottom-1', round: 3, phase: 'natives', policy: null });
     expect(s.map['c24r12']).toMatchObject({ terrain: 'veldt', tribe: 1, markers: ['bottom-1'] });
     expect(s.tribes).toEqual({ 1: { id: 1, hex: 'c24r12', warriors: 12, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } });
-    expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'natives', outcome: 'natives on 3: tribe 1 of 12 warriors, 3 × 4 × 5, the 5 cut to 1 for the distance to Mombasa' });
+    expect(s.turn!.log.at(-1)).toMatchObject({ kind: 'natives', outcome: 'natives on 3: tribe 1 of 12 warriors, 3 × 4 × 1, the 5 cut to 1, the hex to Mombasa' });
     expect(s.turn!.log.at(-1)!.rolls.map((r) => r.value)).toEqual([1, 2, 3, 4, 5]);
     expect(s.explorers[0].cameFrom).toBe('c25r12');
     const reason = (p: Record<string, unknown>, type = 'natives/policy') => reduce([...events, event(type as 'natives/policy', p)]).diagnostics.at(-1)?.reason;
@@ -73,7 +73,7 @@ describe('natives discovered and the explorer\'s policy (rules §7.7, §8.1)', (
     const ev = [...events, event('natives/policy', { seat: 'bottom-1', policy: 1 }), event('turn/ended', { seat: 'bottom-1' })];
     const ended = reduce(ev);
     expect(ended.explorers[0].lastMeal!.rolls[0].value).toBe(6);
-    expect(ended.explorers[0].lastMeal!.outcome).toBe('no hunting on a defensive stand: no game, 12 men ate (12 from the stores)');
+    expect(ended.explorers[0].lastMeal!.outcome).toBe('no hunting on a defensive stand: 12 men ate (12 from the stores, 48 left)');
     const dealt = reduce([...ev, ...pass('top-1', ended)]);
     expect(dealt.turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'disaster', disaster: { then: 'act' } }); // the card is read first (prompt 34)
     // The turn begun among the natives is free to leave them (prompt 77): no policy is asked until the expedition remains.

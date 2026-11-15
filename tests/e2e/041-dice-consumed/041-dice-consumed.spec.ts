@@ -64,7 +64,7 @@ test.describe('041 - Dice consumed', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first; a tie is rolled again');
     // The tray as found: four twos lying from before the game. Then the dice are thrown (the engine sees them move) and read twice.
     await dicecamSays(page, settled('lying', [2, 2, 2, 2]));
     await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
@@ -86,7 +86,7 @@ test.describe('041 - Dice consumed', () => {
             lying: [],
             ignored: [0, 1, 2, 3].map((i) => ({ value: 2, ...placeOf(i) })),
             moved: true,
-            for: { event: 'game/started', eventId: expect.any(String), prompt: 'Roll 4 D6 for first player; the highest total goes first', stream: 'main', count: 4, have: 0, rolled: 0 }
+            for: { event: 'game/started', eventId: expect.any(String), prompt: 'Roll 4 D6 for first player; the highest total goes first; a tie is rolled again', stream: 'main', count: 4, have: 0, rolled: 0 }
           });
           expect(c.for.eventId).toBe((await events(page)).find((e) => e.type === 'game/started')!.id);
         } },

@@ -65,7 +65,7 @@ test.describe('016 - Natives discovered and the explorer\'s policy', () => {
       verifications: [
         { spec: 'Tribe marker 1 is on c24r12 and the rail shows the five dice with the note', check: async () => {
           await expect(page.getByTestId('tribe-c24r12')).toHaveAttribute('data-tribe', '1');
-          await expect(page.getByTestId('natives-note-bottom-1')).toHaveText('natives on 3: tribe 1 of 12 warriors, 3 × 4 × 5, the 5 cut to 1 for the distance to Mombasa');
+          await expect(page.getByTestId('natives-note-bottom-1')).toHaveText('natives on 3: tribe 1 of 12 warriors, 3 × 4 × 1, the 5 cut to 1, the hex to Mombasa');
           await expect(page.getByTestId('policy-prompt-bottom-1')).toBeVisible();
         } },
         { spec: 'The policy panel lists the five policies and the turn cannot end until one is chosen', check: async () => {

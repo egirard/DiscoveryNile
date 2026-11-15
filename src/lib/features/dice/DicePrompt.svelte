@@ -72,13 +72,16 @@
     onroll(next);
   }
   const faces = [1, 2, 3, 4, 5, 6];
+  /** Where the ask's hint begins: after "Roll a D6 for the hunt;". */
+  const cut = $derived(prompt.indexOf(';') < 0 ? prompt.length : prompt.indexOf(';') + 1);
 </script>
 
 <div class="prompt" data-testid="dice-prompt-{seat}" data-count={count} data-have={have.length} data-status={status} data-seen={seen ?? ''} data-stale={stale}>
   {#if note}
     <p class="note" data-testid="dice-note-{seat}">{note}</p>
   {/if}
-  <p class="ask" data-testid="dice-ask-{seat}">{prompt}</p>
+  <!-- What the roll is for stands as the heading; what its outcomes mean reads under it, lighter (prompt 85): the words are the ask's, whole. -->
+  <p class="ask" data-testid="dice-ask-{seat}"><span class="what">{prompt.slice(0, cut)}</span>{#if cut < prompt.length}<span class="hint">{prompt.slice(cut)}</span>{/if}</p>
   {#if gathered}
     <div class="gathered" data-testid="dice-gathered-{seat}" data-have={have.length} aria-label="{have.length} of {count} dice in">
       <span class="tally">{have.length} of {count} in</span>
@@ -136,6 +139,12 @@
     font-size: calc(var(--target) * 0.42);
     font-weight: 700;
     line-height: 1.2;
+  }
+  .ask .hint {
+    display: block;
+    margin-top: calc(var(--gap) * 0.3);
+    font-size: calc(var(--target) * 0.3);
+    font-weight: 400;
   }
   .note {
     margin: 0;

@@ -130,8 +130,8 @@ test.describe('013 - Disaster cards', () => {
           const chip = page.getByTestId('disaster-card-bottom-1');
           await expect(chip).toHaveAttribute('data-card', 'card-29');
           await expect(chip).toHaveAttribute('data-applies', 'false');
-          await expect(page.getByTestId('disaster-note-bottom-1')).toHaveText('not here: jungle');
-          await expect(page.getByTestId('roll-disaster-bottom-1')).toHaveAttribute('data-outcome', 'not here: jungle');
+          await expect(page.getByTestId('disaster-note-bottom-1')).toHaveText('no effect here: a card for jungle');
+          await expect(page.getByTestId('roll-disaster-bottom-1')).toHaveAttribute('data-outcome', 'no effect here: a card for jungle');
         } },
         { spec: 'The chart is unchanged and nobody is sick', check: async () => {
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '4');

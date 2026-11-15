@@ -83,7 +83,7 @@ export function oasisSearchable(m: MappedHex, seat: string): boolean {
  * says what an even roll does without saying whether there is one (prompt 56): that is the first explorer's secret.
  */
 export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[]; summary: string } {
-  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'an even roll finds it, if there is one to find', seat, result: ([v]) => (m.oasis && v % 2 === 0 ? 'even: the oasis is found' : v % 2 === 0 ? 'even, but no oasis here' : 'odd: no oasis found') });
+  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'even finds the oasis, if there is one here; odd finds none, and only its first finder may look again', seat, result: ([v]) => (m.oasis && v % 2 === 0 ? 'even: the oasis is found' : v % 2 === 0 ? 'even, but no oasis here' : 'odd: no oasis found') });
   const found = m.oasis && r.value % 2 === 0;
   const summary = found ? `the oasis is found (${r.value} is even)` : `no oasis found (${r.value}; an even roll finds one, if there is one to find)`;
   return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }], summary };
@@ -209,7 +209,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(holder, from), ailing: false });
         rng = check.rng;
         const { result } = check;
-        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? 'lost' : 'not lost', lost: result.lost }); // "not lost" after the die, in the player's words (prompt 65)
+        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? `lost: the expedition stays where it is and the turn ends` : 'not lost', lost: result.lost }); // "not lost" after the die, in the player's words (prompt 65)
         if (result.lost) return finish(state, { ...movement, halted: true });
       }
 
@@ -222,7 +222,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         rng = gen.rng;
         terrain = gen.result.terrain;
         // The line tells how the terrain came about (prompt 56): the directions tried, the table, the composite die.
-        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain}: ${gen.result.notes.join('; ')}` });
+        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain.replace(/-/g, ' ')}: ${gen.result.notes.join('; ')}` });
         // Rivers, oases, cataracts and peaks (rules §7.4–7.5); water may replace the terrain.
         const water = resolveWater(rng, target, terrain, knowledgeOf(state), Object.values(state.map).flatMap((m) => (m.peakFeet ? [m.peakFeet] : [])));
         rng = water.rng;
@@ -248,18 +248,18 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
 
       // Terrain conflict (rules §7.1): the hex is mapped and claimed, but the expedition turns back.
       if (!canEnter(mode, terrain, chart, target)) {
-        log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back` });
+        log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain.replace(/-/g, ' ')} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back` });
         return finish({ ...learn(state), map }, { ...movement, spent: movement.spent + cost, halted: true });
       }
 
       // Canoes first discovering a cataract going downstream: d6 − 3 canoes go over the falls (rules §7.5).
       let nextChart = chart;
       if (mode === 'canoe' && newlyMapped && map[target].river?.cataract && riverDirection(courseAt(state, from), directionTo(from, target) as Direction) === 'downstream') {
-        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: 'each point over 3 loses a canoe', result: ([v]) => { const over = Math.min(chart.canoes, Math.max(0, v - 3)); return over ? `${v} − 3 = ${over} canoe${over > 1 ? 's' : ''} lost` : 'every canoe survives'; } });
+        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: `the die less 3 is the canoes lost over the falls, of ${chart.canoes}; 3 or less loses none`, result: ([v]) => { const over = Math.min(chart.canoes, Math.max(0, v - 3)); return over ? `${v} − 3 = ${v - 3}: ${over < v - 3 ? `all ${over}` : over} canoe${over > 1 ? 's' : ''} lost` : 'every canoe survives'; } });
         rng = r.state;
         const lostCanoes = Math.min(chart.canoes, Math.max(0, r.value - 3));
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };
-        log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${r.value} − 3 = ${lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : `every canoe survives the cataract (${r.value}, not over 3)` });
+        log.push({ kind: 'canoes', seat: explorer.seat, hex: target, rolls: [{ label: 'canoes over the falls', value: r.value }], outcome: lostCanoes ? `${r.value} − 3 = ${r.value - 3}: ${lostCanoes < r.value - 3 ? `all ${lostCanoes}` : lostCanoes} canoe${lostCanoes > 1 ? 's' : ''} lost over the cataract` : `every canoe survives the cataract (${r.value}, not over 3)` });
       }
       // Natives (rules §7.7): a hex known to hold a tribe asks for a policy; otherwise each explorer rolls once
       // here, unless the hex is published (then the world knows there are none). A joint expedition rolls once.

@@ -88,10 +88,10 @@ test.describe('010 - First step into the unknown', () => {
         { spec: 'The lost-check line reads what was needed, the dice, the modifier and the total of zero or less; the lost badge appears', check: async () => {
           const roll = page.getByTestId('roll-lost-check-bottom-1');
           await expect(roll).toHaveAttribute('data-lost', 'true');
-          await expect(roll).toHaveAttribute('aria-label', /needs 2\+; .*veldt -1.*= -?\d+; lost; no hunting needed at Mombasa/);
+          await expect(roll).toHaveAttribute('aria-label', /needs 2\+; .*−1 leaving veldt = (−\d+|0); lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa/);
           await expect(page.getByTestId('lost-check-needed-bottom-1')).toHaveText('needs 2+');
           expect(Number(await roll.getAttribute('data-total'))).toBeLessThanOrEqual(0);
-          await expect(page.getByTestId('lost-check-total-bottom-1')).toHaveText(`= ${await roll.getAttribute('data-total')}`);
+          await expect(page.getByTestId('lost-check-total-bottom-1')).toHaveText(`= ${(await roll.getAttribute('data-total'))!.replace('-', '−')}`);
           await expect(page.getByTestId('lost-badge-bottom-1')).toBeVisible();
         } },
         { spec: 'The token is still at Mombasa, nothing was mapped, and the turn has passed to the next seat', check: async () => {
@@ -101,7 +101,7 @@ test.describe('010 - First step into the unknown', () => {
           const s = await state(page);
           expect(s.map).toEqual({});
           expect(s.turn!.current).toBe('top-1');
-          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', outcome: 'lost; no hunting needed at Mombasa' });
+          expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', outcome: 'lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa' });
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.location).toEqual({ kind: 'port', port: 'mombasa' });
           expect(s.diagnostics).toEqual([]);
         } }

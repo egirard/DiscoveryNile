@@ -64,7 +64,7 @@ describe('the disaster step of an African turn (rules §10)', () => {
     const ev5 = [...events, face(), ...pass('bottom-1', r4)];
     const ev5b = [...ev5, ...pass('top-1', reduce(ev5)), face()];
     const r5 = reduce(ev5b);
-    expect(r5.turn!.log[0]).toMatchObject({ kind: 'disaster', card: 'card-29', applies: false, outcome: 'not here: jungle' });
+    expect(r5.turn!.log[0]).toMatchObject({ kind: 'disaster', card: 'card-29', applies: false, outcome: 'no effect here: a card for jungle' });
     expect(r5.explorers[0].chart).toMatchObject({ askaris: 4, bearers: 15 });
     const ev6 = [...ev5b, ...pass('bottom-1', r5)];
     const r6 = reduce([...ev6, ...pass('top-1', reduce(ev6)), face()]);

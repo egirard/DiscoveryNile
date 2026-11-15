@@ -3,7 +3,7 @@
   // record, the disaster card if one was drawn, the dice, the modifiers that applied and the outcome.
   // Colours come from the container (paper on the rail's ink, ink on the panel's paper).
   import type { RollRecord } from '$lib/game/state';
-  import type { Roll } from '$features/map/generate';
+  import { modifierText, num, type Roll } from '$features/map/generate';
   import DiceRoll from '$lib/ui/DiceRoll.svelte';
   import { card as cardOf } from '$features/cards/deck';
   import AskedLine from '$features/dice/AskedLine.svelte';
@@ -29,11 +29,27 @@
     poison: 'Poison', trade: 'Trade', sickness: 'Sickness', specialty: 'Specialty', cache: 'Cache', published: 'Published', transit: 'Transit', party: 'Joint expedition', river: 'River', oasis: 'Oasis'
   };
   const name = (kind: string) => KIND[kind] ?? kind.replace(/-/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  /**
+   * In the dice panels the asks under a line carry its dice, what each needed and the sums (prompt 85): when they
+   * account for every die of the line, the line itself is the summary alone, its kind and its outcome, and nothing is
+   * said twice. `spans` is where each ask's dice lie among the line's, so a die tapped there is still set right.
+   */
+  const spans = $derived.by(() => {
+    if (!asks || rail || !r.asks?.length || r.contenders) return null;
+    const out: number[] = [];
+    let at = 0;
+    for (const a of r.asks) {
+      if (a.values.some((v, i) => r.rolls[at + i]?.value !== v)) return null;
+      out.push(at);
+      at += a.values.length;
+    }
+    return at === r.rolls.length ? out : null;
+  });
   /** The rail's note ids kept from the one-line log: `meal-note` for the hunt, `{kind}-note` otherwise. */
   const note = $derived(r.kind === 'hunting' ? 'meal' : r.kind);
   /** At the rail the line never wraps (prompt 34): what a check needed is cut to its numbers ("2 / 4 / 6"), the words staying in the open log. */
   const needed = $derived(r.needed && rail ? r.needed.replace(/ for .*$/, '') : r.needed);
-  const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${r.total}` : ''}; ${r.outcome}`);
+  const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map(modifierText).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${num(r.total)}` : ''}; ${r.outcome}`);
 </script>
 
 <span class="line" class:rail data-testid="{idPrefix}roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} aria-label={label}>
@@ -47,7 +63,7 @@
         <span class="context">{r.applies ? cardOf(r.card).disaster.type.replace(/\s*\(.*$/, '') : 'no effect'}</span>
       </span>
     {/if}
-    {#if r.needed}
+    {#if r.needed && !spans}
       <span class="needed" data-testid="{idPrefix}{note}-needed-{seat}">needs {needed}</span>
     {/if}
     {#if r.contenders}
@@ -58,19 +74,19 @@
           <span class="sum">{c.total}</span>
         </span>
       {/each}
-    {:else if r.rolls.length}
+    {:else if r.rolls.length && !spans}
       <DiceRoll values={r.rolls.slice(0, 6).map((x) => x.value)} label={r.kind} size="calc(var(--target) * 0.4)" marks={r.rolls.slice(0, 6).map((x) => x.from?.corrected === true)} testid={tappable ? `${idPrefix}dice-${r.kind}-${seat}` : undefined} ontap={tappable ? (i, anchor) => { const roll = r.rolls[i]; if (roll?.from) oncorrect?.(roll, anchor); } : undefined} />
       {#if r.rolls.length > 6}<span class="more" aria-hidden="true">+{r.rolls.length - 6}</span>{/if}
     {/if}
-    {#if r.modifiers?.length}
-      <span class="mods">{rail ? r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : `${m.value}`)).filter(Boolean).join(' ') : r.modifiers.map((m) => `${m.label} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')}</span>
-      {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{idPrefix}{note}-total-{seat}">= {r.total}</span>{/if}
+    {#if r.modifiers?.length && !spans}
+      <span class="mods">{rail ? r.modifiers.map((m) => (m.value > 0 ? `+${m.value}` : m.value === 0 ? '' : num(m.value))).filter(Boolean).join(' ') : r.modifiers.map(modifierText).join(', ')}</span>
+      {#if r.total !== undefined && r.rolls.length}<span class="total" data-testid="{idPrefix}{note}-total-{seat}">= {num(r.total)}</span>{/if}
     {/if}
     <span class="outcome" class:bad={r.lost} data-testid="{idPrefix}{note}-note-{seat}">{r.outcome}</span>
     {#if asks && !rail && r.asks?.length}
       <span class="asks" data-testid="{idPrefix}asks-{r.kind}-{seat}" data-count={r.asks.length}>
         {#each [...r.asks].reverse() as a, i (r.asks.length - 1 - i)}
-          <AskedLine asked={a} testid="{idPrefix}ask-{r.kind}-{r.asks.length - 1 - i}-{seat}" />
+          <AskedLine asked={a} testid="{idPrefix}ask-{r.kind}-{r.asks.length - 1 - i}-{seat}" rolls={spans ? r.rolls.slice(spans[r.asks.length - 1 - i], spans[r.asks.length - 1 - i] + a.values.length) : undefined} {oncorrect} />
         {/each}
       </span>
     {/if}

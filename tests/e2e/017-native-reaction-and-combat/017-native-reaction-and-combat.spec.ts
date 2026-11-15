@@ -69,7 +69,7 @@ test.describe('017 - Native reaction and combat', () => {
         { spec: 'The rail shows the reaction as hostile with its dice and modifiers', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
             await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('data-outcome', 'hostile: 18 on the dice, over the target of 4');
-            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /distance to port \+1, policy 3 \+3/);
+            await expect(page.getByTestId('roll-reaction-bottom-1').last()).toHaveAttribute('aria-label', /\+1 hex to the nearest port, \+3 policy 3, show of force/);
           });
         } },
         { spec: 'The combat note tells the fight check by check, every number explained (prompt 56), and its eight dice are shown; the chart shows 4 askaris and the tribe one warrior', check: async () => {
@@ -102,9 +102,9 @@ test.describe('017 - Native reaction and combat', () => {
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await page.getByTestId('policy-4-bottom-1').click();
     const tapFaces = async (values: number[]) => { for (const v of values) await page.getByTestId(`die-face-${v}-bottom-1`).click(); };
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll 3 D6 for the natives' reaction; 5 or less keeps them calm");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll 3 D6 for the natives' reaction; a total of 5 or less and they are not hostile, more and they are hostile (+1 hex to the nearest port, +4 policy 4, ignore them)");
     await tapFaces([6, 6, 6]);
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4: more than the 1 warrior and they hide");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4: more than the 1 warrior and they hide, else they attack");
     // The nerve's ask shows the reaction's line with its verdict (prompt 56), not only the three faces thrown.
     await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
     await expect(page.getByTestId('so-far-reaction-note-bottom-1')).toHaveText('hostile: 18 on the dice, over the target of 5');
@@ -113,9 +113,9 @@ test.describe('017 - Native reaction and combat', () => {
     await steps.step('they-hide-explained', {
       description: 'The nerve die is in: the ask stays at bottom-1\'s edge with what the dice decided (prompt 55), the reaction hostile on 6, 6, 6 (the nerve\'s ask had shown that line already) and the nerve check stated in full, 6 × 4 askaris ÷ policy 4 = 6, more than the one warrior, so the natives hide; the table waits for a tap or two seconds before going on',
       verifications: [
-        { spec: 'The result panel is titled The natives\' nerve; its reaction line says hostile and its fight line states the check in full; the dice prompt is gone and the turn is in the act phase', check: async () => {
+        { spec: 'The result panel is titled The natives, its segment; its reaction line says hostile and its fight line states the check in full; the dice prompt is gone and the turn is in the act phase', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText("The natives' nerve");
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText("The natives");
           await expect(page.getByTestId('result-reaction-note-bottom-1')).toHaveText('hostile: 18 on the dice, over the target of 5');
           await expect(page.getByTestId('result-combat-note-bottom-1')).toHaveText('hostile; nerve 6 × 4 askaris ÷ policy 4 = 6, more than 1 warrior: the natives hide');
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveCount(0);

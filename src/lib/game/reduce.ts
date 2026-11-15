@@ -108,7 +108,8 @@ function resume(state: GameState, event: GameEvent, rolled: AwaitingDice['rolled
     const seat = (e.ask.seat ?? (typeof payloadSeat === 'string' ? payloadSeat : undefined) ?? state.turn?.current ?? state.seats[0]?.id) as AwaitingDice['seat'];
     // The lines so far (prompts 34 and 56): what the game as the rule last noted it holds beyond `state`, the lines a rule
     // attached itself, then the lines still in the making, each given the seat whose roll it is.
-    const stood = e.state ? tagRolls(allRecords(e.state).slice(allRecords(state).length), readOf(e.state.rng)) : [];
+    // Another seat's plain action (the discard that ended the turn before a captive's escape roll) is no part of this seat's roll.
+    const stood = e.state ? tagRolls(allRecords(e.state).slice(allRecords(state).length), readOf(e.state.rng)).filter((r) => r.kind !== 'action' || r.seat === seat) : [];
     const making = (e.making ?? []).map((m): RollRecord => ({ ...m, seat }));
     // Each line so far keeps the asks its dice answered, with what they meant (prompt 81); the asks no line accounts for yet stand alone.
     const told = attachAsks([...stood, ...(e.sofar ?? []), ...making], e.read ?? [], e.asked ?? []);

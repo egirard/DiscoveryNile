@@ -74,7 +74,7 @@ test.describe('047 - Sickness dice', () => {
       description: 'The turn ends with three sick bearers and nothing to eat. The hunt is in, and the table asks once for the three sick bearers: three dice, a die a man, to come as the player likes',
       verifications: [
         { spec: 'One ask for three dice names the three sick bearers and what a die means; none is in yet', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 3 D6 for the 3 sick bearers, a die a man; no recovery, 2 or more dies');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 3 D6 for the 3 sick bearers, a die a man; starving too, none can recover, 2 or more dies, anything between is still sick');
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-count', '3');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveAttribute('data-have', '0');
           await expect(page.getByTestId('dice-auto-bottom-1')).toBeVisible();
@@ -105,7 +105,7 @@ test.describe('047 - Sickness dice', () => {
       description: 'The other two dice, a 2 and a 3, complete the bearers\' throw. The starving explorer is one man and one die, asked for as before',
       verifications: [
         { spec: 'The ask is a single die for the starving explorer, the bearers\' three dice read back in order', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the starving explorer; 4+ and he falls sick');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the starving explorer; 4 or more and he falls sick, less and he stays well');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveCount(0);
           const a = (await state(page)).awaiting!;
           expect(a).toMatchObject({ count: 1, have: [] });

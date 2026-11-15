@@ -30,7 +30,8 @@
   const terrainWords = $derived(explored?.terrain ? explored.terrain.replace(/-/g, ' ') : 'new');
   // The newest segment on top, as its lines are (prompt 72); named only when the result holds more than one (a step lost, then the hunt).
   const segments = $derived([...segmentsOf(lines)].reverse());
-  const heading = $derived(explored ? `Explored a ${terrainWords} hex` : resultTitle(prompt));
+  // The title is the segment's (prompt 85), "The natives", not the last ask's ("The price of askaris"); a result outside any segment keeps its ask's.
+  const heading = $derived(explored ? `Explored a ${terrainWords} hex` : segments[0]?.title || resultTitle(prompt));
 </script>
 
 <div class="result" data-testid="dice-result-{seat}" data-lines={lines.length} data-explored={explored?.hex ?? ''} role="status" aria-label="{heading}: what the dice decided">

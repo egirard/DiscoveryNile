@@ -39,7 +39,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     expect(s.diagnostics).toEqual([]);
     expect(s.turn!.phase).toBe('trade');
     expect(s.turn!.trade).toEqual({ tribe: 1, prices: { food: 3, bearers: 2, guides: 4, askaris: 1 } });
-    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied', 'the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1']);
+    expect(s.turn!.log.slice(-2).map((l) => l.outcome)).toEqual(['2 gifts offered: the larger die 6 × 2 = 12, reaching 12 warriors: the chief is satisfied', 'the chief permits trade: 3 rations a gift, a bearer 2 gifts, a guide 4 gifts, an askari 1 gift and a musket']);
     expect(s.explorers[0].chart!.gifts).toBe(18);
     expect(s.tribes[1].negotiatedBy).toEqual(['bottom-1']);
     const traded = [...offered, event('natives/traded', { seat: 'bottom-1', item: 'bearers', count: 1, direction: 'buy' }), event('natives/traded', { seat: 'bottom-1', item: 'food', count: 2, direction: 'sell' })];
@@ -68,7 +68,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     const none = back({ item: 'food', count: 2, direction: 'buy' }, { item: 'bearers', count: 1, direction: 'sell' });
     expect(none.diagnostics).toEqual([]);
     expect(none.explorers[0].chart).toMatchObject({ bearers: 6, gifts: 18, food: 40 });
-    expect(none.turn!.log.at(-1)!.outcome).toBe('the chief permits trade: 3 rations per gift, bearer 2, guide 4, askari 1');
+    expect(none.turn!.log.at(-1)!.outcome).toBe('the chief permits trade: 3 rations a gift, a bearer 2 gifts, a guide 4 gifts, an askari 1 gift and a musket');
     expect(none.turn!.phase).toBe('trade');
     // A third gift's worth of rations bought after the two sold were taken back is a purchase again.
     expect(back({ item: 'food', count: 2, direction: 'buy' }, { item: 'food', count: 1, direction: 'buy' }).turn!.log.at(-1)!.outcome).toBe('bought 1 bearer for 2 gifts; bought 3 rations for 1 gift');
@@ -77,7 +77,7 @@ describe('negotiation and trade (rules §8.5)', () => {
     // Next turn the prior negotiation counts as local knowledge (+1) for policies 3 and 5.
     const ev = [...traded, event('natives/done', { seat: 'bottom-1' }), event('turn/ended', { seat: 'bottom-1' })];
     const again = reduce([...ev, ...pass('top-1', reduce(ev)), event('natives/policy', { seat: 'bottom-1', policy: 5 })]);
-    expect(again.turn!.log.find((l) => l.kind === 'reaction')!.modifiers!.map((m) => m.label)).toEqual(['distance to port', 'policy 5', 'local knowledge']);
+    expect(again.turn!.log.find((l) => l.kind === 'reaction')!.modifiers!.map((m) => m.label)).toEqual(['hex to the nearest port', 'policy 5, friendly approach', 'local knowledge']);
     expect(again.turn!.phase).toBe('negotiate');
     const everything = reduce([...ev, ...pass('top-1', reduce(ev)), event('natives/policy', { seat: 'bottom-1', policy: 5 }), event('natives/offered', { seat: 'bottom-1', everything: true })]);
     expect(everything.explorers[0].chart).toMatchObject({ gifts: 18, food: 0, muskets: 0, bearers: 7, askaris: 5 });

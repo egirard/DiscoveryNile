@@ -10,10 +10,10 @@ const run = (combat: number[], input: Partial<ReactionInput> = {}) => react(rngS
 describe('native reaction (rules §8.2)', () => {
   it('adds the distance, the policy, and the askari and local-knowledge adjustments', () => {
     expect(reactionModifiers(base).map((m) => m.value)).toEqual([1, 3]);
-    expect(reactionModifiers({ ...base, policy: 5, chart: chart({ bearers: 3 }) }).map((m) => m.label)).toEqual(['distance to port', 'policy 5', 'no askaris', 'unarmed']);
+    expect(reactionModifiers({ ...base, policy: 5, chart: chart({ bearers: 3 }) }).map((m) => m.label)).toEqual(['hex to the nearest port', 'policy 5, friendly approach', 'no askaris', 'unarmed']);
     expect(reactionModifiers({ ...base, policy: 5, localKnowledge: true, attitude: -1 }).map((m) => m.value)).toEqual([1, 5, 1, -1]);
-    expect(reactionModifiers({ ...base, attitude: -1, regard: 3 }).map((m) => m.label)).toEqual(['distance to port', 'policy 3', 'attitude', 'regard for you']);
-    expect(reactionModifiers({ ...base, policy: 4, localKnowledge: true }).map((m) => m.label)).toEqual(['distance to port', 'policy 4']);
+    expect(reactionModifiers({ ...base, attitude: -1, regard: 3 }).map((m) => m.label)).toEqual(['hex to the nearest port', 'policy 3, show of force', 'attitude', 'regard for you']);
+    expect(reactionModifiers({ ...base, policy: 4, localKnowledge: true }).map((m) => m.label)).toEqual(['hex to the nearest port', 'policy 4, ignore them']);
   });
   it('target at or above the three dice means no hostility this turn', () => {
     const r = run([1, 1, 2]);

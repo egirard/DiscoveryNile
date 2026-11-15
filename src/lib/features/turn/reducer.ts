@@ -223,7 +223,7 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   const water = drink(meal.chart, camp, crew.length);
   const hex = (explorer.location as { hex: string }).hex as HexId;
   // The line explains the meal from the die (prompt 54): the rate per hunter, then what was bagged, eaten and drawn from the stores.
-  const parts = [`${huntRate(h.result, defensive)}: ${meal.summary}`];
+  const parts = [`${huntRate(h.result, defensive)}: ${meal.summary.replace(/^no game, /, '')}`];
   if (water) parts.push(water.summary);
   let sick = water?.explorerThirsty ? { ...explorer.sick, explorer: true } : explorer.sick;
   // Starvation, desertion and sickness (rules §11) on the 'sickness' stream.
@@ -256,7 +256,7 @@ function oasisRecheck(state: GameState, explorer: ExplorerState): GameState {
 function escapeAttempt(state: GameState, explorer: ExplorerState): GameState {
   const { hex, tribe, had, goodwill } = explorer.location as { kind: 'captive'; hex: HexId; tribe: number; had: Chart; goodwill: number };
   const r = consequencesOfDefeat(state.rng!, had, -3 + goodwill, explorer.seat);
-  const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? r.summary.replace('the explorer is held prisoner', 'still held prisoner') : r.summary };
+  const record: RollRecord = { kind: 'captivity', seat: explorer.seat, hex, rolls: r.rolls, outcome: r.fate === 'prisoner' ? r.summary.replace('the explorer is held prisoner', 'still held prisoner; another escape is rolled for next turn') : r.summary };
   const turn = { ...state.turn!, log: [...state.turn!.log, record], moved: true };
   if (r.fate === 'killed') {
     const t = state.tribes[tribe];
@@ -342,7 +342,7 @@ function settle(state: GameState, explorer: ExplorerState, tribe: Tribe, hex: He
     // Results of victory (rules §8.4): prisoners join as bearers until released; then the village.
     const v = noting(() => resultsOfVictory(rng, result.chart.askaris, result.warriors, policy), { state: next });
     rng = v.rng;
-    log.push({ kind: 'victory', seat: explorer.seat, hex, rolls: v.rolls, outcome: v.summary });
+    log.push({ kind: 'victory', seat: explorer.seat, hex, rolls: v.rolls, outcome: v.prisoners ? v.summary.replace(/; village /, `; the ${v.prisoners === 1 ? 'prisoner carries as a bearer' : 'prisoners carry as bearers'}${terrainOf(state, hex) === 'desert' ? `, with ${v.prisoners === 1 ? 'a camel' : `${v.prisoners} camels`}` : ''}; village `) : v.summary });
     const chart = { ...result.chart, bearers: result.chart.bearers + v.prisoners, camels: result.chart.camels + (terrainOf(state, hex) === 'desert' ? v.prisoners : 0) };
     const defeatedBy = tribe.defeatedBy.includes(explorer.seat) ? tribe.defeatedBy : [...tribe.defeatedBy, explorer.seat];
     tribes = { ...tribes, [tribe.id]: { ...tribes[tribe.id], warriors: result.warriors - v.prisoners, defeatedBy } };
@@ -361,7 +361,7 @@ function permitTrade(state: GameState, tribe: Tribe): GameState {
   const hex = (explorer.location as { kind: 'hex'; hex: HexId }).hex;
   const camp = situationOf(state, explorer)!;
   const prices = noting(() => tradePrices(state.rng!, { desert: camp.terrain === 'desert', water: camp.river || camp.terrain === 'lake' || (camp.terrain !== null && camp.terrain.includes('swamp')) }), { state });
-  const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: prices.rolls, outcome: 'the chief permits trade: ' + Object.entries(prices.prices).map(([item, price]) => (item === 'food' ? `${price} rations per gift` : `${item.slice(0, -1)} ${price}`)).join(', ') };
+  const record: RollRecord = { kind: 'trade', seat: explorer.seat, hex, rolls: prices.rolls, outcome: 'the chief permits trade: ' + Object.entries(prices.prices).map(([item, price]) => (item === 'food' ? `${price} ration${price === 1 ? '' : 's'} a gift` : `${/^[aeiou]/.test(item) ? 'an' : 'a'} ${item.slice(0, -1)} ${price} gift${price === 1 ? '' : 's'}${item === 'askaris' ? ' and a musket' : ''}`)).join(', ') };
   const negotiatedBy = tribe.negotiatedBy.includes(explorer.seat) ? tribe.negotiatedBy : [...tribe.negotiatedBy, explorer.seat];
   return { ...state, rng: prices.rng, tribes: { ...state.tribes, [tribe.id]: { ...state.tribes[tribe.id], negotiatedBy } }, turn: { ...state.turn!, phase: 'trade', trade: { tribe: tribe.id, prices: prices.prices }, log: [...state.turn!.log, record] } };
 }
@@ -474,7 +474,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       while (winner === null) {
         const totals = new Map<SeatId, number>();
         for (const seat of contenders) {
-          const r = dice(rng, 4, 'main', { what: 'for first player', hint: 'the highest total goes first', seat, result: (vs) => `${vs.join(' + ')} = ${vs.reduce((a, b) => a + b, 0)}` });
+          const r = dice(rng, 4, 'main', { what: 'for first player', hint: 'the highest total goes first; a tie is rolled again', seat, result: (vs) => `${vs.join(' + ')} = ${vs.reduce((a, b) => a + b, 0)}` });
           rng = r.state;
           rollOff[seat].push(r.values);
           totals.set(seat, r.values.reduce((a, b) => a + b, 0));
@@ -688,7 +688,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       const result = react(state.rng!, reactionInput(state, explorer, tribe, hex, policy));
       const log: RollRecord[] = [
         ...turn.log,
-        { kind: 'reaction', seat: explorer.seat, hex, rolls: result.reaction.rolls, modifiers: result.reaction.modifiers, total: result.reaction.total, outcome: reactionOutcome(result.reaction) }
+        { kind: 'reaction', seat: explorer.seat, hex, rolls: result.reaction.rolls, modifiers: result.reaction.modifiers, needed: `${result.reaction.target} or less`, outcome: reactionOutcome(result.reaction) }
       ];
       const reacted: GameState = { ...state, rng: result.rng, turn: { ...turn, log, moved: turn.moved || policy === 1 } };
       return noting(() => settle(reacted, explorer, tribe, hex, policy, result), { state: reacted });
@@ -865,7 +865,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       // Release every prisoner: the tribe's regard for this explorer rises by three (rules §8.6) and the village is left alone.
       const holder = holderOf(state, explorer);
       const chart = { ...holder.chart!, bearers: holder.chart!.bearers - tribe.pending!.prisoners };
-      const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: [], outcome: `${tribe.pending!.prisoners} prisoners released: the tribe is grateful` };
+      const record: RollRecord = { kind: 'victory', seat: explorer.seat, hex, rolls: [], outcome: `${tribe.pending!.prisoners} prisoner${tribe.pending!.prisoners === 1 ? '' : 's'} released: the tribe is grateful (attitude +3 toward you), the village left alone` };
       return { ...replaceExplorer(state, { ...holder, chart }), tribes: { ...state.tribes, [tribe.id]: { ...tribe, warriors: tribe.warriors + tribe.pending!.prisoners, regard: { ...tribe.regard, [explorer.seat]: (tribe.regard[explorer.seat] ?? 0) + 3 }, pending: null } }, turn: { ...state.turn, phase: 'act', log: [...state.turn.log, record] } };
     }
     case 'expedition/returned': {
@@ -997,7 +997,7 @@ export function reduceTurn(state: GameState, event: GameEvent): GameState | stri
       if (cache.seat !== explorer.seat && !state.map[hex]?.publishedBy) return 'another explorer\u2019s cache: only findable once the hex is published (RQ-3)';
       if (cache.round >= state.turn.round) return 'a cache is dug up on a later turn';
       // Returning to a cache: on a 1 or 2 it has disappeared (rules §5).
-      const r = d6(state.rng!, 'cache', { what: 'for the cache', hint: '1 or 2 and it has gone', result: ([v]) => (v <= 2 ? 'the cache has gone' : 'the cache is found') });
+      const r = d6(state.rng!, 'cache', { what: 'for the cache', hint: '1 or 2 and it has gone; 3 or more and it is recovered', result: ([v]) => (v <= 2 ? 'the cache has gone' : 'the cache is found') });
       const { [cache.id]: _gone, ...rest } = state.caches;
       void _gone;
       const gone = r.value <= 2;

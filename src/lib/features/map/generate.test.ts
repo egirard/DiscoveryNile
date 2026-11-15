@@ -16,7 +16,7 @@ function seedRolling(value: number, offset = 0): number {
 
 describe('lost check (rules §7.2)', () => {
   it('uses the terrain of the hex being left', () => {
-    expect(terrainLostModifier('veldt')).toEqual({ label: 'veldt', value: -1 });
+    expect(terrainLostModifier('veldt')).toEqual({ label: 'leaving veldt', value: -1 });
     expect(terrainLostModifier('desert').value).toBe(-1);
     expect(terrainLostModifier('lake').value).toBe(-1);
     expect(terrainLostModifier('swamp').value).toBe(-2);
