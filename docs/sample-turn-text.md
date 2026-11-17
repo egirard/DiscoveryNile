@@ -58,22 +58,24 @@ The expedition has just been outfitted at Mombasa. The step costs both movement 
 
 Move prompt at bottom-1's edge: "Pick a hex to move into, or" [END TURN]
 
-**1. The player taps hex c24r12 on the board**
+**1. Player taps an unexplored hex on the board**
 
 Dice panel at bottom-1's edge:
 
-- Ask: "Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here"
+- Ask: "Roll a D6 to see if you are lost; −1 for leaving veldt: 2+ finds the way"
 - Status: "Waiting for a D6 roll"
+- Result 1: Lost? \[4] (-1 for veldt) => Not lost
+- Result 2: Lost? \[2] (-1 for veldt) => Lost!
 
-**2. The dice come up 4**
+**2. Enter a Hex**
 
 Dice panel at bottom-1's edge:
 
-- Ask: "Roll a D6 for the direction of the terrain to copy; a mapped neighbour that way is copied; nothing mapped there and the die is rolled once more"
+- Ask: "Terrain in the new hex: Roll a D6 for the direction to copy"
 - Status: "Waiting for a D6 roll"
-- So far (newest first):
-  - **Lost check** not lost
-    - *Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here* / Result: [4] 4 − 1 = 3: not lost
+- Result 1a: (nothing to copy): Direction \[3] is empty.  Roll a D6 again."
+- Result 1b: (second blank terrain roll) "Direction \[3] and \[4] are empty." \[starts random terrain flow]
+- Result 2: Direction \[1] contains veldt. \[starts check for river]
 
 **3. The dice come up 3**
 
