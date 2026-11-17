@@ -553,3 +553,15 @@ I'm about to give you a prompt but want you to review it and recommend improveme
 go ahead with your suggested prompt, except that we want a fix wherever possible, and a flag only if a fix is impossible.
 
 `Outcome: every dice ask and decision reviewed against docs/rules.md and reworded where it fell short: asks name their modifiers and every outcome, results carry their sums, log lines say what changed; the reaction line shows its target, panel lines are summaries over their asks, the result panel is titled by its segment, a captive's ask no longer shows another seat's action, minus signs and modifier order fixed, the hint drawn lighter under the ask. docs/sample-turn-text.md is now generated (bun run docs:turn-text) with four more sequences. Two gaps in what the game does are flagged [NEEDS RESOLUTION] there: disaster cards 16, 18, 29 and 46 are not played out, and rivers neither branch nor follow the Drainage Basin Rule.`
+
+## 86. 2026-11-16
+
+Please revise sample-turn-text.md.  Ensure that we give the various versions of each line (before resolution and after resolution in one or more outcomes).  Place all of them in a sequence so that we can quickly check them.
+
+`Outcome: done in a cloud session on the branch claude/nice-brahmagupta-70ky8h, not merged: the generated document opened with "Every line, before and after". Superseded by prompt 87.`
+
+## 87. 2026-11-16
+
+I'd like to see the sample-turn-text revised similar to the edits that I just entered.  Each "line" in the record will show the prompt and various result states that could be generated.  Please get rid of the messy "so far" layout and directly edit this flow instead of using the generation prompt.  I'd like you to consider how the information should be presented and how it can be properly summarized for each step of game play.
+
+`Outcome: docs/sample-turn-text.md rewritten by hand as the spec of the turn's text, after the two steps edited in f1aae03: each step one line of the record with its ask and every result ("Lost? [4] (−1 for veldt) => Not lost"), each operation (a step, an encounter, the end of a turn) folding into one summary; the "so far" listings are gone. The generator now writes the game's present words to docs/sample-turn-text.generated.md (ignored), no longer this file. No game code changed; three proposals that change the table's behaviour are listed at the document's end.`

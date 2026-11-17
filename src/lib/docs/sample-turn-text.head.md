@@ -1,8 +1,8 @@
-# Sample turn text
+# The turn's text as the game words it today
 
 Every piece of text the table shows during a turn, as the game words it, for review and for speccing the interaction flow. The samples are produced by playing the game's own rules with dice rolled at the table (physical dice on), so the words are the game's, not a paraphrase.
 
-This file is generated: `bun run docs:turn-text` plays the sequences again and writes it over. The words before the samples and after them are kept in `src/lib/docs/sample-turn-text.head.md` and `src/lib/docs/sample-turn-text.tail.md`; the sequences are in `src/lib/docs/sample-turn-text.test.ts`. Notes for the spec belong in those files, where a regeneration keeps them.
+This file is generated and not committed: `bun run docs:turn-text` plays the sequences again and writes it over. The spec of the turn's text is the hand-edited [sample-turn-text.md](sample-turn-text.md); this file is for comparing the game with it. The words before the samples and after them are kept in `src/lib/docs/sample-turn-text.head.md` and `src/lib/docs/sample-turn-text.tail.md`; the sequences are in `src/lib/docs/sample-turn-text.test.ts`.
 
 ## How to read the samples
 

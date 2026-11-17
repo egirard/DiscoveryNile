@@ -1,7 +1,8 @@
-// The generator of docs/sample-turn-text.md (PROMPTS.md, prompts 83 and 85): the game's own rules played with dice
-// rolled at the table, every text the table then shows written down step by step. It is no test of the game: it runs
-// only when asked (`bun run docs:turn-text`), and writes the document over, so the samples always say what the game
-// says. The words around the samples (how to read them, what is open, what is not sampled) live in HEAD and TAIL here.
+// The generator of docs/sample-turn-text.generated.md (PROMPTS.md, prompts 83, 85 and 87): the game's own rules played
+// with dice rolled at the table, every text the table then shows written down step by step. It is no test of the game:
+// it runs only when asked (`bun run docs:turn-text`). Since prompt 87 docs/sample-turn-text.md is the hand-edited spec
+// of the turn's text and this output (not committed) is what the game says today, for comparing with it. The words
+// around the samples live in HEAD and TAIL here.
 import { it } from 'vitest';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { modifierText, num } from '$features/map/generate';
@@ -177,7 +178,7 @@ export function inAfrica(purchases: Record<string, number> = { askaris: 5, beare
 }
 const move = (hex: string) => event('expedition/moved', { seat: SEAT, path: [hex] });
 
-it.skipIf(!process.env.TURN_TEXT)('writes docs/sample-turn-text.md', () => {
+it.skipIf(!process.env.TURN_TEXT)('writes docs/sample-turn-text.generated.md', () => {
   out = [];
   resetSequence();
   const R = (...v: number[]): Step => ['roll', v];
@@ -231,7 +232,7 @@ it.skipIf(!process.env.TURN_TEXT)('writes docs/sample-turn-text.md', () => {
     [policy(5, 'Friendly approach'), R(1, 1, 1), ['do', 'The player chooses "Give everything"', event('natives/offered', { seat: SEAT, everything: true })], R(2, 3, 4), R(3), R(3), R(3), R(3)]);
   run('C14. Friendly approach: the chief insulted but too weak to attack, so he tries poison', 'A tribe of 2 warriors, found as in C1 with other dice for the warriors.', few,
     [policy(5, 'Friendly approach'), R(1, 1, 1), ['do', 'The player offers 1 gift', event('natives/offered', { seat: SEAT, gifts: 1 })], R(1, 1), R(6), R(3)]);
-  writeFileSync('docs/sample-turn-text.md', assemble(out.join('\n')));
+  writeFileSync('docs/sample-turn-text.generated.md', assemble(out.join('\n')));
 });
 
 /** The samples between the words kept beside this file, grouped under the three headings. */

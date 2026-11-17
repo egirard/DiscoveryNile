@@ -11,3 +11,6 @@ playwright-report/
 .firebase/
 *.log
 /diagnostics/
+
+# The game's present turn text, written by `bun run docs:turn-text` for comparing with docs/sample-turn-text.md
+docs/sample-turn-text.generated.md
