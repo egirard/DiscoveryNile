@@ -2,7 +2,13 @@
 
 Every piece of text the table shows during a turn, as the game words it, for review and for speccing the interaction flow. The samples are produced by playing the game's own rules with dice rolled at the table (physical dice on), so the words are the game's, not a paraphrase.
 
+The document is in two parts. **Every line, before and after** lists each text once, in the order a turn meets it: the ask before its roll, each result its dice gave in the samples, and the line it wrote, so the versions of a text are checked in one place. The **samples** (A, B, C) then play each sequence step by step, showing every panel around those texts; each entry in the first part names the sample and step where it stands.
+
 This file is generated: `bun run docs:turn-text` plays the sequences again and writes it over. The words before the samples and after them are kept in `src/lib/docs/sample-turn-text.head.md` and `src/lib/docs/sample-turn-text.tail.md`; the sequences are in `src/lib/docs/sample-turn-text.test.ts`. Notes for the spec belong in those files, where a regeneration keeps them.
+
+## How to read the sequence of texts
+
+Under each line's kind (Lost check, Terrain, Water, …), numbered, every ask the samples reach, in the order they are met: the ask's words as the dice panel shows them, then one "Result:" per outcome the samples met, with the dice that gave it. A note the panel shows above the ask ("Hex in direction 6 is empty; roll again") stands under it. After the asks, every version of the line those dice wrote once it is in the log, with its shorter form in the panels (the kind and outcome alone when the asks under it account for its dice) and on the rail (modifiers as bare numbers) where they differ. The samples' move prompts open the list; the lines no dice write close it.
 
 ## How to read the samples
 

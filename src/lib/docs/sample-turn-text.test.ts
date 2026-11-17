@@ -1,4 +1,4 @@
-// The generator of docs/sample-turn-text.md (PROMPTS.md, prompts 83 and 85): the game's own rules played with dice
+// The generator of docs/sample-turn-text.md (PROMPTS.md, prompts 83, 85 and 86): the game's own rules played with dice
 // rolled at the table, every text the table then shows written down step by step. It is no test of the game: it runs
 // only when asked (`bun run docs:turn-text`), and writes the document over, so the samples always say what the game
 // says. The words around the samples (how to read them, what is open, what is not sampled) live in HEAD and TAIL here.
@@ -51,6 +51,81 @@ function line(r: RollRecord, rail = false, panel = false): string {
 }
 const asksOf = (r: RollRecord): string[] => [...(r.asks ?? [])].reverse().map((a) => `    - *${a.prompt}* / Result: ${diceText(a.values)}${a.result ? ` ${a.result}` : ''}`);
 
+/**
+ * Every text met while the samples play (prompt 86), kept once with where it first stands, so the document can list them
+ * in one sequence to check: each ask before its roll, each result its dice gave, and each line as the log, the panels
+ * and the rail word it. `where` is the sample and step being written.
+ */
+let where = '';
+const seen = {
+  order: [] as string[],
+  asks: new Map<string, { where: string; notes: Set<string>; kind?: string; results: Map<string, string> }>(),
+  kinds: [] as string[],
+  lines: new Map<string, Map<string, { where: string; panel: string; rail: string }>>(),
+  plain: new Map<string, string>(),
+  prompts: new Map<string, string>()
+};
+function sawAsk(prompt: string, note?: string) {
+  if (!seen.asks.has(prompt)) { seen.asks.set(prompt, { where, notes: new Set(), results: new Map() }); seen.order.push(prompt); }
+  if (note) seen.asks.get(prompt)!.notes.add(note);
+  return seen.asks.get(prompt)!;
+}
+function sawAsked(a: { prompt: string; values: number[]; result: string }, kind?: string) {
+  const ask = sawAsk(a.prompt);
+  if (kind && !ask.kind) ask.kind = kind;
+  const text = `${diceText(a.values)} ${a.result}`.trim();
+  if (!ask.results.has(text)) ask.results.set(text, where);
+}
+/** A record met: its asks' results always; its line only once it is written to the log (`written`), not as it grows in a panel. */
+function sawRecord(r: RollRecord, written = false) {
+  if (r.kind === 'action') { if (written && !seen.plain.has(r.outcome)) seen.plain.set(r.outcome, where); return; }
+  if (!seen.kinds.includes(r.kind)) seen.kinds.push(r.kind);
+  for (const a of r.asks ?? []) sawAsked(a, r.kind);
+  if (!written) return;
+  const byKind = seen.lines.get(r.kind) ?? new Map();
+  seen.lines.set(r.kind, byKind);
+  const log = line(r);
+  if (!byKind.has(log)) byKind.set(log, { where, panel: line(r, false, true), rail: line(r, true) });
+}
+function sawPrompt(text: string) { if (!seen.prompts.has(text)) seen.prompts.set(text, where); }
+const at = (w: string) => ` (${w})`;
+/** The sequence of every text seen, grouped by the line its dice write, in the order the samples meet them. */
+function catalogue(): string {
+  const o: string[] = [];
+  o.push('## Every line, before and after', '',
+    'Every text the samples reach, once, in the order a turn meets it, grouped by the line its dice write. First each ask as the dice panel shows it before the roll, with every result the samples show after it (one per outcome met). Then the line those dice wrote, once finished and in the log, as the open log words it, with its shorter forms in the panels and on the rail where they differ (while its dice are still coming in, a panel shows the line as far as it has got, as the samples below show). Each text names the sample and step where it stands in full, so a text is checked here and read in its place below.', '');
+  o.push('### The move prompt', '', ...[...seen.prompts].map(([t, w]) => `- ${t}${at(w)}`), '');
+  for (const kind of seen.kinds) {
+    o.push(`### ${name(kind)}`, '');
+    let n = 0;
+    for (const prompt of seen.order) {
+      const a = seen.asks.get(prompt)!;
+      if (a.kind !== kind) continue;
+      n++;
+      o.push(`${n}. Ask: "${prompt}"${at(a.where)}`);
+      for (const note of a.notes) o.push(`   - Note above it: "${note}"`);
+      for (const [text, w] of a.results) o.push(`   - Result: ${text}${at(w)}`);
+      if (!a.results.size) o.push('   - Result: not rolled in the samples');
+    }
+    if (!n) o.push('No ask in the samples: the line is written without dice of its own.', '');
+    o.push('The line, once written:', '');
+    for (const [log, v] of seen.lines.get(kind) ?? []) {
+      o.push(`- ${log}${at(v.where)}`);
+      const short = [v.panel !== log ? `in the panels: ${v.panel}` : '', v.rail !== log ? `on the rail: ${v.rail}` : ''].filter(Boolean);
+      if (short.length) o.push(`  - ${short.join(' · ')}`);
+    }
+    o.push('');
+  }
+  const loose = seen.order.filter((p) => !seen.asks.get(p)!.kind);
+  if (loose.length) {
+    o.push('### Asked, but no line written in the samples', '');
+    for (const prompt of loose) { const a = seen.asks.get(prompt)!; o.push(`- Ask: "${prompt}"${at(a.where)}`); for (const [text, w] of a.results) o.push(`  - Result: ${text}${at(w)}`); }
+    o.push('');
+  }
+  o.push('### Lines with no dice', '', ...[...seen.plain].map(([t, w]) => `- ${t}${at(w)}`), '');
+  return o.join('\n');
+}
+
 export type Step = ['do', string, GameEvent] | ['roll', number[]] | ['say', string] | ['pass'];
 const SEAT = 'bottom-1';
 let out: string[] = [];
@@ -59,10 +134,13 @@ export function run(title: string, intro: string, base: GameEvent[], steps: Step
   let events = [...base];
   let before = reduce(events);
   let n = 0;
+  const id = title.split('.')[0];
+  where = `${id}, before anything is tapped`;
   if (steps[0]?.[0] !== 'pass') { out.push('**Before anything is tapped**', ''); panels(before); }
   for (const st of steps) {
     if (st[0] === 'say') { out.push(st[1], ''); continue; }
     n++;
+    where = `${id} step ${n}`;
     if (st[0] === 'pass') {
       const e = before.explorers.find((x) => x.seat === 'top-1')!;
       events = [...events, ...(before.turn!.phase === 'discard' ? [event('cards/discarded', { seat: 'top-1', cardIds: [e.hand[0]] })] : []), event('turn/ended', { seat: 'top-1' })];
@@ -85,7 +163,7 @@ function panels(s: GameState) {
   const t = s.turn;
   if (!t || s.awaiting) return;
   const mp = movePromptFor(s);
-  if (mp) out.push(`Move prompt at ${mp.seat}'s edge: "${movePromptText(mp.left, Boolean(mp.natives))}" [${mp.natives ? 'REMAIN' : 'END TURN'}]`, '');
+  if (mp) { const text = `"${movePromptText(mp.left, Boolean(mp.natives))}" [${mp.natives ? 'REMAIN' : 'END TURN'}]`; sawPrompt(text); out.push(`Move prompt at ${mp.seat}'s edge: ${text}`, ''); }
   const ex = s.explorers.find((e) => e.seat === t.current)!;
   const tribe = ex.location.kind === 'hex' ? Object.values(s.tribes).find((x) => x.hex === (ex.location as { hex: string }).hex) : undefined;
   const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
@@ -118,14 +196,15 @@ function describe(before: GameState, s: GameState, quietPass = false) {
     const empty = emptyDirection(s);
     if (empty) out.push(`- Note: "${emptyText(empty)}"`);
     out.push(`- Ask: "${a.prompt}"`);
+    sawAsk(a.prompt, empty ? emptyText(empty) : undefined);
     const gathered = inParts(a.count, Boolean(a.parts));
     if (gathered) out.push(`- Tally: "${a.have.length} of ${a.count} in"`);
     out.push(`- Status: "${statusText('active', a.count - a.have.length, null, true, true, gathered)}"`);
     const loose = [...(a.asked ?? [])].reverse();
     if (loose.length || a.sofar.length) {
       out.push('- So far (newest first):');
-      for (const l of loose) out.push(`  - *${l.prompt}* / Result: ${diceText(l.values)}${l.result ? ` ${l.result}` : ''}`);
-      for (const r of [...a.sofar].reverse()) { out.push(`  - ${line(r, false, true)}`); out.push(...asksOf(r)); }
+      for (const l of loose) { sawAsked(l); out.push(`  - *${l.prompt}* / Result: ${diceText(l.values)}${l.result ? ` ${l.result}` : ''}`); }
+      for (const r of [...a.sofar].reverse()) { sawRecord(r); out.push(`  - ${line(r, false, true)}`); out.push(...asksOf(r)); }
     }
     out.push('');
   } else {
@@ -141,7 +220,7 @@ function describe(before: GameState, s: GameState, quietPass = false) {
       const heading = explored ? `Explored a ${terrain ? terrain.replace(/-/g, ' ') : 'new'} hex` : segs[0]?.title || resultTitle(before.awaiting!.prompt);
       out.push(`Result panel at ${seat}'s edge${explored ? ' (stays until the next step or END TURN)' : ' (five seconds, or OK)'}:`, '');
       out.push(`- Title: "${heading}"`);
-      if (explored) out.push(`- Next: "${movePromptText(movePromptFor(s)?.left ?? null)}" [END TURN]`);
+      if (explored) { const text = `"${movePromptText(movePromptFor(s)?.left ?? null)}" [END TURN]`; sawPrompt(text); out.push(`- Next: ${text}`); }
       for (const seg of segs) {
         if (segs.length > 1 && seg.title && seg.title !== heading) out.push(`- Segment heading: "${seg.title}"`);
         for (const r of [...seg.lines].reverse()) { out.push(`  - ${line(r, false, true)}`); out.push(...asksOf(r)); }
@@ -151,6 +230,7 @@ function describe(before: GameState, s: GameState, quietPass = false) {
     }
   }
   const fresh = allRecords(s).slice(allRecords(before).length);
+  for (const r of fresh) sawRecord(r, true);
   if (fresh.length) {
     out.push('Lines added to the log (open log wording):', '', ...fresh.map((r) => `- ${r.seat}: ${line(r)}`), '');
     const last = fresh.at(-1)!;
@@ -234,10 +314,10 @@ it.skipIf(!process.env.TURN_TEXT)('writes docs/sample-turn-text.md', () => {
   writeFileSync('docs/sample-turn-text.md', assemble(out.join('\n')));
 });
 
-/** The samples between the words kept beside this file, grouped under the three headings. */
+/** The sequence of every text, then the samples, between the words kept beside this file; the samples grouped under three headings. */
 function assemble(body: string): string {
   const here = 'src/lib/docs/sample-turn-text';
   let text = body.trim().replace(/\n{3,}/g, '\n\n');
   for (const [first, heading] of [['A1', '## A. A step into a hex'], ['B1', '## B. The start of a turn in the field, and a step that gets lost'], ['C1', '## C. Natives']]) text = text.replace(`### ${first}.`, `${heading}\n\n### ${first}.`);
-  return `${readFileSync(`${here}.head.md`, 'utf8').trimEnd()}\n\n${text}\n${readFileSync(`${here}.tail.md`, 'utf8')}`;
+  return `${readFileSync(`${here}.head.md`, 'utf8').trimEnd()}\n\n${catalogue().trim()}\n\n${text}\n${readFileSync(`${here}.tail.md`, 'utf8')}`;
 }

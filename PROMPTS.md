@@ -553,3 +553,9 @@ I'm about to give you a prompt but want you to review it and recommend improveme
 go ahead with your suggested prompt, except that we want a fix wherever possible, and a flag only if a fix is impossible.
 
 `Outcome: every dice ask and decision reviewed against docs/rules.md and reworded where it fell short: asks name their modifiers and every outcome, results carry their sums, log lines say what changed; the reaction line shows its target, panel lines are summaries over their asks, the result panel is titled by its segment, a captive's ask no longer shows another seat's action, minus signs and modifier order fixed, the hint drawn lighter under the ask. docs/sample-turn-text.md is now generated (bun run docs:turn-text) with four more sequences. Two gaps in what the game does are flagged [NEEDS RESOLUTION] there: disaster cards 16, 18, 29 and 46 are not played out, and rivers neither branch nor follow the Drainage Basin Rule.`
+
+## 86. 2026-11-17
+
+Please revise sample-turn-text.md.  Ensure that we give the various versions of each line (before resolution and after resolution in one or more outcomes).  Place all of them in a sequence so that we can quickly check them.
+
+`Outcome: docs/sample-turn-text.md opens with "Every line, before and after": every ask the samples reach, once, in the order a turn meets it and grouped by the line it writes, with each result its dice gave and the finished line as the log, the panels and the rail word it, each citing the sample and step it stands in; the generator collects them as it plays the samples.`

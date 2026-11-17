@@ -2,7 +2,13 @@
 
 Every piece of text the table shows during a turn, as the game words it, for review and for speccing the interaction flow. The samples are produced by playing the game's own rules with dice rolled at the table (physical dice on), so the words are the game's, not a paraphrase.
 
+The document is in two parts. **Every line, before and after** lists each text once, in the order a turn meets it: the ask before its roll, each result its dice gave in the samples, and the line it wrote, so the versions of a text are checked in one place. The **samples** (A, B, C) then play each sequence step by step, showing every panel around those texts; each entry in the first part names the sample and step where it stands.
+
 This file is generated: `bun run docs:turn-text` plays the sequences again and writes it over. The words before the samples and after them are kept in `src/lib/docs/sample-turn-text.head.md` and `src/lib/docs/sample-turn-text.tail.md`; the sequences are in `src/lib/docs/sample-turn-text.test.ts`. Notes for the spec belong in those files, where a regeneration keeps them.
+
+## How to read the sequence of texts
+
+Under each line's kind (Lost check, Terrain, Water, …), numbered, every ask the samples reach, in the order they are met: the ask's words as the dice panel shows them, then one "Result:" per outcome the samples met, with the dice that gave it. A note the panel shows above the ask ("Hex in direction 6 is empty; roll again") stands under it. After the asks, every version of the line those dice wrote once it is in the log, with its shorter form in the panels (the kind and outcome alone when the asks under it account for its dice) and on the rail (modifiers as bare numbers) where they differ. The samples' move prompts open the list; the lines no dice write close it.
 
 ## How to read the samples
 
@@ -47,6 +53,317 @@ Two gaps are in what the game does, not in how it words it, and were left for a 
 
 1. **[NEEDS RESOLUTION] Four disaster cards are not played out.** Card 16 (the toll that cannot be paid: the raiders attack), card 18 (the poisoned oasis), card 29 (forty cannibals attack, as hostile natives under policy 4) and card 46 (the stampede: a defeat roll plus 2) are drawn and announced, and cost nothing. Their lines now say so plainly ("not played out yet: nothing is lost") in place of naming a slice. Recommendation: one slice that plays all four through the existing fight, poison and defeat rules. The open point is a captive with no tribe to hold him: a defeat by raiders, cannibals or elephants that rolls "held prisoner" needs a ruling (suggested: by raiders and cannibals as a tribe would; by the elephants, rolled again).
 2. **[NEEDS RESOLUTION] Rivers never branch and the Drainage Basin Rule is not applied** (rules §7.4). A river that finds nothing to come from rises where it stands, however short of its mouth's number. The asks describe what the game does. Recommendation: its own slice, since it changes what the map generates rather than how a roll is told.
+
+## Every line, before and after
+
+Every text the samples reach, once, in the order a turn meets it, grouped by the line its dice write. First each ask as the dice panel shows it before the roll, with every result the samples show after it (one per outcome met). Then the line those dice wrote, once finished and in the log, as the open log words it, with its shorter forms in the panels and on the rail where they differ (while its dice are still coming in, a panel shows the line as far as it has got, as the samples below show). Each text names the sample and step where it stands in full, so a text is checked here and read in its place below.
+
+### The move prompt
+
+- "Pick a hex to move into, or" [END TURN] (A1, before anything is tapped)
+- "You have 1 MP: pick a hex to move into, or" [END TURN] (A4 step 1)
+- "Natives here. Pick a hex to move into, or" [REMAIN] (C4 step 9)
+
+### Lost check
+
+1. Ask: "Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here" (A1 step 1)
+   - Result: [4] 4 − 1 = 3: not lost (A1 step 2)
+   - Result: [1] 1 − 1 = 0: lost, the turn ends here (B1 step 3)
+The line, once written:
+
+- **Lost check** needs 2+ [4] −1 leaving veldt = 3 not lost (A1 step 5)
+  - in the panels: **Lost check** not lost · on the rail: **Lost check** needs 2+ [4] −1 = 3 not lost
+- **Lost check** needs 2+ [1] −1 leaving veldt = 0 lost: the expedition stays where it is and the turn ends (B1 step 4)
+  - in the panels: **Lost check** lost: the expedition stays where it is and the turn ends · on the rail: **Lost check** needs 2+ [1] −1 = 0 lost: the expedition stays where it is and the turn ends
+
+### Terrain
+
+1. Ask: "Roll a D6 for the direction of the terrain to copy; a mapped neighbour that way is copied; nothing mapped there and the die is rolled once more" (A1 step 2)
+   - Result: [3] veldt, copied from direction 3 (A1 step 3)
+   - Result: [6] nothing mapped in direction 6: rolled once more (A2 step 3)
+   - Result: [3] nothing mapped in direction 3: rolled once more (A3 step 3)
+   - Result: [2] veldt, copied from direction 2 (C1 step 3)
+2. Ask: "Roll a D6 for the direction of the terrain to copy, once more; a mapped neighbour that way is copied; nothing mapped there and the terrain table decides" (A2 step 3)
+   - Note above it: "Hex in direction 6 is empty; roll again"
+   - Note above it: "Hex in direction 3 is empty; roll again"
+   - Result: [6] nothing mapped in direction 6: the terrain table next (A2 step 4)
+   - Result: [3] nothing mapped in direction 3: the terrain table next (A3 step 4)
+3. Ask: "Roll a D6 for the terrain; 1 desert, 2 mountain, 3 swamp, 4 jungle, 5 veldt, 6 lake" (A2 step 4)
+   - Note above it: "Hex in direction 6 is empty too; roll on the terrain table"
+   - Note above it: "Hex in direction 3 is empty too; roll on the terrain table"
+   - Result: [4] jungle (A2 step 5)
+   - Result: [3] swamp (A3 step 5)
+4. Ask: "Roll a D6 for what the jungle hides; 2 adds mountain, 3 adds swamp, anything else jungle alone" (A2 step 5)
+   - Result: [2] mountain in the jungle (A2 step 6)
+5. Ask: "Roll a D6 for jungle in the swamp; 4 adds jungle, anything else swamp alone" (A3 step 5)
+   - Result: [3] no jungle: swamp alone (A3 step 6)
+The line, once written:
+
+- **Terrain** [3] mapped veldt: veldt copied from the neighbour in direction 3 (A1 step 5)
+  - in the panels: **Terrain** mapped veldt: veldt copied from the neighbour in direction 3
+- **Terrain** [6 6 4 2] mapped jungle mountain: nothing mapped in direction 6, rolled again; nothing mapped in direction 6 either; 4 on the table: jungle; 2: mountain in the jungle (A2 step 13)
+  - in the panels: **Terrain** mapped jungle mountain: nothing mapped in direction 6, rolled again; nothing mapped in direction 6 either; 4 on the table: jungle; 2: mountain in the jungle
+- **Terrain** [3 3 3 3] mapped swamp: nothing mapped in direction 3, rolled again; nothing mapped in direction 3 either; 3 on the table: swamp; 3: no jungle in the swamp (A3 step 6)
+  - in the panels: **Terrain** mapped swamp: nothing mapped in direction 3, rolled again; nothing mapped in direction 3 either; 3 on the table: swamp; 3: no jungle in the swamp
+- **Terrain** [2] mapped veldt: veldt copied from the neighbour in direction 2 (C1 step 6)
+  - in the panels: **Terrain** mapped veldt: veldt copied from the neighbour in direction 2
+
+### Water
+
+1. Ask: "Roll a D6 for a river source; even and a river rises here, if the next die gives it somewhere to flow; odd and there is none" (A1 step 3)
+   - Result: [3] odd: no river (A1 step 4)
+   - Result: [2] even: a river, if the next die allows (A2 step 8)
+2. Ask: "Roll 3 D6 for the mountain's height; the three dice multiplied, plus 100, in hundreds of feet: over 15,000 ft is a recorded peak" (A2 step 6)
+   - Result: [5 6 4] 5 × 6 × 4 + 100 = 220 hundred: 22,000 ft, a recorded peak (A2 step 7)
+3. Ask: "Roll a D6 for which way the river flows; it flows into water or unexplored country that way; toward mapped land there is no river after all" (A2 step 8)
+   - Result: [6] it flows in direction 6 (A2 step 9)
+4. Ask: "Roll a D6 for a cataract; on a river in mountain 2, 3 or 4 is a cataract, anything else none" (A2 step 9)
+   - Result: [3] a cataract, its fall measured next (A2 step 10)
+5. Ask: "Roll 4 D6 for the waterfall's height; the four dice multiplied, in feet: 400 ft or more is a recorded fall" (A2 step 10)
+   - Result: [2 3 4 5] 2 × 3 × 4 × 5 = 120 ft: under the 400 recorded (A2 step 11)
+The line, once written:
+
+- **Water** [3] 3 is odd: no river (A1 step 5)
+  - in the panels: **Water** 3 is odd: no river
+- **Water** [5 6 4 2 6 3] (+4 more dice not drawn) 5 × 6 × 4 = 120, plus 100 = 220 hundred feet: a record-breaking peak of 22,000 ft (over 15,000), the first discovered and the highest so far; 2 is even: a river rises here and flows in direction 6; a cataract on a 3 (its fall of 120 ft, 2 × 3 × 4 × 5, under the 400 recorded) (A2 step 13)
+  - in the panels: **Water** 5 × 6 × 4 = 120, plus 100 = 220 hundred feet: a record-breaking peak of 22,000 ft (over 15,000), the first discovered and the highest so far; 2 is even: a river rises here and flows in direction 6; a cataract on a 3 (its fall of 120 ft, 2 × 3 × 4 × 5, under the 400 recorded)
+
+### Natives
+
+1. Ask: "Roll 2 D6 for natives; a total of 2, 3 or 4 finds natives in veldt; anything else, none" (A1 step 4)
+   - Result: [3 3] 3 + 3 = 6: no natives (A1 step 5)
+   - Result: [1 2] 1 + 2 = 3: natives (C1 step 5)
+2. Ask: "Roll 2 D6 for natives; a total of 2, 3, 4, 5, 6 or 7 finds natives in jungle mountain on water; anything else, none" (A2 step 11)
+   - Result: [1 2] 1 + 2 = 3: natives (A2 step 12)
+3. Ask: "Roll 3 D6 for the warriors; the three dice multiplied; the largest counts no more than 1, the hex to Mombasa" (A2 step 12)
+   - Result: [3 3 3] 1 × 3 × 3 = 9 warriors, the 3 cut to 1 (A2 step 13)
+4. Ask: "Roll 3 D6 for the warriors; the three dice multiplied; the largest counts no more than 2, the hexes to Mombasa" (C1 step 5)
+   - Result: [2 2 3] 2 × 2 × 2 = 8 warriors, the 3 cut to 2 (C1 step 6)
+The line, once written:
+
+- **Natives** needs 2, 3, 4 [3 3] no natives (3 + 3 = 6) (A1 step 5)
+  - in the panels: **Natives** no natives (3 + 3 = 6)
+- **Natives** needs 2, 3, 4, 5, 6, 7 [1 2 3 3 3] natives on 3: tribe 1 of 9 warriors, 1 × 3 × 3, the 3 cut to 1, the hex to Mombasa (A2 step 13)
+  - in the panels: **Natives** natives on 3: tribe 1 of 9 warriors, 1 × 3 × 3, the 3 cut to 1, the hex to Mombasa
+- **Natives** needs 2, 3, 4 [1 2 2 2 3] natives on 3: tribe 1 of 8 warriors, 2 × 2 × 2, the 3 cut to 2, the hexes to Mombasa (C1 step 6)
+  - in the panels: **Natives** natives on 3: tribe 1 of 8 warriors, 2 × 2 × 2, the 3 cut to 2, the hexes to Mombasa
+
+### Hunting
+
+1. Ask: "Roll a D6 for the hunt; 1 or less bags nothing, 2–3 one ration a hunter, 4–5 two, 6 or more three; 6 hunters" (A1 step 6)
+   - Result: [3] one per hunter: 6 bagged (A1 step 7)
+   - Result: [1] nothing bagged (B1 step 4)
+   - Result: [4] two per hunter: 12 bagged (C2 step 12)
+The line, once written:
+
+- **Hunting** needs 2 / 4 / 6 for one, two, three per hunter [3] one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 34 left) (A1 step 7)
+  - in the panels: **Hunting** one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 34 left) · on the rail: **Hunting** needs 2 / 4 / 6 [3] one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 34 left)
+- **Hunting** needs 2 / 4 / 6 for one, two, three per hunter [1] the hunt fails: 12 men ate (12 from the stores, 22 left) (B1 step 4)
+  - in the panels: **Hunting** the hunt fails: 12 men ate (12 from the stores, 22 left) · on the rail: **Hunting** needs 2 / 4 / 6 [1] the hunt fails: 12 men ate (12 from the stores, 22 left)
+- **Hunting** needs 2 / 4 / 6 for one, two, three per hunter [4] two per hunter: 12 rations bagged, 14 men ate (2 from the stores, 47 left) (C2 step 12)
+  - in the panels: **Hunting** two per hunter: 12 rations bagged, 14 men ate (2 from the stores, 47 left) · on the rail: **Hunting** needs 2 / 4 / 6 [4] two per hunter: 12 rations bagged, 14 men ate (2 from the stores, 47 left)
+- **Hunting** needs 2 / 4 / 6 for one, two, three per hunter [3] one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 28 left) (C10 step 4)
+  - in the panels: **Hunting** one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 28 left) · on the rail: **Hunting** needs 2 / 4 / 6 [3] one per hunter: 6 rations bagged, 12 men ate (6 from the stores, 28 left)
+
+### Turned back
+
+No ask in the samples: the line is written without dice of its own.
+
+The line, once written:
+
+- **Turned back** swamp is impassable on foot: the expedition turns back (A3 step 6)
+
+### Disaster card
+
+No ask in the samples: the line is written without dice of its own.
+
+The line, once written:
+
+- **Disaster card** (card 28: no effect) no effect here: a card for desert (B1 step 1)
+- **Disaster card** (card 26: no effect) no effect here: a card for lake (C10 step 6)
+
+### Native reaction
+
+1. Ask: "Roll 3 D6 for the natives' reaction; a total of 5 or less and they are not hostile, more and they are hostile (+2 hexes to the nearest port, +3 policy 3, show of force)" (C2 step 1)
+   - Result: [6 6 6] 6 + 6 + 6 = 18: hostile (C2 step 2)
+2. Ask: "Roll 3 D6 for the natives' reaction; a total of 7 or less and they are not hostile, more and they are hostile (+2 hexes to the nearest port, +5 policy 5, friendly approach)" (C5 step 1)
+   - Result: [1 1 1] 1 + 1 + 1 = 3: not hostile (C5 step 2)
+3. Ask: "Roll 3 D6 for the natives' reaction; a total of 3 or less and they are not hostile, more and they are hostile (+2 hexes to the nearest port, +1 policy 1, defensive stand)" (C9 step 1)
+   - Result: [1 1 1] 1 + 1 + 1 = 3: not hostile (C9 step 2)
+4. Ask: "Roll 3 D6 for the natives' reaction; a total of 6 or less and they are not hostile, more and they are hostile (+2 hexes to the nearest port, +4 policy 4, ignore them)" (C10 step 1)
+   - Result: [1 1 1] 1 + 1 + 1 = 3: not hostile (C10 step 2)
+The line, once written:
+
+- **Native reaction** needs 5 or less [6 6 6] +2 hexes to the nearest port, +3 policy 3, show of force hostile: 18 on the dice, over the target of 5 (C2 step 7)
+  - in the panels: **Native reaction** hostile: 18 on the dice, over the target of 5 · on the rail: **Native reaction** needs 5 or less [6 6 6] +2 +3 hostile: 18 on the dice, over the target of 5
+- **Native reaction** needs 7 or less [1 1 1] +2 hexes to the nearest port, +5 policy 5, friendly approach not hostile: 3 on the dice, within the target of 7 (C5 step 2)
+  - in the panels: **Native reaction** not hostile: 3 on the dice, within the target of 7 · on the rail: **Native reaction** needs 7 or less [1 1 1] +2 +5 not hostile: 3 on the dice, within the target of 7
+- **Native reaction** needs 3 or less [1 1 1] +2 hexes to the nearest port, +1 policy 1, defensive stand not hostile: 3 on the dice, within the target of 3 (C9 step 2)
+  - in the panels: **Native reaction** not hostile: 3 on the dice, within the target of 3 · on the rail: **Native reaction** needs 3 or less [1 1 1] +2 +1 not hostile: 3 on the dice, within the target of 3
+- **Native reaction** needs 6 or less [1 1 1] +2 hexes to the nearest port, +4 policy 4, ignore them not hostile: 3 on the dice, within the target of 6 (C10 step 2)
+  - in the panels: **Native reaction** not hostile: 3 on the dice, within the target of 6 · on the rail: **Native reaction** needs 6 or less [1 1 1] +2 +4 not hostile: 3 on the dice, within the target of 6
+
+### Fight
+
+1. Ask: "Roll a D6 for the natives' nerve; the die × 5 askaris ÷ policy 3: more than the 8 warriors and they hide, else they attack" (C2 step 2)
+   - Result: [1] 1 × 5 ÷ 3 = 1: the natives attack (C2 step 3)
+   - Result: [6] 6 × 5 ÷ 3 = 10: the natives hide (C3 step 3)
+2. Ask: "Roll 2 D6 for surprise; a total of 3 or more, the policy number, and the expedition fires first; less and it is surprised" (C2 step 3)
+   - Result: [6 6] 6 + 6 = 12: not surprised (C2 step 4)
+   - Result: [1 1] 1 + 1 = 2: surprised (C4 step 4)
+3. Ask: "Roll a D6 to drive them off; the volley killed 6: the die × 6 more than the 2 warriors left drives them off, else they close in" (C2 step 4)
+   - Result: [6] 6 × 6 = 36: the natives are driven off (C2 step 5)
+   - Result: [1] 1 × 6 = 6: the natives are driven off (C6 step 7)
+4. Ask: "Roll a D6 for the natives' strike; 8 warriors ÷ the die, rounded down, is the askaris who fall, of 5" (C4 step 4)
+   - Result: [1] 8 ÷ 1 = 8: all 5 askaris fall (C4 step 5)
+5. Ask: "Roll a D6 for the natives' nerve; the die × 5 askaris ÷ policy 5: more than the 8 warriors and they hide, else they attack" (C6 step 4)
+   - Result: [3] 3 × 5 ÷ 5 = 3: the natives attack (C6 step 5)
+6. Ask: "Roll 2 D6 for surprise; a total of 5 or more, the policy number, and the expedition fires first; less and it is surprised" (C6 step 5)
+   - Result: [3 3] 3 + 3 = 6: not surprised (C6 step 6)
+7. Ask: "Roll a D6 for the natives' nerve; the die × 5 askaris ÷ policy 3: more than the 12 warriors and they hide, else they attack" (C11 step 2)
+   - Result: [1] 1 × 5 ÷ 3 = 1: the natives attack (C11 step 3)
+8. Ask: "Roll a D6 to drive them off; the volley killed 6: the die × 6 more than the 6 warriors left drives them off, else they close in" (C11 step 4)
+   - Result: [1] 1 × 6 = 6: they close in (C11 step 5)
+9. Ask: "Roll a D6 for the natives' strike; 6 warriors ÷ the die, rounded down, is the askaris who fall, of 5" (C11 step 5)
+   - Result: [6] 6 ÷ 6 = 1: 1 askari falls (C11 step 6)
+10. Ask: "Roll a D6 to see if the askaris break; the die × 1 fallen more than the 5 askaris who began and they break and run, a defeat; else they hold" (C11 step 6)
+   - Result: [1] 1 × 1 = 1: the askaris hold (C11 step 7)
+11. Ask: "Roll a D6 for the askaris' strike; 4 askaris ÷ the die, rounded down, plus 1 is the warriors who fall, of 6" (C11 step 7)
+   - Result: [2] 4 ÷ 2 + 1 = 3: 3 warriors fall (C11 step 8)
+12. Ask: "Roll a D6 to see if the natives break; the die × 3 fallen more than the 3 warriors left drives them off, a victory; else they strike again" (C11 step 8)
+   - Result: [1] 1 × 3 = 3: they fight on (C11 step 9)
+13. Ask: "Roll a D6 for the natives' strike; 3 warriors ÷ the die, rounded down, is the askaris who fall, of 4" (C11 step 9)
+   - Result: [3] 3 ÷ 3 = 1: 1 askari falls (C11 step 10)
+14. Ask: "Roll a D6 for the askaris' strike; 3 askaris ÷ the die, rounded down, plus 1 is the warriors who fall, of 3" (C11 step 11)
+   - Result: [1] 3 ÷ 1 + 1 = 4: all 3 warriors fall (C11 step 12)
+15. Ask: "Roll a D6 for the natives' nerve; the die × 5 askaris ÷ policy 5: more than the 2 warriors and they hide, else they attack" (C14 step 4)
+   - Result: [6] 6 × 5 ÷ 5 = 6: the natives hide (C14 step 5)
+The line, once written:
+
+- **Fight** [1 6 6 6] hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 8 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 6 × 6 killed = 36, more than the 2 warriors left: the natives are driven off (C2 step 7)
+  - in the panels: **Fight** hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 8 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 6 × 6 killed = 36, more than the 2 warriors left: the natives are driven off
+- **Fight** [6] hostile; nerve 6 × 5 askaris ÷ policy 3 = 10, more than 8 warriors: the natives hide (C3 step 3)
+  - in the panels: **Fight** hostile; nerve 6 × 5 askaris ÷ policy 3 = 10, more than 8 warriors: the natives hide
+- **Fight** [1 1 1 1] hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 8 warriors: the natives attack; surprise 1 + 1 = 2, under policy 3: the expedition is surprised; the natives strike: 8 warriors ÷ 1 = 8, all 5 askaris fall; every askari is dead: defeat (C4 step 6)
+  - in the panels: **Fight** hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 8 warriors: the natives attack; surprise 1 + 1 = 2, under policy 3: the expedition is surprised; the natives strike: 8 warriors ÷ 1 = 8, all 5 askaris fall; every askari is dead: defeat
+- **Fight** [3 3 3 1] hostile; nerve 3 × 5 askaris ÷ policy 5 = 3, not more than 8 warriors: the natives attack; surprise 3 + 3 = 6, not under policy 5: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 1 × 6 killed = 6, more than the 2 warriors left: the natives are driven off (C6 step 9)
+  - in the panels: **Fight** hostile; nerve 3 × 5 askaris ÷ policy 5 = 3, not more than 8 warriors: the natives attack; surprise 3 + 3 = 6, not under policy 5: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 1 × 6 killed = 6, more than the 2 warriors left: the natives are driven off
+- **Fight** [1 6 6 1 6 1] (+5 more dice not drawn) hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 1 × 6 killed = 6, not more than the 6 warriors left: they close in; the natives strike: 6 warriors ÷ 6 = 1 askari falls; the askaris' nerve 1 × 1 fallen = 1, not over the 5 that stood: the askaris hold; the askaris strike: 4 askaris ÷ 2 + 1 = 3 warriors fall; morale 1 × 3 fallen = 3, not more than the 3 warriors left: they fight on; the natives strike: 3 warriors ÷ 3 = 1 askari falls; the askaris' nerve 1 × 1 fallen = 1, not over the 5 that stood: the askaris hold; the askaris strike: 3 askaris ÷ 1 + 1 = 4, all 3 warriors fall; the natives are destroyed (C11 step 14)
+  - in the panels: **Fight** hostile; nerve 1 × 5 askaris ÷ policy 3 = 1, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 1 × 6 killed = 6, not more than the 6 warriors left: they close in; the natives strike: 6 warriors ÷ 6 = 1 askari falls; the askaris' nerve 1 × 1 fallen = 1, not over the 5 that stood: the askaris hold; the askaris strike: 4 askaris ÷ 2 + 1 = 3 warriors fall; morale 1 × 3 fallen = 3, not more than the 3 warriors left: they fight on; the natives strike: 3 warriors ÷ 3 = 1 askari falls; the askaris' nerve 1 × 1 fallen = 1, not over the 5 that stood: the askaris hold; the askaris strike: 3 askaris ÷ 1 + 1 = 4, all 3 warriors fall; the natives are destroyed
+- **Fight** [6] hostile; nerve 6 × 5 askaris ÷ policy 5 = 6, more than 2 warriors: the natives hide (C14 step 6)
+  - in the panels: **Fight** hostile; nerve 6 × 5 askaris ÷ policy 5 = 6, more than 2 warriors: the natives hide
+
+### Victory
+
+1. Ask: "Roll a D6 for prisoners; 5 askaris less the die are taken prisoner, no more than the 2 warriors left; a 6 takes none, and the village is looted if it is found" (C2 step 5)
+   - Result: [2] 5 − 2 = 3: 2 taken, every warrior left (C2 step 6)
+   - Result: [6] a 6, no quarter: none taken (C6 step 8)
+2. Ask: "Roll 2 D6 to find the village; a total of 5 or less finds it (2 prisoners + policy 3); more and it stays hidden this turn" (C2 step 6)
+   - Result: [1 2] 1 + 2 = 3: the village is found (C2 step 7)
+3. Ask: "Roll 2 D6 to find the village; a total of 5 or less finds it (0 prisoners + policy 5); more and it stays hidden this turn" (C6 step 8)
+   - Result: [6 6] 6 + 6 = 12: the village cannot be found (C6 step 9)
+4. Ask: "Roll a D6 for prisoners; every warrior fell, so none can be taken whatever the die; the village is looted if it is found" (C11 step 12)
+   - Result: [6] none left to take (C11 step 13)
+5. Ask: "Roll 2 D6 to find the village; a total of 3 or less finds it (0 prisoners + policy 3); more and it stays hidden this turn" (C11 step 13)
+   - Result: [6 6] 6 + 6 = 12: the village cannot be found (C11 step 14)
+The line, once written:
+
+- **Victory** [2 1 2] prisoners: 5 askaris − 2 = 3, 2 taken (every warrior left); the prisoners carry as bearers; village 1 + 2 = 3, within 2 prisoners + policy 3 = 5: the village is found (C2 step 7)
+  - in the panels: **Victory** prisoners: 5 askaris − 2 = 3, 2 taken (every warrior left); the prisoners carry as bearers; village 1 + 2 = 3, within 2 prisoners + policy 3 = 5: the village is found
+- **Victory** [6 6 6] prisoners: a 6, no quarter, none taken; village 6 + 6 = 12, over 0 prisoners + policy 5 = 5: the village cannot be found (C6 step 9)
+  - in the panels: **Victory** prisoners: a 6, no quarter, none taken; village 6 + 6 = 12, over 0 prisoners + policy 5 = 5: the village cannot be found
+- **Victory** [6 6 6] prisoners: none, every warrior fell; village 6 + 6 = 12, over 0 prisoners + policy 3 = 3: the village cannot be found (C11 step 14)
+  - in the panels: **Victory** prisoners: none, every warrior fell; village 6 + 6 = 12, over 0 prisoners + policy 3 = 3: the village cannot be found
+
+### Loot
+
+1. Ask: "Roll 8 D6 for the loot; one die a warrior: 1–4 that many rations, 5 a gift, 6 nothing" (C2 step 8)
+   - Result: [3 3 3 3 1 6 2 5] 15 rations, 1 gift (C2 step 10)
+The line, once written:
+
+- **Loot** [3 3 3 3 1 6] (+2 more dice not drawn) looted 15 rations, 1 gift (a die a warrior: 1 to 4 that many rations, 5 a gift, 6 nothing) (C2 step 10)
+  - in the panels: **Loot** looted 15 rations, 1 gift (a die a warrior: 1 to 4 that many rations, 5 a gift, 6 nothing)
+
+### Defeat
+
+1. Ask: "Roll a D6 on the consequences of defeat; 1 killed, 2 held prisoner, 3 escapes with nothing, 4 with a musket and 9 rations, 5 that and one survival roll, 6 that and two" (C4 step 5)
+   - Result: [2] held prisoner (C4 step 6)
+   - Result: [6] escapes, with two survival rolls (C12 step 6)
+2. Ask: "Roll a D6 on the survival table; 1 guide, 2 bearer, 3 askari, 4 camel, 5 horse, 6 canoe: one comes away with the explorer; a kind the expedition had none of is rolled again" (C12 step 6)
+   - Result: [2] a bearer (C12 step 7)
+   - Result: [4] camels: the expedition had none, rolled again (C12 step 9)
+3. Ask: "Roll a D6 for what the bearer carries; 1–3 ten rations, 4–5 ten gifts, 6 ten muskets" (C12 step 7)
+   - Result: [1] 10 rations (C12 step 8)
+   - Result: [5] 10 gifts (C12 step 11)
+The line, once written:
+
+- **Defeat** [2] defeat 2: the explorer is held prisoner and the expedition is lost; an escape is rolled for each turn (C4 step 6)
+  - in the panels: **Defeat** defeat 2: the explorer is held prisoner and the expedition is lost; an escape is rolled for each turn
+- **Defeat** [6 2 1 4 2 5] defeat 6: the explorer escapes alone, the expedition lost, with a musket and 9 rations, a bearer (survival 2) with 10 rations (load 1), a bearer (survival 2) with 10 gifts (load 5) (C12 step 11)
+  - in the panels: **Defeat** defeat 6: the explorer escapes alone, the expedition lost, with a musket and 9 rations, a bearer (survival 2) with 10 rations (load 1), a bearer (survival 2) with 10 gifts (load 5)
+
+### Captivity
+
+1. Ask: "Roll a D6 for an escape; the die − 3 for a prisoner: 1 or less killed, 2 still held, 3 escapes with nothing, 4 with a musket and 9 rations, 5 that and one survival roll, 6 that and two" (C4 step 8)
+   - Result: [6] 6 − 3 = 3: escapes alone, with nothing (C4 step 9)
+The line, once written:
+
+- **Captivity** [6] escape 6 − 3 = 3: the explorer escapes alone (C4 step 9)
+  - in the panels: **Captivity** escape 6 − 3 = 3: the explorer escapes alone
+
+### Negotiation
+
+1. Ask: "Roll 2 D6 for the offer of 4 gifts; the larger die × 4 must reach the 8 warriors to satisfy the chief; less insults him" (C5 step 3)
+   - Result: [3 5] 5 × 4 = 20: the chief is satisfied (C5 step 4)
+   - Result: [1 1] 1 × 4 = 4: the chief is insulted (C6 step 4)
+2. Ask: "Roll 3 D6 for the chief's gifts in return; the total is the gifts the chief gives in return" (C13 step 3)
+   - Result: [2 3 4] 2 + 3 + 4 = 9 gifts (C13 step 4)
+3. Ask: "Roll 2 D6 for the offer of 1 gift; the larger die × 1 must reach the 2 warriors to satisfy the chief; less insults him" (C14 step 3)
+   - Result: [1 1] 1 × 1 = 1: the chief is insulted (C14 step 4)
+The line, once written:
+
+- **Negotiation** [3 5] 4 gifts offered: the larger die 5 × 4 = 20, reaching 8 warriors: the chief is satisfied (C5 step 8)
+  - in the panels: **Negotiation** 4 gifts offered: the larger die 5 × 4 = 20, reaching 8 warriors: the chief is satisfied
+- **Negotiation** [1 1] 4 gifts offered: the larger die 1 × 4 = 4, short of 8 warriors: the chief is insulted (C6 step 9)
+  - in the panels: **Negotiation** 4 gifts offered: the larger die 1 × 4 = 4, short of 8 warriors: the chief is insulted
+- **Negotiation** [2 3 4] everything given: the chief is satisfied and returns 9 gifts (C13 step 8)
+  - in the panels: **Negotiation** everything given: the chief is satisfied and returns 9 gifts
+- **Negotiation** [1 1] 1 gift offered: the larger die 1 × 1 = 1, short of 2 warriors: the chief is insulted (C14 step 6)
+  - in the panels: **Negotiation** 1 gift offered: the larger die 1 × 1 = 1, short of 2 warriors: the chief is insulted
+
+### Trade
+
+1. Ask: "Roll a D6 for the price of food; the die is the rations one gift buys" (C5 step 4)
+   - Result: [3] 3 rations a gift (C5 step 5)
+2. Ask: "Roll a D6 for the price of bearers; the die is the gifts one bearer costs" (C5 step 5)
+   - Result: [3] 3 gifts each (C5 step 6)
+3. Ask: "Roll a D6 for the price of guides; the die is the gifts one guide costs" (C5 step 6)
+   - Result: [3] 3 gifts each (C5 step 7)
+4. Ask: "Roll a D6 for the price of askaris; the die is the gifts one askari costs, with a musket" (C5 step 7)
+   - Result: [3] 3 gifts and a musket each (C5 step 8)
+The line, once written:
+
+- **Trade** [3 3 3 3] the chief permits trade: 3 rations a gift, a bearer 3 gifts, a guide 3 gifts, an askari 3 gifts and a musket (C5 step 8)
+  - in the panels: **Trade** the chief permits trade: 3 rations a gift, a bearer 3 gifts, a guide 3 gifts, an askari 3 gifts and a musket
+- **Trade** bought 3 rations for 1 gift (C5 step 9)
+
+### Poison
+
+1. Ask: "Roll a D6 for the chief's poison; 2 or less kills the explorer, 3 and he recovers, hardened against the next, 4 or more and the poison fails" (C14 step 5)
+   - Result: [3] poisoned, but he recovers (C14 step 6)
+The line, once written:
+
+- **Poison** [3] poisoned, the explorer recovers (3; hardened against the next attempt) (C14 step 6)
+  - in the panels: **Poison** poisoned, the explorer recovers (3; hardened against the next attempt)
+
+### Lines with no dice
+
+- drew $200 (A1 step 7)
+- moved to c24r13 (A4 step 1)
+- discarded $200 (C4 step 8)
+- took leave of the chief (C5 step 10)
+- declined to give gifts (C7 step 3)
+- policy 2: the expedition retreats (C8 step 1)
 
 ## A. A step into a hex
 
