@@ -89,12 +89,9 @@ Result 1a is also the ask for the second roll: the line stays as it is until the
 
 Only after two empty directions.
 
-- Ask: "Terrain in the new hex: Roll a D6 on the terrain table; 1 desert, 2 mountain, 3 swamp, 4 jungle, 5 veldt, 6 lake"
-- Result 1: Terrain table [5] => Veldt *[2.7]*
-- Result 2: Terrain table [4] => Jungle. Roll a D6 for what it hides. *[2.4]*
-- Result 3: Terrain table [1] => Veldt: no desert beside jungle *[2.7]*
-
-Beside jungle the ask's list reads "1 veldt (no desert beside jungle)"; beside desert, "4 veldt (no jungle beside desert)".
+- Ask: "Terrain in the new hex: Roll a D6: 1 desert\[*], 2 mountain, 3 swamp, 4 jungle, 5 veldt, 6 lake" with an optional second line if there is jungle adjacent to the hex: "\[*] Desert can't be found next to Jungle, treat as Veldt" OR vice-versa.
+- Result 1: Random terrain [5] => Veldt *[2.7]*
+- Result 2: Random terrain [4] => Jungle. Roll a D6 for what it hides. *[2.4]*
 
 **2.4 Mixed terrain**
 
@@ -118,46 +115,46 @@ No dice. The step ends here and the expedition stays where it was.
 
 Only in a hex with mountain.
 
-- Ask: "Roll 3 D6 for the mountain's height; the dice multiplied, plus 100, in hundreds of feet"
-- Result 1: Height [5 6 4] 5 × 6 × 4 + 100 = 220 => 22,000 ft: a recorded peak, the highest so far
+- Ask: "3D6 multiplied, plus 100 gives the mountain's height in hundreds of feet"
+- Result 1: Height [5 6 4] 5 × 6 × 4 + 100 = 220 => 22,000 ft: a recorded peak, the \[second] highest so far!\nThis discovery is worth nnn points when you publish it!"
 - Result 2: Height [1 2 3] 1 × 2 × 3 + 100 = 106 => 10,600 ft: not recorded (15,000 or under)
 
 **2.7 A river source**
 
 - Ask: "Roll a D6 for a river source; even and a river rises here"
 - Result 1: River? [3] => No river *[2.11]*
-- Result 2: River? [2] => A river rises here. Roll a D6 for the way it flows. *[2.8]*
+- Result 2: River? [2] => A river might rise here! Roll a D6 for the way it flows. *[2.8]*
 
 **2.8 The way the river flows**
 
 - Ask: "Roll a D6 for the direction the river flows"
 - Result 1: Flows [6] => The river flows in direction 6 *[2.9 in mountain, else 2.11]*
-- Result 2: Flows [4] => Direction 4 is mapped land: no river after all *[2.11]*
+- Result 2: Flows [4] => Direction 4 is already mapped: no river after all *[2.11]*
 
 **2.9 A cataract**
 
 Only on a river in a hex where one can be.
 
 - Ask: "Roll a D6 for a cataract; 2, 3 or 4 on a river in mountain"
-- Result 1: Cataract? [3] => A cataract. Roll 4 D6 for its fall. *[2.10]*
+- Result 1: Cataract? [3] => Discovered a cataract! *[2.10]*
 - Result 2: Cataract? [6] => No cataract *[2.11]*
 
 **2.10 The waterfall's height**
 
-- Ask: "Roll 4 D6 for the waterfall's height; the dice multiplied, in feet"
+- Ask: "4D6 multiplied gives the waterfall's height in feet"
 - Result 1: Fall [2 3 4 5] 2 × 3 × 4 × 5 => 120 ft: not recorded (under 400)
-- Result 2: Fall [4 5 5 6] 4 × 5 × 5 × 6 => 600 ft: a recorded fall
+- Result 2: Fall [4 5 5 6] 4 × 5 × 5 × 6 => 600 ft: This is the \[second] tallest waterfall!\nThis discovery is worth nnn points when you publish it!"
 
 **2.11 Natives**
 
-- Ask in veldt: "Roll 2 D6 for natives; 2 to 4 finds them in veldt"
-- Ask in jungle with mountain, on a river: "Roll 2 D6 for natives; 2 to 7 finds them in jungle mountain on water"
+- Ask in veldt: "Any natives? Roll 2 D6; 2 to 4 finds them in veldt"
+- Ask in jungle with mountain, on a river: "Any natives? Roll 2 D6; 2 to 7 finds them in jungle mountain on water"
 - Result 1: Natives? [3 3] 6 => None *[the step is done]*
-- Result 2: Natives? [1 2] 3 => Natives! Roll 3 D6 for their warriors. *[2.12]*
+- Result 2: Natives? [1 2] 3 => Natives found. *[2.12]*
 
 **2.12 The warriors**
 
-- Ask: "Roll 3 D6 for the warriors; the dice multiplied, none counting more than 2, the hexes to Mombasa"
+- Ask: "3D6 multiplied gives the number of warriors.  Each die is capped at 2 (distance to Mombasa)."
 - Result 1: Warriors [2 2 3] 2 × 2 × 2 (the 3 counts as 2) => Tribe 1: 8 warriors *[3.1]*
 - Result 2: Warriors [1 2 2] 1 × 2 × 2 => Tribe 1: 4 warriors *[3.1]*
 
