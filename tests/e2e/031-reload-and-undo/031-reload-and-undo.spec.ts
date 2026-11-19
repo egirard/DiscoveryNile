@@ -101,7 +101,7 @@ test.describe('031 - Reload and undo', () => {
       verifications: [
         { spec: 'The token is on c24r12 after a lost check; no undo is offered', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeVisible();
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeAttached();
           });
           await expect(page.getByTestId('undo-bottom-1')).toHaveCount(0);
           const s = await state(page);
@@ -119,8 +119,8 @@ test.describe('031 - Reload and undo', () => {
         { spec: 'The same screen: token on c24r12, lost check and terrain rolls shown, movement spent, end-turn offered', check: async () => {
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c24r12');
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeVisible();
-            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toBeVisible();
+            await expect(page.getByTestId('roll-lost-check-bottom-1').last()).toBeAttached();
+            await expect(page.getByTestId('roll-terrain-bottom-1').last()).toBeAttached();
           });
           await expect(page.getByTestId('movement-bottom-1')).toHaveAttribute('data-left', '0');
           await expect(page.getByTestId('end-turn-bottom-1')).toBeVisible();

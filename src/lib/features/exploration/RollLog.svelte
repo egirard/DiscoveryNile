@@ -7,7 +7,8 @@
   // the board and the lines were unreadable on the map (prompt 62).
   import type { LoggedTurn } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
-  import LogLine from './LogLine.svelte';
+  import LogEntry from './LogEntry.svelte';
+  import { entriesOf } from './entries';
   import TurnLog from './TurnLog.svelte';
 
   interface Props {
@@ -24,7 +25,8 @@
   }
   let { seat, turns, expanded = false, ontoggle, oncorrect }: Props = $props();
   const all = $derived(turns.flatMap((t) => t.log));
-  const latest = $derived(all.at(-1));
+  /** The latest entry (prompt 90): the operation that last finished, told by its summary, or the line that stands alone. */
+  const latest = $derived.by(() => { const t = turns.findLast((x) => x.log.length > 0); return t ? entriesOf(t.log, all.length - t.log.length).at(-1) : undefined; });
   /** The seat's latest turn: the one in progress when it is the seat's, else the last it played. */
   const latestTurn = $derived(turns.at(-1)?.log ?? []);
   /** Dice rolled in that turn; an action that rolled nothing is not counted. */
@@ -40,7 +42,8 @@
     {/if}
     <span class="latest">
       <span class="log" data-testid="roll-log-{seat}" data-lost={lost} data-rolls={rolls} data-records={all.length} data-turns={turns.length}>
-        <LogLine record={latest} {seat} rail {oncorrect} />
+        <!-- One line while the log is shut; open, the latest entry can be opened like those above it. -->
+        <LogEntry entry={latest} {seat} rail={!expanded} idPrefix="latest-" {oncorrect} />
         {#if lost}
           <span class="badge" data-testid="lost-badge-{seat}" aria-label="The expedition is lost this turn">?</span>
         {/if}

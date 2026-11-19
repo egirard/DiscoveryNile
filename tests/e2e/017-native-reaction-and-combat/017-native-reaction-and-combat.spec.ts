@@ -131,8 +131,9 @@ test.describe('017 - Native reaction and combat', () => {
       verifications: [
         { spec: 'The reaction is hostile and the natives hide; nothing changes on the chart', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('reaction-note-bottom-1').last()).toHaveText('hostile: 18 on the dice, over the target of 5');
-            await expect(page.getByTestId('combat-note-bottom-1').last()).toHaveText('hostile; nerve 6 × 4 askaris ÷ policy 4 = 6, more than 1 warrior: the natives hide');
+            await expect(page.getByTestId('ask-reaction-0-bottom-1-result').last()).toHaveText('18, over 5 => Hostile');
+            await expect(page.getByTestId('ask-combat-0-bottom-1-result').last()).toHaveText('6 × 4 ÷ 4 = 6, over 1 => The natives hide');
+            await expect(page.locator('[data-testid^="latest-log-summary-"]')).toHaveText('Tribe 1, ignore them => Hostile; the natives hide');
           });
           await expect(page.getByTestId('have-askaris-bottom-1')).toHaveAttribute('data-count', '4');
           const s = await state(page);

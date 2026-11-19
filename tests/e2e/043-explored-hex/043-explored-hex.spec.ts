@@ -162,7 +162,7 @@ test.describe('043 - An explored hex', () => {
     // The turn ends from the panel: in the field the hunt's die is asked for; a one is tapped and the meal lingers.
     await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Hunt: Roll a D6');
     await page.getByTestId('die-face-1-bottom-1').click();
-    await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('End of turn');
+    await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText(/^End of turn => /);
     await page.getByTestId('dice-result-ok-bottom-1').click();
 
     await steps.step('ended-from-the-panel', {

@@ -577,3 +577,9 @@ I've just cleaned up the sample turn text.  Please review my changes and evaluat
 We need to be cautious in our references to natives.  Also, this could be good or bad for the explorer, so no exclamation mark.  Always use 3D6. Drop negatives since they don't add value. Results should be kept to a single line wherever possible.  Other suggestions are good.  Please complete the corrections, and then implement in code.
 
 `Outcome: the spec corrected throughout (bee7653) and its dice text implemented (b2cfd5e, scenario 037 and eight more): every ask in the spec's words, an ask answered one line of label, dice and meaning in the dice panels, the result panel titled by its operation's summary; the lost sample, the warrior cap, "mapped land" and the cataract outside mountain set right. Left for the next slices: the rail and the opened log (and a game without physical dice) still word their lines as before, the prompts with no dice are unchanged, rounds and prices do not fold.`
+
+## 90. 2026-11-19
+
+Agree that we need to improve the rail messages.... please proceed.  For the log messages, I'd like to have brief and complete versions of each item logged and provide an interface for expanding the brief lines that are initially presented.  your log content would be great for the brief forms.  Please take a run at implementing all of this, then push and commit so I can test on device.
+
+`Outcome: the rail tells the operation that last finished by its summary ("Explored c24r12 => Veldt; tribe 1, 8 warriors", "End of turn => 12 rations bagged, 21 eaten: 91 left"), with or without physical dice; the opened log is one entry an operation, brief first, a control (▸) on each entry opening its complete lines with their dice, which can still be tapped to be set right (scenario 036 proves the control, 037 the dice). The prompts with no dice and the folding of rounds and prices are still to do.`

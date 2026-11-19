@@ -42,6 +42,14 @@ async function sample(page: Page, points: Record<string, [number, number]>): Pro
 function expectColour(got: number[], want: number[], within = 6) {
   for (let i = 0; i < 3; i++) expect(Math.abs(got[i] - want[i]), `channel ${i} of ${got} vs ${want}`).toBeLessThanOrEqual(within);
 }
+/** Open the seat's log and every entry in it, so the complete lines and their dice can be tapped (prompt 90). */
+async function openEntries(page: Page, seat: string) {
+  const expand = page.getByTestId(`log-expand-${seat}`);
+  if ((await expand.getAttribute('aria-pressed')) !== 'true') await expand.click();
+  const shut = page.locator(`[data-testid*="log-more-"][data-testid$="-${seat}"][aria-expanded="false"]`);
+  for (let n = await shut.count(); n > 0; n = await shut.count()) await shut.first().click();
+}
+
 test.describe('037 - Physical dice', () => {
   test('with physical dice on, the table asks for every roll in the rules\' words, the dicecam or a tapped face answers, and the game goes on', async ({ page }, testInfo) => {
     const steps = new TestStepHelper(page, testInfo);
@@ -300,8 +308,8 @@ test.describe('037 - Physical dice', () => {
           expect(s.turn!.current).toBe('top-1');
           expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'lost-check', lost: true, needed: '2+', rolls: [{ label: 'lost check', value: 1 }], outcome: 'lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa' });
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
-          await expect(page.getByTestId('lost-check-needed-bottom-1')).toHaveText('needs 2+');
-          await expect(page.getByTestId('lost-check-note-bottom-1')).toHaveText('lost: the expedition stays where it is and the turn ends; no hunting needed at Mombasa');
+          await expect(page.getByTestId('ask-lost-check-0-bottom-1-result')).toHaveText('(−1 for veldt) => Lost!');
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toHaveText('Lost on the way to c24r12 => The turn ends; no hunting needed at Mombasa');
           await expect(page.getByTestId('board-token-bottom-1')).toHaveAttribute('data-hex', 'c25r12');
           expect(s.diagnostics).toEqual([]);
         } }
@@ -460,7 +468,7 @@ test.describe('037 - Physical dice', () => {
       verifications: [
         { spec: 'The result panel is titled The hunt and holds two lines, the lost check and the hunt; the hunt\'s line opens with the rate per hunter, then the rations bagged, the men fed and the stores drawn on; the dice prompt is gone and the turn is already top-1\'s', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('End of turn');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText(/^End of turn => /);
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '2');
           await expect(page.getByTestId('result-roll-lost-check-bottom-1')).toBeVisible();
           // The result is kept by segment (prompt 79): the step that was lost, and the hunt that closed the turn; OK carries on sooner than its five seconds.
@@ -486,7 +494,7 @@ test.describe('037 - Physical dice', () => {
           const played = s.history.filter((t) => t.seat === 'bottom-1').at(-1)!;
           expect(played.log.filter((r) => r.kind !== 'action').map((r) => [r.kind, r.rolls.map((x) => x.value)])).toEqual([['disaster', []], ['lost-check', [1]], ['hunting', [5]]]);
           await expect(page.getByTestId('roll-hunting-bottom-1')).toHaveAttribute('data-needed', '2 / 4 / 6 for one, two, three per hunter');
-          await expect(page.getByTestId('meal-needed-bottom-1')).toHaveText('needs 2 / 4 / 6'); // the words stay in the open log (prompt 34)
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toHaveText(/^End of turn => 12 rations bagged, \d+ eaten: \d+ left$/); // the rail tells the evening briefly (prompt 90)
           await expect(page.getByTestId('lost-badge-bottom-1')).toBeVisible();
           expect(s.diagnostics).toEqual([]);
         } }
@@ -495,7 +503,9 @@ test.describe('037 - Physical dice', () => {
 
     // The hunt's five is doubted (prompt 37): a tap on the die at the rail opens the six faces round it.
     const fed = await state(page);
-    await page.getByTestId('dice-hunting-bottom-1').click();
+    // The dice stand in the complete lines of the log (prompt 90): the log is opened and each entry with it.
+    await openEntries(page, 'bottom-1');
+    await page.getByTestId('ask-hunting-0-bottom-1-dice').last().click();
     await expect(page.getByTestId('die-menu-bottom-1')).toBeVisible();
 
     await steps.step('die-tapped-at-the-rail', {
@@ -513,7 +523,7 @@ test.describe('037 - Physical dice', () => {
 
     await page.getByTestId('die-set-2-bottom-1').click();
     await expect(page.getByTestId('die-menu-bottom-1')).toHaveCount(0);
-    await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '2');
+    await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-value', '2');
 
     await steps.step('hunt-die-set-by-hand', {
       description: 'The two is chosen: the game is folded again from the recorded throws with the hunt\'s die a two, so the meal bags a ration a hunter instead of two and the stores hold less; the line reads the two with the mark of a die set by hand',
@@ -530,8 +540,8 @@ test.describe('037 - Physical dice', () => {
           expect(was.outcome).toContain('12 rations bagged');
           expect(meal.outcome).toContain('6 rations bagged');
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food - 6);
-          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-corrected', 'true');
-          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('6 rations bagged');
+          await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-corrected', 'true');
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toContainText('6 rations bagged');
           expect(s.diagnostics).toEqual([]);
         } }
       ]
@@ -539,9 +549,9 @@ test.describe('037 - Physical dice', () => {
 
     // The lost check's one is doubted too: in the open log its die is tapped and a four chosen. But the hunt's die
     // was rolled after it, and with the way found that die would have been read for the terrain, so the one stays.
-    await page.getByTestId('log-expand-bottom-1').click();
+    await openEntries(page, 'bottom-1'); // the log is open since the hunt's die was set
     await expect(page.getByTestId('turn-log-bottom-1')).toBeVisible();
-    await page.getByTestId('dice-lost-check-bottom-1').last().click();
+    await page.getByTestId('ask-lost-check-0-bottom-1-dice').last().click();
     await expect(page.getByTestId('die-menu-bottom-1')).toHaveAttribute('data-current', '1');
     await page.getByTestId('die-set-4-bottom-1').click();
     await expect(page.getByTestId('die-notice-bottom-1')).toBeVisible();
@@ -579,7 +589,7 @@ test.describe('037 - Physical dice', () => {
           await expect(page.getByTestId('dicecam-hint')).toHaveText('Reading the die again…');
           expect((await events(page)).filter((e) => e.type === 'dice/corrected')).toHaveLength(2);
           expect((await state(page)).diagnostics).toHaveLength(1);
-          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '2');
+          await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-value', '2');
         } }
       ]
     });
@@ -598,8 +608,8 @@ test.describe('037 - Physical dice', () => {
           const hunt = evs.filter((e) => e.type === 'dice/rolled').at(-1)!;
           expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => e.payload)).toEqual([{ seat: 'bottom-1', eventId: hunt.id, index: 0, value: 2 }, expect.objectContaining({ value: 4 }), { seat: 'bottom-1', eventId: hunt.id, index: 0, value: 6 }]);
           expect(s.history.filter((t) => t.seat === 'bottom-1').at(-1)!.log.at(-1)).toMatchObject({ kind: 'hunting', rolls: [{ label: 'hunting', value: 6, from: { eventId: hunt.id, index: 0, corrected: true } }] });
-          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('18 rations bagged');
-          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '6');
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toContainText('18 rations bagged');
+          await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-value', '6');
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food + 6);
           expect(s.diagnostics).toHaveLength(1);
         } }
@@ -621,7 +631,7 @@ test.describe('037 - Physical dice', () => {
     });
 
     await page.getByTestId('die-set-4-bottom-1').click();
-    await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-value', '4');
+    await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-value', '4');
 
     await steps.step('die-set-from-the-picture', {
       description: 'A four is chosen: the hunt is two rations a hunter again, the stores as the five had left them, the die on the rail a four with its mark',
@@ -630,8 +640,8 @@ test.describe('037 - Physical dice', () => {
           const evs = await events(page);
           const s = await state(page);
           expect(evs.filter((e) => e.type === 'dice/corrected').map((e) => (e.payload as { value: number }).value)).toEqual([2, 4, 6, 4]);
-          await expect(page.getByTestId('meal-note-bottom-1')).toContainText('12 rations bagged');
-          await expect(page.getByTestId('dice-hunting-bottom-1').locator('.die')).toHaveAttribute('data-corrected', 'true');
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toContainText('12 rations bagged');
+          await expect(page.getByTestId('ask-hunting-0-bottom-1-dice').last().locator('.die')).toHaveAttribute('data-corrected', 'true');
           expect(s.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food).toBe(fed.explorers.find((e) => e.seat === 'bottom-1')!.chart!.food);
           expect(s.diagnostics).toHaveLength(1);
         } }

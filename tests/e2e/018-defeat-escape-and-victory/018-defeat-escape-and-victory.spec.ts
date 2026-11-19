@@ -185,7 +185,7 @@ test.describe('018 - Defeat, escape and victory', () => {
       verifications: [
         { spec: 'The loot note and its twelve dice show, the first six as rolled at the table; the chart counts the rations, the gifts and the ten bearers', check: async () => {
           await withLogOpen(page, 'bottom-1', async () => {
-            await expect(page.getByTestId('loot-note-bottom-1').last()).toHaveText('looted 10 rations, 2 gifts (a die a warrior: 1 to 4 that many rations, 5 a gift, 6 nothing)');
+            await expect(page.getByTestId('ask-loot-0-bottom-1-result').last()).toHaveText('=> 10 rations, 2 gifts');
           });
           await expect(page.getByTestId('have-food-bottom-1')).toHaveAttribute('data-count', '70');
           await expect(page.getByTestId('have-gifts-bottom-1')).toHaveAttribute('data-count', '2');

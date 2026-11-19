@@ -3,9 +3,10 @@
   // turn the seat has played, round by round, but the latest, which stays the log box's last line directly
   // below this list. A few lines tall, paper on the rail's ink, scrolling and kept at its end where the
   // newest lines are.
-  import type { LoggedTurn, RollRecord } from '$lib/game/state';
+  import type { LoggedTurn } from '$lib/game/state';
   import type { Roll } from '$features/map/generate';
-  import LogLine from './LogLine.svelte';
+  import LogEntry from './LogEntry.svelte';
+  import { entriesOf, type LogEntryData } from './entries';
 
   interface Props {
     seat: string;
@@ -15,15 +16,23 @@
     oncorrect?: (roll: Roll, anchor: DOMRect) => void;
   }
   let { seat, turns, oncorrect }: Props = $props();
+  // Entries by operation (prompt 90), turn by turn; the latest entry is the rail's and is not listed here.
   const groups = $derived.by(() => {
-    const flat = turns.flatMap((t) => t.log.map((r) => ({ round: t.round, r })));
-    const listed = flat.slice(0, -1); // the latest line is the rail's
-    const out: { round: number; entries: { r: RollRecord; i: number }[] }[] = [];
-    listed.forEach((e, i) => {
+    const out: { round: number; entries: LogEntryData[] }[] = [];
+    let from = 0;
+    for (const t of turns) {
+      const entries = entriesOf(t.log, from);
+      from += t.log.length;
+      if (!entries.length) continue;
       const g = out.at(-1);
-      if (g && g.round === e.round) g.entries.push({ r: e.r, i });
-      else out.push({ round: e.round, entries: [{ r: e.r, i }] });
-    });
+      if (g && g.round === t.round) g.entries.push(...entries);
+      else out.push({ round: t.round, entries });
+    }
+    const last = out.at(-1);
+    if (last) {
+      last.entries = last.entries.slice(0, -1);
+      if (!last.entries.length) out.pop();
+    }
     return out;
   });
   const count = $derived(groups.reduce((n, g) => n + g.entries.length, 0));
@@ -42,9 +51,10 @@
     {/if}
     {#each groups as g, k (k)}
       <li class="round" data-testid="turn-log-round-{g.round}-{seat}">{g.round === 0 ? 'First player' : `Round ${g.round}`}</li>
-      {#each g.entries as e (e.i)}
-        <li class="entry" data-testid="turn-log-entry-{e.i}-{seat}" data-kind={e.r.kind} data-outcome={e.r.outcome} data-lost={e.r.lost ?? false} data-total={e.r.total ?? ''}>
-          <LogLine record={e.r} {seat} {oncorrect} />
+      {#each g.entries as e (e.index)}
+        {@const r = e.lines.at(-1)!}
+        <li class="entry" data-testid="turn-log-entry-{e.index}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={e.lines.some((x) => x.lost)} data-total={r.total ?? ''} data-summary={e.summary ?? ''}>
+          <LogEntry entry={e} {seat} {oncorrect} />
         </li>
       {/each}
     {/each}

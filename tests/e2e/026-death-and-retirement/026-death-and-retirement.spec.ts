@@ -59,7 +59,7 @@ test.describe('026 - Death and retirement', () => {
     await page.getByTestId('move-target-c24r12').click();
     await page.getByTestId('policy-3-bottom-1').click();
     await page.getByTestId('spoils-keep-bottom-1').click();
-    await expect(page.getByTestId('loot-note-bottom-1')).toBeVisible();
+    await expect(page.getByTestId('loot-note-bottom-1')).toBeAttached();
     await passTurn(page);
     await passTurn(page);
     await expect(page.getByTestId('tribe-c24r12')).toBeVisible();

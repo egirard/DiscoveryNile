@@ -236,7 +236,7 @@ function eatAndHunt(state: GameState, explorer: ExplorerState): GameState {
   sick = round.sick;
   const rolls = [...h.result.rolls, ...round.rolls];
   // The summary keeps what no die of the evening says: thirst, hunger, desertion (prompt 89).
-  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, needed: h.result.needed, outcome: parts.join('; '), op: 'End of turn', brief: [meal.summary.replace(/^no game, /, '').replace(/^\d+ rations bagged, /, '').replace(/^\d+ men ate( \([^)]*\))?(, )?/, ''), water?.summary ?? '', hunger.summary, round.summary].filter(Boolean).join('; ') };
+  const lastMeal: RollRecord = { kind: 'hunting', seat: explorer.seat, hex, rolls, modifiers: h.result.modifiers, total: h.result.total, needed: h.result.needed, outcome: parts.join('; '), op: 'End of turn', brief: [`${meal.fromGame || h.result.game ? `${count(defensive ? 0 : h.result.game, 'ration')} bagged` : 'nothing bagged'}, ${meal.men} eaten: ${meal.chart.food} left`, meal.summary.replace(/^no game, /, '').replace(/^\d+ rations bagged, /, '').replace(/^\d+ men ate( \([^)]*\))?(, )?/, ''), water?.summary ?? '', hunger.summary, round.summary].filter(Boolean).join('; ') };
   // The meal closes the turn's log as well as sitting on the explorer for his rail.
   state = { ...state, turn: { ...state.turn!, log: [...state.turn!.log, lastMeal] } };
   if (round.explorerDied) return { ...perish(state, { ...explorer, sick, lastMeal }, 'died', `died of sickness at ${hex}`), rng: round.rng };

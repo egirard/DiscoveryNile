@@ -32,8 +32,8 @@ Notation: `[4]` and `[6 6 6]` are dice drawn as faces. *[Text in italic brackets
 - **Dice panel**, at the seat's edge while the table waits for dice: the ask as its heading (the words after its semicolon in lighter type under it), the status, then the lines already answered in this operation, one line each as their results, newest first. Nothing is nested under a line.
 - **Status**, under the ask, is the same for every step: "Waiting for a D6 roll" or "Waiting for a roll of 3D6" with the dicecam, "Tap the dice tray to roll one die" or "Tap the dice tray to roll 3 dice" with the manual tray. A roll that may come in over several throws also shows a tally, "4 of 8 in", and "Waiting for a throw; 4 more dice wanted".
 - **Result panel**, at the seat's edge once an operation's last die is in, for five seconds or until `[OK]`: the summary as its title, then the operation's result lines, newest first.
-- **Rail**: the seat's rail shows the summary of the operation that last finished. While an operation is under way it shows that operation's newest result line.
-- **Log**: one entry for each operation, headed by its summary; opened, the entry shows its result lines in the order they were rolled.
+- **Rail**: the seat's rail shows the summary of the operation that last finished, on one line. A line outside any operation (a card drawn, a disaster, a publication) stands there as itself.
+- **Log**, opened from the "+" at the rail: one entry for each operation, told briefly by its summary. A control at the end of the entry (▸) opens its complete version under it: every line of the operation with its dice, as answered lines when the dice were rolled at the table, else each line with its dice, what was needed and its outcome. The dice there can be tapped to be set right. The same control hides it again (▾). The latest entry, at the foot of the open log, opens the same way.
 
 ## 1. The start of a turn in the field
 
@@ -424,10 +424,10 @@ No dice. The next seat's rail takes its own line:
 
 **Summary of the end of a turn**
 
-The hunt's result line says the bag and the meal, so the summary is "End of turn" alone. It adds only what no die of the evening says:
+The summary tells the bag and the meal, then what else the evening brought:
 
-- End of turn
-- End of turn => 2 men go hungry; 1 bearer deserts
+- End of turn => 6 rations bagged, 12 eaten: 34 left
+- End of turn => Nothing bagged, 12 eaten: 0 left; 2 men go hungry; 1 bearer deserts
 
 ## 5. Steps still to be written out
 

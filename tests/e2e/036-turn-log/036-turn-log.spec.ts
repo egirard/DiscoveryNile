@@ -140,7 +140,9 @@ test.describe('036 - The log', () => {
       description: 'The expedition tried the blank hex and was lost: the box\'s line is now the lost check with its dice and the lost mark, the "+" at its end',
       verifications: [
         { spec: 'The rail reads the lost check and ends with the "+"', check: async () => {
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
+          // The rail tells the operation briefly (prompt 90); its complete line waits behind the entry's control.
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toHaveText(/^Lost on the way to c\d+r\d+ => The turn ends/);
+          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeHidden();
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveAttribute('data-lost', 'true');
           await expect(page.getByTestId('roll-log-bottom-1')).toHaveAttribute('data-rolls', '1');
           await expect(page.getByTestId('action-note-bottom-1')).toHaveCount(0);
@@ -163,6 +165,15 @@ test.describe('036 - The log', () => {
           await expect(page.getByTestId('roll-lost-check-bottom-1')).toHaveCount(1);
           await expectLogOpenInTheBox(page, 'bottom-1');
         } },
+        { spec: 'Open, the latest entry has a control that shows its complete line, the lost check with its die, and hides it again (prompt 90)', check: async () => {
+          const more = page.locator('[data-testid^="latest-log-more-"]');
+          await expect(more).toHaveAttribute('aria-expanded', 'false');
+          await more.click();
+          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
+          await expect(page.getByTestId('lost-check-note-bottom-1')).toContainText('lost: the expedition stays where it is and the turn ends');
+          await more.click();
+          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeHidden();
+        } },
         { spec: 'The open box is shaded with the rail\'s ink behind the lines, which reach over the board (prompt 62)', check: async () => {
           expect(await page.getByTestId('log-box-bottom-1').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(28, 42, 46, 0.9)');
         } },
@@ -184,7 +195,8 @@ test.describe('036 - The log', () => {
           await expect(page.getByTestId('log-expand-bottom-1')).toHaveText('+');
           await expect(page.getByTestId('log-box-bottom-1')).toHaveAttribute('data-expanded', 'false');
           expect(await page.getByTestId('log-box-bottom-1').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)'); // the pill is outlined only
-          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeVisible();
+          await expect(page.locator('[data-testid^="latest-log-summary-"]')).toBeVisible();
+          await expect(page.getByTestId('roll-lost-check-bottom-1')).toBeHidden();
           await expectTwoSections(page, 'bottom-1');
         } }
       ]
