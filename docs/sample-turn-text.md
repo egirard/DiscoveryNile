@@ -185,7 +185,7 @@ No dice.
 
 - Explored c24r12 => Veldt
 - Explored c24r12 => Jungle with mountain; the second highest peak (22,000 ft); a river source with a cataract; tribe 1, 8 warriors
-- Lost leaving c24r11 => The turn ends
+- Lost on the way to c24r12 => The turn ends
 - Turned back from c23r12 => Swamp, no way in on foot
 - Moved to c24r13
 
@@ -276,7 +276,8 @@ A round that ends with both sides standing folds its four lines into one before 
 - Ask: "Prisoners: 5 askaris less the die, at most the 2 warriors left; a 6 takes none"
 - Result 1: Prisoners [2] 5 − 2 = 3 => 2 taken, all who were left
 - Result 2: Prisoners [6] => None taken
-- Result 3, no roll, when every warrior fell: Prisoners => None: no warrior is left
+- Ask when every warrior fell: "Prisoners: no warrior is left to take; a 6 loots the village if it is found"
+- Result 3: Prisoners [3] => None: no warrior is left
 
 Then the village:
 
@@ -297,7 +298,7 @@ Results:
 - Result 1: Spoils => Prisoners released, the village left alone
 - Result 2: the loot is rolled:
   - Ask: "Loot: 8D6, one per warrior; 1 to 4 that many rations, 5 a gift, 6 nothing"
-  - Result: Loot [3 3 3 3 1 6 2 5] => 15 rations, 1 gift; 2 prisoners carry as bearers
+  - Result: Loot [3 3 3 3 1 6 2 5] => 15 rations, 1 gift
 
 **3.11 Defeat**
 
@@ -340,7 +341,7 @@ Results:
 
 **3.13 The offer**
 
-- Ask: "Is the chief satisfied? Roll 2D6; a 2+ on either die will do (larger die × 4 gifts must reach 8 warriors)"
+- Ask: "Is the chief satisfied? Roll 2D6; 2+ on either die will do (larger die × 4 gifts must reach 8 warriors)"
 - Result 1: Offer [3 5] 5 × 4 = 20, reaches 8 => The chief is satisfied *[3.15]*
 - Result 2: Offer [1 1] 1 × 4 = 4, short of 8 => The chief is insulted *[3.3; if the natives hide, 3.16]*
 
@@ -423,7 +424,10 @@ No dice. The next seat's rail takes its own line:
 
 **Summary of the end of a turn**
 
-The hunt's result is its own summary; it is shown once.
+The hunt's result line says the bag and the meal, so the summary is "End of turn" alone. It adds only what no die of the evening says:
+
+- End of turn
+- End of turn => 2 men go hungry; 1 bearer deserts
 
 ## 5. Steps still to be written out
 
@@ -433,6 +437,7 @@ These asks exist in the game and have not yet been played through in this docume
 
 - Ask: "Sick bearers: a die each; 1 recovers, 5 or 6 dies"
 - Result: Sick bearers [1 3 6] => 1 recovers, 1 still sick, 1 dies
+- Ask for one man: "Does the sick bearer recover? Roll a D6; 1 recovers, 5 or 6 dies"
 - Ask: "Does the starving bearer fall sick? Roll a D6; 4+ and he does"
 - Result 1: Starving bearer [5] => Falls sick
 - Result 2: Starving bearer [2] => Stays well
@@ -474,8 +479,8 @@ In a newly mapped desert hex, 2.7 and 2.8 are worded for an oasis: "Any oasis? R
 **A disaster card with dice of its own**:
 
 - Ask: "Can the doctor avert it? Roll a D6; a 6 does"
-- Ask: "The dice added give the toll in gifts; over the 20 you carry and the raiders attack"
-- Ask: "The dice added give the animals the raiders try to steal; each raider shot saves one"
+- Ask: "2D6 added give the toll in gifts; over the 20 you carry and the raiders attack"
+- Ask: "2D6 added give the animals the raiders try to steal; each raider shot saves one"
 - Ask: "The explorer shoots at the crocodile: Roll a D6; a 6 kills it"
 
 **The roll for first player**, before the game, shown its own way at every seat: "Who goes first? Roll 4D6; highest total, ties roll again".

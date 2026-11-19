@@ -63,7 +63,7 @@ test.describe('044 - Manual dice', () => {
       description: 'The game is started and the table asks bottom-1 for four dice for first player: the tray stays in its corner, lit above the held table, and offers a roll of the four dice wanted',
       verifications: [
         { spec: 'The ask names four dice, the status line says to tap the tray, and the tray offers four', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Roll 4 D6 for first player');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Who goes first? Roll 4D6');
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Tap the dice tray to roll 4 dice');
           await expect(page.getByTestId('manual-dice-hint')).toHaveText('Tap to roll 4 dice');
           await expect(page.getByTestId('manual-dice')).toHaveAttribute('data-wanted', '4');

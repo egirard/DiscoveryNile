@@ -3,13 +3,13 @@ import type { ExplorerState, GameState, MappedHex, RollRecord } from '$lib/game/
 import type { SeatId } from '$lib/tabletop/seats';
 import type { Roll } from '$features/map/generate';
 import { BOARD, hexAt, isLand, type Terrain } from '$features/map/manifest';
-import { generateTerrain, lostCheck, terrainLookup } from '$features/map/generate';
+import { generateTerrain, lostCheck, terrainLookup, terrainName } from '$features/map/generate';
 import { directionTo, neighbours, opposite, type Direction, type HexId } from '$features/map/hex';
-import { printedCourse, resolveWater, riverDirection, isWater, type HexKnowledge, type RiverCourse } from '$features/map/rivers';
+import { PEAK_POINTS, printedCourse, recordStanding, resolveWater, riverDirection, isWater, type HexKnowledge, type RiverCourse } from '$features/map/rivers';
 import { RIVERS } from '$features/map/manifest';
 import { currentExplorer, replaceExplorer } from '$features/turn/reducer';
 import { budgetFor, canEnter, coastal, modeFor, overload, type Mode, type MovementBudget } from './movement';
-import { DiceNeeded, d6, type RngState } from '$lib/game/random';
+import { DiceNeeded, count, d6, type RngState } from '$lib/game/random';
 import { readOf, tagRolls } from '$lib/game/sources';
 import { isCataract } from '$features/map/manifest';
 import { discoverNatives } from '$features/natives/discovery';
@@ -78,12 +78,22 @@ export function oasisSearchable(m: MappedHex, seat: string): boolean {
   return m.terrain === 'desert' && !m.river && !m.publishedBy && !m.oasisKnownTo.includes(seat as SeatId);
 }
 
+/** What the water roll found, for the step's summary (prompt 89): a peak with its place, a river, a cataract, an oasis; nothing when nothing. */
+export function waterBrief(w: { terrain: Terrain; river: RiverCourse | null; oasis: boolean; peakFeet: number | null }, peaks: readonly number[], rolled: Terrain): string {
+  const parts: string[] = [];
+  if (w.terrain !== rolled) parts.push(`${terrainName(w.terrain)} after all`);
+  if (w.peakFeet) parts.push(`${recordStanding(w.peakFeet, peaks, 'peak', PEAK_POINTS).replace(/ so far.*$/, '').replace(/^a recorded peak.*$/, 'a recorded peak')} (${w.peakFeet.toLocaleString('en-US')} ft)`);
+  if (w.river) parts.push(`${w.river.source ? 'a river source' : 'a river'}${w.river.cataract ? ' with a cataract' : ''}`);
+  if (w.oasis) parts.push('an oasis');
+  return parts.join('; ');
+}
+
 /**
  * One die: even finds the oasis, if the first explorer found one; the roll is made either way (rules §7.4). The line
  * says what an even roll does without saying whether there is one (prompt 56): that is the first explorer's secret.
  */
 export function oasisSearch(rng: RngState, m: MappedHex, seat: string): { rng: RngState; hex: MappedHex; found: boolean; rolls: Roll[]; summary: string } {
-  const r = d6(rng, 'water', { what: 'for the oasis', hint: 'even finds the oasis, if there is one here; odd finds none, and only its first finder may look again', seat, result: ([v]) => (m.oasis && v % 2 === 0 ? 'even: the oasis is found' : v % 2 === 0 ? 'even, but no oasis here' : 'odd: no oasis found') });
+  const r = d6(rng, 'water', { what: 'Any oasis? Roll a D6', hint: 'even finds one', label: 'Oasis?', seat, result: ([v]) => (m.oasis && v % 2 === 0 ? '=> The oasis is found' : '=> None found') });
   const found = m.oasis && r.value % 2 === 0;
   const summary = found ? `the oasis is found (${r.value} is even)` : `no oasis found (${r.value}; an even roll finds one, if there is one to find)`;
   return { rng: r.state, hex: found ? { ...m, oasisKnownTo: [...m.oasisKnownTo, seat as SeatId] } : m, found, rolls: [{ label: 'oasis', value: r.value }], summary };
@@ -209,7 +219,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const check = lostCheck(rng, { from: terrainOf(state, from), river, guide: guideStatus(holder, from), ailing: false });
         rng = check.rng;
         const { result } = check;
-        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? `lost: the expedition stays where it is and the turn ends` : 'not lost', lost: result.lost }); // "not lost" after the die, in the player's words (prompt 65)
+        log.push({ kind: 'lost-check', seat: explorer.seat, hex: target, rolls: result.rolls, modifiers: result.modifiers, total: result.total, needed: result.needed, outcome: result.lost ? `lost: the expedition stays where it is and the turn ends` : 'not lost', lost: result.lost, ...(result.lost ? { op: `Lost on the way to ${target}`, brief: 'the turn ends' } : {}) }); // "not lost" after the die, in the player's words (prompt 65)
         if (result.lost) return finish(state, { ...movement, halted: true });
       }
 
@@ -222,13 +232,14 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         rng = gen.rng;
         terrain = gen.result.terrain;
         // The line tells how the terrain came about (prompt 56): the directions tried, the table, the composite die.
-        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain.replace(/-/g, ' ')}: ${gen.result.notes.join('; ')}` });
+        log.push({ kind: 'terrain', seat: explorer.seat, hex: target, rolls: gen.result.rolls, outcome: `mapped ${terrain.replace(/-/g, ' ')}: ${gen.result.notes.join('; ')}`, op: `Explored ${target}`, brief: terrainName(terrain) });
         // Rivers, oases, cataracts and peaks (rules §7.4–7.5); water may replace the terrain.
-        const water = resolveWater(rng, target, terrain, knowledgeOf(state), Object.values(state.map).flatMap((m) => (m.peakFeet ? [m.peakFeet] : [])));
+        const peaksKnown = Object.values(state.map).flatMap((m) => (m.peakFeet ? [m.peakFeet] : []));
+        const water = resolveWater(rng, target, terrain, knowledgeOf(state), peaksKnown, Object.values(state.map).flatMap((m) => (m.river?.waterfallFeet ? [m.river.waterfallFeet] : [])));
         rng = water.rng;
         terrain = water.result.terrain;
         if (water.result.rolls.length || water.result.notes.length) {
-          log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: water.result.rolls, outcome: water.result.notes.join('; ') || 'no river' });
+          log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: water.result.rolls, outcome: water.result.notes.join('; ') || 'no river', brief: waterBrief(water.result, peaksKnown, terrain) });
         }
         map = {
           ...map,
@@ -243,19 +254,19 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         const search = oasisSearch(rng, map[target], explorer.seat);
         rng = search.rng;
         map = { ...map, [target]: search.hex };
-        log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.summary });
+        log.push({ kind: 'water', seat: explorer.seat, hex: target, rolls: search.rolls, outcome: search.summary, brief: search.found ? 'the oasis found' : '' });
       }
 
       // Terrain conflict (rules §7.1): the hex is mapped and claimed, but the expedition turns back.
       if (!canEnter(mode, terrain, chart, target)) {
-        log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain.replace(/-/g, ' ')} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back` });
+        log.push({ kind: 'turned-back', seat: explorer.seat, hex: target, rolls: [], outcome: `${terrain.replace(/-/g, ' ')} is impassable ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}: the expedition turns back`, op: `Turned back from ${target}`, brief: `${terrainName(terrain)}, no way in ${mode === 'canoe' ? 'by canoe' : mode === 'mounted' ? 'mounted' : 'on foot'}` });
         return finish({ ...learn(state), map }, { ...movement, spent: movement.spent + cost, halted: true });
       }
 
       // Canoes first discovering a cataract going downstream: d6 − 3 canoes go over the falls (rules §7.5).
       let nextChart = chart;
       if (mode === 'canoe' && newlyMapped && map[target].river?.cataract && riverDirection(courseAt(state, from), directionTo(from, target) as Direction) === 'downstream') {
-        const r = d6(rng, 'main', { what: 'for the canoes over the cataract', hint: `the die less 3 is the canoes lost over the falls, of ${chart.canoes}; 3 or less loses none`, result: ([v]) => { const over = Math.min(chart.canoes, Math.max(0, v - 3)); return over ? `${v} − 3 = ${v - 3}: ${over < v - 3 ? `all ${over}` : over} canoe${over > 1 ? 's' : ''} lost` : 'every canoe survives'; } });
+        const r = d6(rng, 'main', { what: `Canoes over the cataract: the die less 3 gives the canoes lost, of ${chart.canoes}`, label: 'Canoes', result: ([v]) => { const over = Math.min(chart.canoes, Math.max(0, v - 3)); return over ? `${v} − 3 = ${v - 3} => ${over < v - 3 ? `All ${over}` : over} canoe${over > 1 ? 's' : ''} lost` : '=> None lost'; } });
         rng = r.state;
         const lostCanoes = Math.min(chart.canoes, Math.max(0, r.value - 3));
         nextChart = { ...chart, canoes: chart.canoes - lostCanoes };
@@ -270,7 +281,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
         if (entered.tribe != null) phase = 'natives';
         else if (!entered.publishedBy && !entered.nativesCheckedBy.includes(explorer.seat)) {
           const water = entered.river !== null || oasisKnownTo(entered, explorer.seat);
-          const found = discoverNatives(rng, entered.terrain, water, target);
+          const found = discoverNatives(rng, entered.terrain, water, target, Math.max(0, ...Object.keys(tribes).map(Number)) + 1);
           rng = found.rng;
           if (found.result.rolls.length) {
             if (found.result.found) {
@@ -278,7 +289,7 @@ export function reduceExploration(state: GameState, event: GameEvent): GameState
               tribes = { ...tribes, [id]: { id, hex: target, warriors: found.result.warriors, attitude: 0, pending: null, negotiatedBy: [], regard: {}, preachedBy: [], treatedBy: [], defeatedBy: [] } };
               map = { ...map, [target]: { ...entered, tribe: id } };
               phase = 'natives';
-              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: found.result.summary.replace('a tribe of', `tribe ${id} of`) });
+              log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: found.result.summary.replace('a tribe of', `tribe ${id} of`), brief: `tribe ${id}, ${count(found.result.warriors, 'warrior')}` });
             } else {
               map = { ...map, [target]: { ...entered, nativesCheckedBy: [...entered.nativesCheckedBy, ...seats.filter((s) => !entered.nativesCheckedBy.includes(s))] } };
               log.push({ kind: 'natives', seat: explorer.seat, hex: target, rolls: found.result.rolls, needed: found.result.needed, outcome: found.result.summary });

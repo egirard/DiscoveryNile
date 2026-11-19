@@ -37,12 +37,12 @@ describe('a fight fought at the table, each ask explaining the dice before it (p
     const events = [...facingTheTribe(), event('natives/policy', { seat: 'bottom-1', policy: 3 })];
     const nerve = reduce(events);
     expect(nerve.diagnostics).toEqual([]);
-    expect(nerve.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, prompt: "Roll a D6 for the natives' nerve; the die × 5 askaris ÷ policy 3: more than the 12 warriors and they hide, else they attack" });
+    expect(nerve.awaiting).toMatchObject({ seat: 'bottom-1', count: 1, prompt: 'Do they attack? Roll a D6; no roll makes them hide (die × 5 askaris ÷ policy 3 must beat 12 warriors)' });
     expect(outcomes(nerve.awaiting!.sofar)).toEqual([['reaction', 'hostile: 18 on the dice, over the target of 4']]);
     expect(nerve.awaiting!.sofar[0]).toMatchObject({ seat: 'bottom-1', needed: '4 or less', rolls: [{ value: 6 }, { value: 6 }, { value: 6 }] });
     // 6 × 5 ÷ 3 = 10, not more than 12: they attack, and the surprise dice are asked with the fight so far.
     const surprise = reduce([...events, roll([6])]);
-    expect(surprise.awaiting).toMatchObject({ count: 2, prompt: 'Roll 2 D6 for surprise; a total of 3 or more, the policy number, and the expedition fires first; less and it is surprised' });
+    expect(surprise.awaiting).toMatchObject({ count: 2, prompt: 'Surprised? Roll 2D6; 3+ and you fire first (policy 3)' });
     expect(outcomes(surprise.awaiting!.sofar)).toEqual([
       ['reaction', 'hostile: 18 on the dice, over the target of 4'],
       ['combat', 'hostile; nerve 6 × 5 askaris ÷ policy 3 = 10, not more than 12 warriors: the natives attack']
@@ -51,14 +51,14 @@ describe('a fight fought at the table, each ask explaining the dice before it (p
     expect(uncovered(surprise.awaiting!.rolled, surprise.awaiting!.sofar)).toEqual([]);
     // Ready: the volley kills six, and the morale die is asked with the volley told.
     const morale = reduce([...events, roll([6]), roll([6, 6])]);
-    expect(morale.awaiting).toMatchObject({ count: 1, prompt: 'Roll a D6 to drive them off; the volley killed 6: the die × 6 more than the 6 warriors left drives them off, else they close in' });
+    expect(morale.awaiting).toMatchObject({ count: 1, prompt: 'Driven off? Roll a D6; 2+ drives them off (die × 6 fallen must beat the 6 warriors left)' });
     expect(morale.awaiting!.sofar.at(-1)!.outcome).toBe('hostile; nerve 6 × 5 askaris ÷ policy 3 = 10, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall');
   });
   it('after the victory asks for the prisoners and the village with the reaction and the fight complete, and the result lingers with every line', () => {
     const events = [...facingTheTribe(), event('natives/policy', { seat: 'bottom-1', policy: 3 }), roll([6]), roll([6, 6])];
     // Morale 2 × 6 = 12, more than the 6 left: driven off. The prisoners' die is asked with the fight's line written.
     const prisoners = reduce([...events, roll([2])]);
-    expect(prisoners.awaiting).toMatchObject({ count: 1, prompt: 'Roll a D6 for prisoners; 5 askaris less the die are taken prisoner, no more than the 6 warriors left; a 6 takes none, and the village is looted if it is found' });
+    expect(prisoners.awaiting).toMatchObject({ count: 1, prompt: 'Prisoners: 5 askaris less the die, at most the 6 warriors left; a 6 takes none' });
     expect(outcomes(prisoners.awaiting!.sofar)).toEqual([
       ['reaction', 'hostile: 18 on the dice, over the target of 4'],
       ['combat', 'hostile; nerve 6 × 5 askaris ÷ policy 3 = 10, not more than 12 warriors: the natives attack; surprise 6 + 6 = 12, not under policy 3: the expedition is ready; the volley: 5 askaris and the explorer fire, 6 warriors fall; morale 2 × 6 killed = 12, more than the 6 warriors left: the natives are driven off']
@@ -67,7 +67,7 @@ describe('a fight fought at the table, each ask explaining the dice before it (p
     expect(prisoners.awaiting!.sofar[1].rolls.map((r) => r.value)).toEqual([6, 6, 6, 2]);
     expect(prisoners.awaiting!.sofar[1].rolls.every((r) => r.from)).toBe(true);
     const village = reduce([...events, roll([2]), roll([1])]);
-    expect(village.awaiting).toMatchObject({ count: 2, prompt: 'Roll 2 D6 to find the village; a total of 7 or less finds it (4 prisoners + policy 3); more and it stays hidden this turn' });
+    expect(village.awaiting).toMatchObject({ count: 2, prompt: 'Village found? Roll 2D6; 7 or less finds it (4 prisoners + policy 3)' });
     expect(village.awaiting!.sofar).toHaveLength(2); // the prisoners' die, not yet on a line, is listed on its own at the table (017 reads it with every throw physical)
     // The last throw in: the event is applied in full, and what the dice decided stays in view, the action noted left out.
     const found = reduce([...events, roll([2]), roll([1]), roll([3, 4])]);

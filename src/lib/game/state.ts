@@ -175,6 +175,13 @@ export interface RollRecord {
   needed?: string;
   /** Human-readable result: 'lost', 'moved', 'mapped veldt', 'bounced: lake' … */
   outcome: string;
+  /**
+   * The line's part in the summary of its operation (prompt 89; docs/sample-turn-text.md): `op` names the operation
+   * ("Explored c24r12", "Tribe 1, show of force"), `brief` what the line found, gained or lost, nothing when it found
+   * nothing. The summary is the operation, then every brief: "Explored c24r12 => Veldt; tribe 1, 8 warriors".
+   */
+  op?: string;
+  brief?: string;
   /** The asks the line's dice answered (prompt 81), with physical dice: each ask's words, its dice and what they meant. */
   asks?: Asked[];
   lost?: boolean;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GameState, RollRecord } from '$lib/game/state';
-import { RESULT_MS, allRecords, lingerLines, resultTitle, segmentsOf } from './linger';
+import { RESULT_MS, allRecords, lingerLines, resultTitle, segmentsOf, summaryOf } from './linger';
 
 const line = (kind: RollRecord['kind'], outcome = ''): RollRecord => ({ kind, seat: 'bottom-1', rolls: [], outcome });
 const game = (history: RollRecord[][], turn: RollRecord[] | null, awaiting: boolean): GameState =>
@@ -31,10 +31,9 @@ describe('the lines kept in view after a throw (prompts 54 and 55)', () => {
     expect(lingerLines(starting, game([[line('first-player')]], [], false))).toBeNull();
   });
   it('titles the result by what the throw was for', () => {
-    expect(resultTitle('Roll a D6 for the hunt; the die bags one ration per hunter at 2, two at 4, three at 6')).toBe('The hunt');
-    expect(resultTitle("Roll a D6 to see if you are lost; 2+ means you're okay")).toBe('To see if you are lost');
-    expect(resultTitle("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4 over 1 warrior and they hide")).toBe("The natives' nerve");
-    expect(resultTitle('Roll 2 D6 for surprise; 4+ and the expedition is ready')).toBe('Surprise');
+    expect(resultTitle('Hunt: Roll a D6; 1 nothing, 2 or 3 one ration a hunter')).toBe('Hunt: Roll a D6');
+    expect(resultTitle('Lost? Roll a D6; 2+ finds the way')).toBe('Lost? Roll a D6');
+    expect(resultTitle('3D6 added gives the gifts the chief returns')).toBe('3D6 added gives the gifts the chief returns');
   });
 });
 
@@ -48,8 +47,24 @@ describe('a result kept whole, a segment at a time (prompt 79)', () => {
     expect(s.map((x) => [x.name, x.title, x.lines.map((r) => r.kind)])).toEqual([['step', 'The step into c24r12', ['lost-check', 'terrain', 'water', 'natives']]]);
   });
   it('tells a step lost from the hunt it led to, and the natives dealt with from both', () => {
-    expect(segmentsOf([{ ...line('lost-check', 'lost'), hex: 'c25r12' }, line('hunting')]).map((x) => x.title)).toEqual(['The step into c25r12', 'The hunt']);
+    expect(segmentsOf([{ ...line('lost-check', 'lost'), hex: 'c25r12' }, line('hunting')]).map((x) => x.title)).toEqual(['The step into c25r12', 'End of turn']);
     expect(segmentsOf([line('reaction'), line('combat'), line('victory')]).map((x) => [x.name, x.lines.length])).toEqual([['natives', 3]]);
     expect(segmentsOf([])).toEqual([]);
+  });
+});
+
+describe('the summary of an operation (prompt 89)', () => {
+  const r = (kind: string, more: Record<string, unknown> = {}) => ({ kind, seat: 'bottom-1', rolls: [], outcome: '', ...more }) as unknown as RollRecord;
+  it('names the operation, then what each line found, and leaves out a line that found nothing', () => {
+    expect(summaryOf([r('lost-check'), r('terrain', { op: 'Explored c24r12', brief: 'veldt' }), r('water', { brief: '' }), r('natives', { brief: '' })], 'The step')).toBe('Explored c24r12 => Veldt');
+    expect(summaryOf([r('terrain', { op: 'Explored c24r12', brief: 'jungle with mountain' }), r('water', { brief: 'the second highest peak (22,000 ft); a river source with a cataract' }), r('natives', { brief: 'tribe 1, 8 warriors' })], 'The step')).toBe('Explored c24r12 => Jungle with mountain; the second highest peak (22,000 ft); a river source with a cataract; tribe 1, 8 warriors');
+  });
+  it('tells a step lost or turned back by that line alone', () => {
+    expect(summaryOf([r('lost-check', { lost: true, op: 'Lost on the way to c24r12', brief: 'the turn ends' })], 'The step')).toBe('Lost on the way to c24r12 => The turn ends');
+    expect(summaryOf([r('lost-check'), r('terrain', { op: 'Explored c23r12', brief: 'swamp' }), r('turned-back', { op: 'Turned back from c23r12', brief: 'swamp, no way in on foot' })], 'The step')).toBe('Turned back from c23r12 => Swamp, no way in on foot');
+  });
+  it('is the operation alone when nothing was found, and the fallback when no line names it', () => {
+    expect(summaryOf([r('hunting', { op: 'End of turn', brief: '' })], 'The hunt')).toBe('End of turn');
+    expect(summaryOf([r('combat')], 'The natives')).toBe('The natives');
   });
 });

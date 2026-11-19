@@ -5,9 +5,9 @@ import type { Card } from '$features/cards/deck';
 import type { Chart } from '$features/expedition/prices';
 import type { Specialty, Sickness } from '$lib/game/state';
 import type { Terrain } from '$features/map/manifest';
-import { hasPart } from '$features/map/generate';
+import { capital, hasPart } from '$features/map/generate';
 import type { Roll } from '$features/map/generate';
-import { d6, dice as rollDice, noting, type DiceAsk, type RngState } from '$lib/game/random';
+import { count, d6, dice as rollDice, noting, type DiceAsk, type RngState } from '$lib/game/random';
 
 /** The expedition's circumstances when the card is drawn. */
 export interface Situation {
@@ -73,7 +73,7 @@ class Resolver {
     this.sick = { ...party.sick };
   }
   /** The card is drawn at the start of the explorer's turn by the previous seat's `turn/ended`: the ask names him. */
-  private roll(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
+  private roll(label: string, ask: DiceAsk = { what: `Roll a D6 for the ${label}`, label: capital(label) }): number {
     const r = this.asking(() => d6(this.rng, 'main', { ...ask, seat: this.seat }));
     this.rng = r.state;
     this.rolls.push({ label, value: r.value });
@@ -87,14 +87,14 @@ class Resolver {
   shoot(label: string): number {
     let kills = 0;
     const explorerHits = this.specialties.includes('zoology') ? 5 : 6;
-    if (this.roll(`${label}: explorer`, { what: `for the explorer's shot (${label})`, hint: `${explorerHits === 6 ? '6' : `${explorerHits} or more`} kills one, less misses`, result: ([v]) => (v >= explorerHits ? 'a kill' : 'a miss') }) >= explorerHits) kills++;
-    for (let i = 0; i < this.chart.askaris; i++) if (this.roll(`${label}: askari`, { what: `for an askari's shot (${label})`, hint: '6 kills one, less misses', result: ([v]) => (v === 6 ? 'a kill' : 'a miss') }) === 6) kills++;
+    if (this.roll(`${label}: explorer`, { what: `The explorer shoots at the ${label}: Roll a D6`, hint: `${explorerHits === 6 ? 'a 6' : `${explorerHits}+`} kills it`, label: "Explorer's shot", result: ([v]) => (v >= explorerHits ? '=> A kill' : '=> A miss') }) >= explorerHits) kills++;
+    for (let i = 0; i < this.chart.askaris; i++) if (this.roll(`${label}: askari`, { what: `An askari shoots at the ${label}: Roll a D6`, hint: 'a 6 kills it', label: "Askari's shot", result: ([v]) => (v === 6 ? '=> A kill' : '=> A miss') }) === 6) kills++;
     return kills;
   }
   /** A doctor's 6 averts sickness, poison and snakebite. */
   doctorAverts(): boolean {
     if (!this.specialties.includes('medicine')) return false;
-    const v = this.roll('doctor', { what: 'for the doctor', hint: '6 and the doctor averts it; less and it strikes', result: ([v]) => (v === 6 ? 'averted by the doctor' : 'not averted') });
+    const v = this.roll('doctor', { what: 'Can the doctor avert it? Roll a D6', hint: 'a 6 does', label: 'Doctor?', result: ([v]) => (v === 6 ? '=> Averted by the doctor' : '=> Not averted') });
     if (v === 6) this.notes.push('averted by the doctor');
     return v === 6;
   }
@@ -164,7 +164,7 @@ class Resolver {
     }
     this.notes.push(`${plural(Math.min(n, canoes), 'canoe')} overturned`);
   }
-  twoDice(label: string, ask: DiceAsk = { what: `for the ${label}` }): number {
+  twoDice(label: string, ask: DiceAsk = { what: `Roll 2D6 for the ${label}`, label: capital(label) }): number {
     const r = this.asking(() => rollDice(this.rng, 2, 'main', { ...ask, seat: this.seat }));
     this.rng = r.state;
     r.values.forEach((v) => this.rolls.push({ label, value: v }));
@@ -205,7 +205,7 @@ export function resolveDisaster(rng: RngState, card: Card, situation: Situation,
     case 13: { const shot = r.shoot('crocodile'); if (shot >= 4) r.notes.push('all four crocodiles shot: the askari is saved'); else { r.notes.push(`${plural(shot, 'crocodile')} shot`); r.kill('askaris', 1); } break; }
     case 14: { const stay = Math.max(0, r.chart.bearers - r.chart.askaris); r.chart.bearers -= stay; r.notes.push(stay ? `${plural(stay, 'bearer')} refuse to go on and desert` : 'the askaris keep every bearer in line'); break; }
     case 15: r.halve(ANIMALS, 'lost in the sandstorm'); if (!r.notes.length) r.notes.push('no animals to lose'); break;
-    case 16: { const toll = r.twoDice('toll', { what: 'for the toll', hint: `the total is the toll in gifts; more than the ${r.chart.gifts} carried and the raiders attack`, result: ([a, b]) => `${a} + ${b} = ${a + b} gifts${r.chart.gifts >= a + b ? ': paid' : ': more than the expedition has'}` }); if (r.chart.gifts >= toll) { r.chart.gifts -= toll; r.notes.push(`toll of ${toll} gifts paid`); } else r.notes.push(`toll of ${toll} gifts cannot be paid: the raiders attack (their attack is not played out yet: nothing is lost)`); break; }
+    case 16: { const toll = r.twoDice('toll', { what: '2D6 added give the toll in gifts', hint: `over the ${r.chart.gifts} you carry and the raiders attack`, label: 'Toll', result: ([a, b]) => `${a} + ${b} = ${a + b} => ${count(a + b, 'gift')}${r.chart.gifts >= a + b ? ': paid' : ': more than the expedition has'}` }); if (r.chart.gifts >= toll) { r.chart.gifts -= toll; r.notes.push(`toll of ${toll} gifts paid`); } else r.notes.push(`toll of ${toll} gifts cannot be paid: the raiders attack (their attack is not played out yet: nothing is lost)`); break; }
     case 17: r.kill('askaris', 4); break;
     case 18: return done(true, 'the oasis is poisoned (the poisoning is not played out yet: nothing is lost)');
     case 19: if (!r.geologistSafe()) { r.halve(MEN_ALL, 'lost'); r.halve(ANIMALS, 'lost'); r.halve(GOODS, 'lost'); r.chart.water = Math.max(r.chart.water, 0); r.notes.push('plenty of water found'); } break;
@@ -232,10 +232,10 @@ export function resolveDisaster(rng: RngState, card: Card, situation: Situation,
     case 40: sickness(() => r.sicken('bearers', 4)); break;
     case 41: r.halted = true; r.notes.push('bad omens: the bearers will not leave camp this turn'); break;
     case 42: r.kill('guides', 1); break;
-    case 43: { const raiders = r.twoDice('raiders', { what: 'for the raiders', hint: 'the total is the animals they try to steal; each raider shot saves one', result: ([a, b]) => `${a} + ${b} = ${a + b} raiders` }); const shot = r.shoot('raider'); const stolen = Math.max(0, Math.min(raiders, r.chart.camels + r.chart.horses) - shot); r.notes.push(`${plural(shot, 'raider')} shot`); r.loseAnimals(stolen, 'animal'); if (!stolen) r.notes.push('no animal stolen'); break; }
+    case 43: { const raiders = r.twoDice('raiders', { what: '2D6 added give the animals the raiders try to steal', hint: 'each raider shot saves one', label: 'Raiders', result: ([a, b]) => `${a} + ${b} = ${a + b} => ${count(a + b, 'raider')}` }); const shot = r.shoot('raider'); const stolen = Math.max(0, Math.min(raiders, r.chart.camels + r.chart.horses) - shot); r.notes.push(`${plural(shot, 'raider')} shot`); r.loseAnimals(stolen, 'animal'); if (!stolen) r.notes.push('no animal stolen'); break; }
     case 44: r.kill('askaris', 1); break;
     case 45: sickness(() => r.sicken('bearers', 1)); break;
-    case 46: { const roll = d6(r.rng, 'main', { what: 'on the consequences of defeat', hint: 'the die + 2 on the consequences of defeat: 3 escapes with nothing, 4 with a musket and 9 rations, 5 that and one survival roll, 6 or more that and two', seat, result: ([v]) => `${v} + 2 = ${v + 2}: ${v + 2 === 3 ? 'escapes alone' : v + 2 === 4 ? 'escapes with a musket and rations' : 'escapes, with survival rolls'}` }); r.rng = roll.state; r.rolls.push({ label: 'defeat', value: roll.value }); return done(true, `the camp is destroyed: defeat roll ${roll.value} + 2 = ${roll.value + 2} (its consequences are not played out yet: nothing is lost)`); }
+    case 46: { const roll = d6(r.rng, 'main', { what: 'Defeat. Roll a D6', hint: '+2 to the die: 1 escapes with nothing, 2 with a musket and 9 rations, 3 the same and one companion, 4+ the same and two', label: 'Defeat', seat, result: ([v]) => `${v} + 2 = ${v + 2} => ${v + 2 === 3 ? 'The explorer escapes alone' : v + 2 === 4 ? 'The explorer escapes with a musket and 9 rations' : 'The explorer escapes with companions'}` }); r.rng = roll.state; r.rolls.push({ label: 'defeat', value: roll.value }); return done(true, `the camp is destroyed: defeat roll ${roll.value} + 2 = ${roll.value + 2} (its consequences are not played out yet: nothing is lost)`); }
     case 47: if (!r.doctorAverts()) r.kill('bearers', 1); break;
     case 48: r.kill('bearers', 1); break;
     default: return done(true, 'no effect');

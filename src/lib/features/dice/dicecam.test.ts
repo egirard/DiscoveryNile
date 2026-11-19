@@ -52,7 +52,7 @@ describe('reading the dicecam', () => {
     expect(c.accept).toEqual([1, 1, 1, 1]);
     expect(lieOf(reading('r4', [2])).dice).toEqual([{ value: 2, x: -1, y: -1 }]);
     expect(statusText('active', 1, 1, true, true)).toBe('Waiting for a D6 roll');
-    expect(statusText('active', 4, 4, true, true)).toBe('Waiting for a roll of 4 D6');
+    expect(statusText('active', 4, 4, true, true)).toBe('Waiting for a roll of 4D6');
   });
   it('gathers a throw of more dice than the tray holds over several throws, each taken as it comes (prompt 33)', () => {
     // Twelve dice for the loot: four thrown, taken; the same four lying there, ignored; three more, taken; then only five more wanted.

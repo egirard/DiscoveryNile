@@ -102,12 +102,12 @@ test.describe('017 - Native reaction and combat', () => {
     await expect(page.getByTestId('policy-panel-bottom-1')).toBeVisible();
     await page.getByTestId('policy-4-bottom-1').click();
     const tapFaces = async (values: number[]) => { for (const v of values) await page.getByTestId(`die-face-${v}-bottom-1`).click(); };
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll 3 D6 for the natives' reaction; a total of 5 or less and they are not hostile, more and they are hostile (+1 hex to the nearest port, +4 policy 4, ignore them)");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Are they hostile? Roll 3D6; 5 or less and they are not (1 hex to port + policy 4)');
     await tapFaces([6, 6, 6]);
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText("Roll a D6 for the natives' nerve; the die × 4 askaris ÷ policy 4: more than the 1 warrior and they hide, else they attack");
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Do they attack? Roll a D6; 2+ makes them hide (die × 4 askaris ÷ policy 4 must beat 1 warrior)');
     // The nerve's ask shows the reaction's line with its verdict (prompt 56), not only the three faces thrown.
     await expect(page.getByTestId('dice-so-far-bottom-1').locator('li')).toHaveCount(1);
-    await expect(page.getByTestId('so-far-reaction-note-bottom-1')).toHaveText('hostile: 18 on the dice, over the target of 5');
+    await expect(page.getByTestId('so-far-ask-reaction-0-bottom-1-result')).toHaveText('18, over 5 => Hostile');
     await tapFaces([6]);
 
     await steps.step('they-hide-explained', {
@@ -115,9 +115,9 @@ test.describe('017 - Native reaction and combat', () => {
       verifications: [
         { spec: 'The result panel is titled The natives, its segment; its reaction line says hostile and its fight line states the check in full; the dice prompt is gone and the turn is in the act phase', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText("The natives");
-          await expect(page.getByTestId('result-reaction-note-bottom-1')).toHaveText('hostile: 18 on the dice, over the target of 5');
-          await expect(page.getByTestId('result-combat-note-bottom-1')).toHaveText('hostile; nerve 6 × 4 askaris ÷ policy 4 = 6, more than 1 warrior: the natives hide');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('Tribe 1, ignore them => Hostile; the natives hide');
+          await expect(page.getByTestId('result-ask-reaction-0-bottom-1-result')).toHaveText('18, over 5 => Hostile');
+          await expect(page.getByTestId('result-ask-combat-0-bottom-1-result')).toHaveText('6 × 4 ÷ 4 = 6, over 1 => The natives hide');
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveCount(0);
           expect((await state(page)).turn).toMatchObject({ phase: 'act', policy: 4 });
         } }

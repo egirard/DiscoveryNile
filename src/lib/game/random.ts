@@ -38,9 +38,10 @@ export function shuffle<T>(items: readonly T[], random: Random): T[] {
 export type Stream = 'main' | 'hunting' | 'water' | 'natives' | 'combat' | 'sickness' | 'specialty' | 'cache';
 
 /**
- * What a roll is for, in the words the table uses to ask for it when the dice are physical
- * (PROMPTS.md, prompt 18): "Roll a D6 {what}; {hint}". `seat` names the roller when it is not
- * the seat that sent the event (the roll for first player, a disaster at the start of a turn).
+ * What a roll is for, in the words the table uses to ask for it when the dice are physical (PROMPTS.md, prompts 18
+ * and 89; docs/sample-turn-text.md): `what` is the ask's opening, its heading at the table ("Lost? Roll a D6",
+ * "3D6 multiplied, plus 100, gives the mountain's height in hundreds of feet"); `hint` what the player wants to
+ * roll, read under it. `seat` names the roller when it is not the seat that sent the event.
  */
 export interface DiceAsk {
   what: string;
@@ -51,25 +52,47 @@ export interface DiceAsk {
    * or one at a time as the player likes. A throw of more dice than the tray holds comes in parts whatever this says.
    */
   parts?: true;
+  /** What the answered line is called, before its dice: "Lost?", "Height"; told from the dice when it depends on them. */
+  label?: string | ((values: number[]) => string);
   /**
-   * What the dice rolled mean, in a few words (PROMPTS.md, prompt 81): "not lost", "veldt", "7: ready". The ask stays
-   * in the record with its dice and this beside it, so the roll is read before and after it is made. Called with the
-   * dice as they were read; never kept in the game's state.
+   * What the dice rolled mean, after the dice on the answered line (prompt 89): "(−1 for veldt) => Not lost",
+   * "5 × 6 × 4 + 100 = 220 => 22,000 ft: …". The line is `label [dice] result`: it takes the ask's place in the
+   * record. Called with the dice as they were read; never kept in the game's state.
    */
   result?: (values: number[]) => string;
+  /**
+   * The answer goes on the line of the ask before it, whose dice it takes with its own (a second empty direction:
+   * "Directions [3] [4] are empty."), when this says so of the dice rolled.
+   */
+  join?: (values: number[]) => boolean;
 }
 
-/** An ask answered (prompt 81): the words the table asked in, the dice read for it and what they meant. */
+/** An ask answered (prompts 81 and 89): its label, the dice read for it and what they meant; `prompt` is the words it was asked in. */
 export interface Asked {
   prompt: string;
+  label?: string;
   values: number[];
   result: string;
 }
 
-/** "Roll a D6 {what}; {hint}" or "Roll 4 D6 {what}; {hint}": the words of an ask. */
-export function askText(count: number, ask: DiceAsk): string {
-  const what = count === 1 ? 'a D6' : `${count} D6`;
-  return `Roll ${what} ${ask.what}${ask.hint ? `; ${ask.hint}` : ''}`;
+/** "Roll a D6" or "Roll 3D6": how a throw is asked for. */
+export const rollOf = (count: number): string => (count === 1 ? 'Roll a D6' : `Roll ${count}D6`);
+
+/**
+ * The face a player wants on one die, when higher is what passes (prompt 89): "2+ drives them off", "only a 6 makes
+ * them hide", "any roll …", "no roll …". The sum behind it follows in brackets, written by the rule.
+ */
+export function wantedFace(passes: (face: number) => boolean, then: string): string {
+  const least = [1, 2, 3, 4, 5, 6].find(passes);
+  return `${least === undefined ? 'no roll' : least === 1 ? 'any roll' : least === 6 ? 'only a 6' : `${least}+`} ${then}`;
+}
+
+/** "1 askari", "5 askaris". */
+export const count = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+/** The words of an ask: its opening, then what the player wants to roll. */
+export function askText(_count: number, ask: DiceAsk): string {
+  return `${ask.what}${ask.hint ? `; ${ask.hint}` : ''}`;
 }
 
 /**
@@ -210,7 +233,7 @@ export function nextRandom(state: RngState, stream: Stream = 'main'): { state: R
   return { state: withRaw(state, stream, a), value: ((t ^ (t >>> 14)) >>> 0) / 4294967296 };
 }
 
-const UNNAMED: DiceAsk = { what: 'for the game' };
+const UNNAMED: DiceAsk = { what: 'Roll for the game' };
 
 /** Scripted values not yet consumed on a stream. */
 function scriptedLeft(state: RngState, stream: Stream): number {
@@ -245,7 +268,13 @@ function one(state: RngState, stream: Stream, ask: DiceAsk): { state: RngState; 
 /** With physical dice, note the ask just answered: its words, its dice and what they meant (prompt 81). */
 function answered(state: RngState, ask: DiceAsk, values: number[]): RngState {
   if (typeof state === 'number' || !state.physical) return state;
-  return { ...state, asked: [...(state.asked ?? []), { prompt: askText(values.length, ask), values, result: ask.result?.(values) ?? '' }] };
+  const before = state.asked ?? [];
+  const last = before.at(-1);
+  // A second roll of the same die that ends as the first did is one line with both dice.
+  const all = last && ask.join?.(values) ? [...last.values, ...values] : values;
+  const label = typeof ask.label === 'function' ? ask.label(all) : ask.label;
+  const line: Asked = { prompt: askText(values.length, ask), ...(label ? { label } : {}), values: all, result: ask.result?.(all) ?? '' };
+  return { ...state, asked: [...(all === values ? before : before.slice(0, -1)), line] };
 }
 
 /**

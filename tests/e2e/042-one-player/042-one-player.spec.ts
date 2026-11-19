@@ -65,7 +65,7 @@ test.describe('042 - One player at the table', () => {
     await page.getByTestId('options-close').click();
     const before = (await events(page)).length;
     await pressEndTurn(page, 'bottom-1');
-    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('for the hunt');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Hunt: Roll a D6');
     await page.getByTestId('die-face-4-bottom-1').click();
     await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
 
@@ -73,8 +73,8 @@ test.describe('042 - One player at the table', () => {
       description: 'The turn ends on the veldt south of Kilwa and the hunting die is in: the next turn is already bottom-1\'s again, standing at its disaster card, but the table shows only the hunt\'s result at the edge, the card waiting behind it',
       verifications: [
         { spec: 'The result panel is titled The hunt; no disaster card is shown though the turn stands at one, for the same seat', check: async () => {
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The hunt');
-          await expect(page.getByTestId('result-meal-note-bottom-1')).toContainText('per hunter');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('End of turn');
+          await expect(page.getByTestId('result-ask-hunting-0-bottom-1-result')).toContainText('bagged');
           await expect(page.getByTestId('dice-result-scrim')).toBeVisible();
           await expect(page.getByTestId('disaster-panel-bottom-1')).toHaveCount(0);
           await expect(page.getByTestId('disaster-scrim')).toHaveCount(0);

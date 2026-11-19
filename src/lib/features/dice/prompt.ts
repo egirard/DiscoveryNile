@@ -5,7 +5,7 @@ import { askText, type DiceAsk } from '$lib/game/random';
 
 /** "for first player" out of "Roll 4 D6 for first player; the highest total goes first": what the ask was for. */
 export function askWhat(prompt: string): string {
-  return prompt.replace(/^Roll (a|\d+) D6 /, '').split(';')[0];
+  return prompt.split(';')[0];
 }
 
 /** "Roll a D6 {what}; {hint}" or "Roll 4 D6 {what}; {hint}". */

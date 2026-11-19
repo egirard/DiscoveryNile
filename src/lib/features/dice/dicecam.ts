@@ -333,7 +333,7 @@ export function statusText(status: DicecamStatus, count: number, seen: number | 
   const thrownDice = seen === 1 ? 'One die thrown' : `${seen} dice thrown`;
   const reading = `reading the ${seen === 1 ? 'face' : 'faces'}…`;
   if (!configured) return gathered ? `No dicecam on this table: tap each face as it is rolled; ${more}` : 'No dicecam on this table: tap the face you rolled';
-  if (status === 'active' && stale) return gathered ? `Waiting for a throw; ${more}` : count === 1 ? 'Waiting for a D6 roll' : `Waiting for a roll of ${count} D6`;
+  if (status === 'active' && stale) return gathered ? `Waiting for a throw; ${more}` : count === 1 ? 'Waiting for a D6 roll' : `Waiting for a roll of ${count}D6`;
   if (status === 'active' && gathered) {
     if (seen === null || seen === 0) return `Watching the dicecam for a throw; ${more}`;
     if (seen <= count) return `${thrownDice}, ${reading}`;

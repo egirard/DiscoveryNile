@@ -104,7 +104,7 @@ test.describe('018 - Defeat, escape and victory', () => {
       description: 'The prisoners are kept and the village is to be looted: twelve dice, one per warrior met, more than the tray holds, so the table asks for them as a throw gathered over several throws: none in yet, the dicecam watching for the first, the six faces to tap each die by hand, and a button for the table to roll the rest',
       verifications: [
         { spec: 'The ask is for twelve dice for the loot, in the rules\' words, with none in yet; the game is held at the choice', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 12 D6 for the loot; one die a warrior: 1–4 that many rations, 5 a gift, 6 nothing');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Loot: 12D6, one per warrior; 1 to 4 that many rations, 5 a gift, 6 nothing');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveAttribute('data-have', '0');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveText('0 of 12 in');
           await expect(page.getByTestId('dicecam-status-bottom-1')).toHaveText('Watching the dicecam for a throw; 12 more dice wanted');
@@ -171,9 +171,9 @@ test.describe('018 - Defeat, escape and victory', () => {
       verifications: [
         { spec: 'The result panel is titled The natives, its segment, and holds the one line, the loot with the table it was read by', check: async () => {
           await expect(page.getByTestId('dice-result-bottom-1')).toBeVisible();
-          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The natives');
+          await expect(page.getByTestId('dice-result-title-bottom-1')).toHaveText('The natives => The village looted for 10 rations, 2 gifts');
           await expect(page.getByTestId('dice-result-bottom-1')).toHaveAttribute('data-lines', '1');
-          await expect(page.getByTestId('result-loot-note-bottom-1')).toHaveText('looted 10 rations, 2 gifts (a die a warrior: 1 to 4 that many rations, 5 a gift, 6 nothing)');
+          await expect(page.getByTestId('result-ask-loot-0-bottom-1-result')).toHaveText('=> 10 rations, 2 gifts');
         } }
       ]
     });

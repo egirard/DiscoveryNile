@@ -52,6 +52,16 @@
   const label = $derived(`${name(r.kind)}: ${r.needed ? `needs ${r.needed}; ` : ''}${r.rolls.map((x) => `${x.label} ${x.value}`).join(', ')}${r.modifiers?.length ? '; ' + r.modifiers.map(modifierText).join(', ') : ''}${r.total !== undefined && r.modifiers?.length ? ` = ${num(r.total)}` : ''}; ${r.outcome}`);
 </script>
 
+{#if spans && r.asks}
+  <!-- In the dice panels a line whose asks account for its dice is those asks answered, one line each, the newest
+       first (prompt 89): nothing is nested, and the line's own words wait for the log. -->
+  <span class="answered" data-testid="{idPrefix}roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} data-count={r.asks.length} aria-label={label}>
+    {#each [...r.asks].reverse() as a, i (r.asks.length - 1 - i)}
+      {@const at = spans[r.asks.length - 1 - i]}
+      <AskedLine asked={a} testid="{idPrefix}ask-{r.kind}-{r.asks.length - 1 - i}-{seat}" rolls={r.rolls.slice(at, at + a.values.length)} {oncorrect} />
+    {/each}
+  </span>
+{:else}
 <span class="line" class:rail data-testid="{idPrefix}roll-{r.kind}-{seat}" data-kind={r.kind} data-outcome={r.outcome} data-lost={r.lost ?? false} data-total={r.total ?? ''} data-needed={r.needed ?? ''} aria-label={label}>
   {#if r.kind === 'action'}
     <span class="action" data-testid="{idPrefix}action-note-{seat}">{r.outcome}</span>
@@ -92,8 +102,13 @@
     {/if}
   {/if}
 </span>
+{/if}
 
 <style>
+  .answered {
+    display: grid;
+    gap: calc(var(--gap) * 0.45);
+  }
   .line {
     display: inline-flex;
     flex-wrap: wrap;

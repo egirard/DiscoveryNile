@@ -23,7 +23,7 @@ export function lingerLines(before: GameState, after: GameState): RollRecord[] |
 
 /** "The hunt" out of "Roll a D6 for the hunt; the die bags …": what the throw was for, as a title. */
 export function resultTitle(prompt: string): string {
-  return askWhat(prompt).replace(/^for\s+/, '').replace(/^./, (c) => c.toUpperCase());
+  return askWhat(prompt);
 }
 
 /** How long a result stays at the seat's edge by itself (PROMPTS.md, prompt 79): five seconds, or until OK is tapped. */
@@ -44,6 +44,19 @@ const STEP = new Set<RollRecord['kind']>(['lost-check', 'terrain', 'water', 'tur
 const NATIVES = new Set<RollRecord['kind']>(['reaction', 'combat', 'defeat', 'captivity', 'victory', 'loot', 'negotiation', 'poison', 'trade']);
 const segmentOf = (r: RollRecord): Segment['name'] => (r.kind === 'hunting' ? 'hunt' : STEP.has(r.kind) ? 'step' : NATIVES.has(r.kind) ? 'natives' : 'other');
 
+/**
+ * The summary of an operation (prompt 89; docs/sample-turn-text.md): what it was, then what it found, gained or lost,
+ * "Explored c24r12 => Veldt; tribe 1, 8 warriors". Each line gives its part (`op`, `brief`); a line that found nothing
+ * gives none. A step lost or turned back is told by that line alone.
+ */
+export function summaryOf(lines: RollRecord[], fallback: string): string {
+  const named = [...lines].reverse().find((r) => r.op);
+  const told = named && (named.kind === 'turned-back' || named.lost) ? [named] : lines;
+  const briefs = told.map((r) => r.brief ?? '').filter(Boolean);
+  const op = named?.op ?? fallback;
+  return briefs.length ? `${op} => ${briefs.join('; ').replace(/^./, (c) => c.toUpperCase())}` : op;
+}
+
 /** The lines of a result by segment, in the order they were made: a step lost and the hunt it led to are two. */
 export function segmentsOf(lines: RollRecord[]): Segment[] {
   const out: Segment[] = [];
@@ -51,7 +64,7 @@ export function segmentsOf(lines: RollRecord[]): Segment[] {
     const name = segmentOf(r);
     const last = out.at(-1);
     if (last && last.name === name && (name !== 'step' || last.lines[0].hex === r.hex)) last.lines.push(r);
-    else out.push({ name, title: name === 'hunt' ? 'The hunt' : name === 'step' ? (r.hex ? `The step into ${r.hex}` : 'The step') : name === 'natives' ? 'The natives' : '', lines: [r] });
+    else out.push({ name, title: name === 'hunt' ? 'End of turn' : name === 'step' ? (r.hex ? `The step into ${r.hex}` : 'The step') : name === 'natives' ? 'The natives' : '', lines: [r] });
   }
-  return out;
+  return out.map((s) => ({ ...s, title: summaryOf(s.lines, s.title) }));
 }

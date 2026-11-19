@@ -45,7 +45,7 @@ async function answerAsks(page: Page, answered: string[] = []) {
     const text = (await ask.textContent()) ?? '';
     // By what the roll is for, the words before the hint: the hint names terrains and outcomes of its own (prompt 85).
     const what = text.split(';')[0];
-    const face = /lost/.test(what) ? 6 : /direction/.test(what) ? 5 : /jungle|for the terrain/.test(what) ? 1 : /natives|tribe/.test(what) ? 6 : /hunt/.test(what) ? 1 : 6;
+    const face = /Lost/.test(what) ? 6 : /neighbour|again/.test(what) ? 5 : /Jungle|Terrain in the new hex: Roll a D6$/.test(what) ? 1 : /natives|warriors/.test(what) ? 6 : /Hunt/.test(what) ? 1 : 6;
     answered.push(`${text.split(';')[0]} -> ${face}`);
     await page.getByTestId(`die-face-${face}-bottom-1`).click();
     await expect(ask).not.toHaveText(text, { timeout: 5000 }).catch(() => {});
@@ -90,13 +90,13 @@ test.describe('045 - The terrain\'s direction on the board', () => {
     await page.getByTestId('physical-dice').click();
     await page.getByTestId('options-close').click();
     await passTurn(page);
-    expect(await answerAsks(page)).toEqual(['Roll a D6 for the hunt -> 1']);
+    expect(await answerAsks(page)).toEqual(['Hunt: Roll a D6 -> 1']);
     await passTurn(page);
     expect((await state(page)).turn).toMatchObject({ current: 'bottom-1', round: 4, phase: 'act' });
     await page.getByTestId('move-target-c3r6').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('to see if you are lost');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Lost? Roll a D6');
     await page.getByTestId('die-face-6-bottom-1').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('for the direction of the terrain to copy');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('for the neighbour to copy');
     await expect(page.getByTestId('compass-rolled')).toHaveCount(0); // the lost check plays nothing
     await page.getByTestId('die-face-2-bottom-1').click();
     await expect(page.getByTestId('compass-rolled')).toHaveAttribute('data-direction', '2');
@@ -109,7 +109,7 @@ test.describe('045 - The terrain\'s direction on the board', () => {
           await expect(page.getByTestId('compass-5')).toHaveAttribute('data-rolled', 'false');
           await expect(page.getByTestId('terrain-reveal')).toHaveCount(0);
           await expect(page.getByTestId('dice-note-bottom-1')).toHaveCount(0);
-          await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('once more');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toContainText('Roll a D6 again');
           await expect(page.getByTestId('dice-scrim')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
           // The dice panel and the dicecam's picture stand down so the board can be watched.
           await expect(page.getByTestId('dice-edge-bottom-1')).toHaveAttribute('data-faded', 'true');

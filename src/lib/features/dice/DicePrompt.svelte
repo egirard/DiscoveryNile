@@ -72,7 +72,7 @@
     onroll(next);
   }
   const faces = [1, 2, 3, 4, 5, 6];
-  /** Where the ask's hint begins: after "Roll a D6 for the hunt;". */
+  /** Where the ask's hint begins: after "Lost? Roll a D6;". */
   const cut = $derived(prompt.indexOf(';') < 0 ? prompt.length : prompt.indexOf(';') + 1);
 </script>
 
@@ -142,6 +142,7 @@
   }
   .ask .hint {
     display: block;
+    white-space: pre-line;
     margin-top: calc(var(--gap) * 0.3);
     font-size: calc(var(--target) * 0.3);
     font-weight: 400;

@@ -50,7 +50,7 @@ function line(r: RollRecord, rail = false, panel = false): string {
   parts.push(r.outcome);
   return parts.filter(Boolean).join(' ');
 }
-const asksOf = (r: RollRecord): string[] => [...(r.asks ?? [])].reverse().map((a) => `    - *${a.prompt}* / Result: ${diceText(a.values)}${a.result ? ` ${a.result}` : ''}`);
+const asksOf = (r: RollRecord): string[] => [...(r.asks ?? [])].reverse().map((a) => `    - ${a.label ? `${a.label} ` : ''}${diceText(a.values)}${a.result ? ` ${a.result}` : ''}`);
 
 export type Step = ['do', string, GameEvent] | ['roll', number[]] | ['say', string] | ['pass'];
 const SEAT = 'bottom-1';
@@ -125,7 +125,7 @@ function describe(before: GameState, s: GameState, quietPass = false) {
     const loose = [...(a.asked ?? [])].reverse();
     if (loose.length || a.sofar.length) {
       out.push('- So far (newest first):');
-      for (const l of loose) out.push(`  - *${l.prompt}* / Result: ${diceText(l.values)}${l.result ? ` ${l.result}` : ''}`);
+      for (const l of loose) out.push(`  - ${l.label ? `${l.label} ` : ''}${diceText(l.values)}${l.result ? ` ${l.result}` : ''}`);
       for (const r of [...a.sofar].reverse()) { out.push(`  - ${line(r, false, true)}`); out.push(...asksOf(r)); }
     }
     out.push('');

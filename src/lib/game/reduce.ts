@@ -229,7 +229,7 @@ function correct(folded: Folded, event: GameEvent): Folded {
     if (e.type === 'dice/rolled' && !now) {
       const before = folded.answers.get(e.id);
       const after = again.answers.get(e.id);
-      if (before && after && before.key !== after.key) return refuse(`${stays}: the throw ${askWhat(before.prompt)} that followed would answer another ask (${askWhat(after.prompt)})`);
+      if (before && after && before.key !== after.key) return refuse(`${stays}: the throw that followed (${askWhat(before.prompt)}) would answer another ask (${askWhat(after.prompt)})`);
     }
   }
   // The game as it would have gone; the refusals noted so far (earlier corrections among them) are kept.

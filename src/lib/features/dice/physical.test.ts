@@ -26,8 +26,8 @@ describe('the generator with physical dice', () => {
     const after = d6(rng).state;
     expect(() => d6(after, 'main', { what: 'to see if you are lost', hint: '4+ means you\'re okay' })).toThrow(DiceNeeded);
     let caught: DiceNeeded | null = null;
-    try { dice(rng, 4, 'main', { what: 'for first player', seat: 'top-1' }); } catch (e) { caught = e as DiceNeeded; }
-    expect(caught).toMatchObject({ stream: 'main', count: 4, ask: { what: 'for first player', seat: 'top-1' } });
+    try { dice(rng, 4, 'main', { what: 'Who goes first? Roll 4D6', seat: 'top-1' }); } catch (e) { caught = e as DiceNeeded; }
+    expect(caught).toMatchObject({ stream: 'main', count: 4, ask: { what: 'Who goes first? Roll 4D6', seat: 'top-1' } });
     expect(() => d6(after, 'hunting')).toThrow(/hunting stream/);
     expect(() => d6(withPhysical(rng, false), 'hunting')).not.toThrow();
   });
@@ -43,14 +43,14 @@ describe('the generator with physical dice', () => {
 });
 
 describe('an ask kept with its result (prompt 81)', () => {
-  const lost = { what: 'to see if you are lost', hint: '2+ means you\'re okay', result: ([v]: number[]) => (v >= 2 ? 'not lost' : 'lost') };
+  const lost = { what: 'Lost? Roll a D6', hint: '2+ finds the way', label: 'Lost?', result: ([v]: number[]) => (v >= 2 ? '=> Not lost' : '=> Lost!') };
   it('notes each ask answered with its words, its dice and what they meant, and forgets them when the event settles', () => {
     const rng = withRolled(withPhysical(5, true), 'main', [3, 6, 4]);
     const one = d6(rng, 'main', lost);
-    const two = dice(one.state, 2, 'main', { what: 'for surprise', hint: '4+ and the expedition is ready', result: ([a, b]) => `${a} + ${b} = ${a + b}: not surprised` });
+    const two = dice(one.state, 2, 'main', { what: 'Surprised? Roll 2D6', hint: '4+ and you fire first', label: 'Surprised?', result: ([a, b]) => `${a + b} => Not surprised` });
     expect(askedOf(two.state)).toEqual([
-      { prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [3], result: 'not lost' },
-      { prompt: 'Roll 2 D6 for surprise; 4+ and the expedition is ready', values: [6, 4], result: '6 + 4 = 10: not surprised' }
+      { prompt: 'Lost? Roll a D6; 2+ finds the way', label: 'Lost?', values: [3], result: '=> Not lost' },
+      { prompt: 'Surprised? Roll 2D6; 4+ and you fire first', label: 'Surprised?', values: [6, 4], result: '10 => Not surprised' }
     ]);
     expect(askedOf(settled(two.state))).toEqual([]);
     // Without physical dice nothing is asked, so nothing is noted.
@@ -60,15 +60,15 @@ describe('an ask kept with its result (prompt 81)', () => {
     const one = d6(withRolled(withPhysical(5, true), 'main', [1]), 'main', lost);
     let caught: DiceNeeded | null = null;
     try { d6(one.state, 'main', { what: 'for the hunt' }); } catch (e) { caught = e as DiceNeeded; }
-    expect(caught!.asked).toEqual([{ prompt: "Roll a D6 to see if you are lost; 2+ means you're okay", values: [1], result: 'lost' }]);
+    expect(caught!.asked).toEqual([{ prompt: 'Lost? Roll a D6; 2+ finds the way', label: 'Lost?', values: [1], result: '=> Lost!' }]);
     expect(caught!.read).toEqual([{ value: 1, from: null }]);
   });
   it('gives each line the asks its dice answered; an ask no line shows goes with the next, and the rest are loose', () => {
     const asked = [
-      { prompt: 'Roll a D6 A', values: [3], result: 'a' },
-      { prompt: 'Roll a D6 B', values: [5], result: 'b' },
-      { prompt: 'Roll 2 D6 C', values: [2, 2], result: 'c' },
-      { prompt: 'Roll a D6 D', values: [6], result: 'd' }
+      { prompt: 'A', values: [3], result: 'a' },
+      { prompt: 'B', values: [5], result: 'b' },
+      { prompt: 'C', values: [2, 2], result: 'c' },
+      { prompt: 'D', values: [6], result: 'd' }
     ];
     const read = [3, 5, 2, 2, 6].map((value) => ({ value, from: null }));
     const line = (kind: RollRecord['kind'], values: number[]): RollRecord => ({ kind, seat: 'bottom-1', rolls: values.map((value) => ({ label: kind, value })), outcome: '' });
@@ -83,8 +83,9 @@ describe('an ask kept with its result (prompt 81)', () => {
 
 describe('the prompt', () => {
   it('reads as the table asks it', () => {
-    expect(promptText(1, { what: 'to see if you are lost', hint: okayFrom(4) })).toBe("Roll a D6 to see if you are lost; 4+ means you're okay");
-    expect(promptText(4, { what: 'for first player', hint: 'the highest total goes first' })).toBe('Roll 4 D6 for first player; the highest total goes first');
+    expect(promptText(1, { what: 'Lost? Roll a D6', hint: '4+ finds the way' })).toBe('Lost? Roll a D6; 4+ finds the way');
+    expect(promptText(4, { what: 'Who goes first? Roll 4D6', hint: 'highest total, ties roll again' })).toBe('Who goes first? Roll 4D6; highest total, ties roll again');
+    expect(promptText(3, { what: '3D6 added gives the gifts the chief returns' })).toBe('3D6 added gives the gifts the chief returns');
     expect(okayFrom(1)).toBe("any roll and you're okay");
     expect(okayFrom(7)).toBe("whatever you roll you're lost");
     expect(okayFrom(3, 'you shrug it off', 'it takes hold')).toBe('3+ means you shrug it off');
@@ -97,7 +98,7 @@ describe('the reducer with physical dice', () => {
     const held = reduce(events);
     expect(held.diagnostics).toEqual([]);
     expect(held.turn).toBeNull();
-    expect(held.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 4, prompt: 'Roll 4 D6 for first player; the highest total goes first; a tie is rolled again', rolled: [] });
+    expect(held.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 4, prompt: 'Who goes first? Roll 4D6; highest total, ties roll again', rolled: [] });
     expect(held.awaiting!.event.type).toBe('game/started');
 
     // Anything but the roll is refused while the table waits.
@@ -110,9 +111,9 @@ describe('the reducer with physical dice', () => {
 
     const second = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] })]);
     expect(second.diagnostics).toEqual([]);
-    expect(second.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ prompt: 'Roll 4 D6 for first player; the highest total goes first; a tie is rolled again', values: [6, 6, 6, 6], seat: 'bottom-1' }] });
+    expect(second.awaiting).toMatchObject({ seat: 'top-1', count: 4, rolled: [{ prompt: 'Who goes first? Roll 4D6; highest total, ties roll again', values: [6, 6, 6, 6], seat: 'bottom-1' }] });
     // The throw made stays with the ask in its words and its total (prompt 81).
-    expect(second.awaiting!.asked).toEqual([{ prompt: 'Roll 4 D6 for first player; the highest total goes first; a tie is rolled again', values: [6, 6, 6, 6], result: '6 + 6 + 6 + 6 = 24' }]);
+    expect(second.awaiting!.asked).toEqual([{ prompt: 'Who goes first? Roll 4D6; highest total, ties roll again', label: 'First player', values: [6, 6, 6, 6], result: '6 + 6 + 6 + 6 = 24' }]);
 
     const started = reduce([...events, event('dice/rolled', { seat: 'bottom-1', values: [6, 6, 6, 6] }), event('dice/rolled', { seat: 'top-1', values: [1, 1, 1, 1] })]);
     expect(started.diagnostics).toEqual([]);
@@ -202,7 +203,7 @@ describe('the reducer with physical dice', () => {
     ];
     const asked = reduce(landed);
     expect(asked.diagnostics).toEqual([]);
-    expect(asked.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 1, prompt: "Roll a D6 to see if you are lost; −1 leaving veldt: 2+ finds the way; less is lost, and the turn ends here", rolled: [] });
+    expect(asked.awaiting).toMatchObject({ seat: 'bottom-1', stream: 'main', count: 1, prompt: 'Lost? Roll a D6; 2+ finds the way (−1 for leaving veldt)', rolled: [] });
     // The lines so far go with the next ask (prompt 34): not lost, the terrain die is asked with the lost check's
     // line, its verdict on it. (Lost at the port there is no hunt to ask for; scenario 037 reads the hunt's ask in the field.)
     const four = event('dice/rolled', { seat: 'bottom-1', values: [4] });
@@ -228,13 +229,13 @@ describe('the reducer with physical dice', () => {
       tradePrices(physical, { desert: false, water: false });
     } catch (e) {
       expect((e as DiceNeeded).count).toBe(1);
-      expect((e as DiceNeeded).ask).toMatchObject({ what: 'for the price of food', hint: 'the die is the rations one gift buys' });
+      expect((e as DiceNeeded).ask).toMatchObject({ what: 'Price of food: the die is the rations a gift buys', label: 'Food' });
     }
     const second = withRolled(physical, 'combat', [3]);
     try {
       tradePrices(second, { desert: false, water: false });
     } catch (e) {
-      expect((e as DiceNeeded).ask).toMatchObject({ what: 'for the price of bearers', hint: 'the die is the gifts one bearer costs' });
+      expect((e as DiceNeeded).ask).toMatchObject({ what: 'Price of a bearer: the die is his cost in gifts', label: 'Bearer' });
     }
     const all = tradePrices(withRolled(physical, 'combat', [3, 2, 4, 1]), { desert: false, water: false });
     expect(all.prices).toEqual({ food: 3, bearers: 2, guides: 4, askaris: 1 });

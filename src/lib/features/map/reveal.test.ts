@@ -5,8 +5,8 @@ import { emptyDirection, emptyText, mappedBy, phasesOf, provisionalTerrain, reve
 
 // c3r6, up the Benue from the Niger: blank on the printed board, with blank hexes in directions 1 and 2 (c3r5, c4r6)
 // and printed jungle in directions 3 to 6 (c3r7, c2r7, c2r6, c2r5).
-const ASK = 'Roll a D6 for the direction of the terrain to copy; a mapped neighbour in that direction is copied';
-const AGAIN = 'Roll a D6 for the direction of the terrain to copy, once more; a mapped neighbour in that direction is copied';
+const ASK = 'Terrain in the new hex: Roll a D6 for the neighbour to copy';
+const AGAIN = 'Terrain in the new hex: Roll a D6 again';
 const base = (): GameState => ({ ...initialState(), turn: { log: [] } as unknown as GameState['turn'] });
 function held(rolled: [string, number][], sofar: RollRecord[] = [], id = 'e1'): GameState {
   return { ...base(), awaiting: { event: { id, type: 'expedition/moved', payload: { seat: 'bottom-1', path: ['c3r6'] } }, seat: 'bottom-1', stream: 'main', count: 1, prompt: '', rolled: rolled.map(([prompt, v]) => ({ prompt, values: [v], seat: 'bottom-1' })), have: [], at: 0, sofar } as unknown as GameState['awaiting'] };

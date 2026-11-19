@@ -46,7 +46,7 @@ export function logTrade(log: readonly RollRecord[], seat: SeatId, hex: HexId, n
     return [...log.slice(0, -1), { ...last, trades, outcome: tradeLine(trades) }];
   }
   const trades = [next];
-  return [...log, { kind: 'trade', seat, hex, rolls: [], trades, outcome: tradeLine(trades) }];
+  return [...log, { kind: 'trade', seat, hex, rolls: [], trades, outcome: tradeLine(trades), brief: tradeLine(trades) }];
 }
 
 // ---- Taking an exchange back (PROMPTS.md, prompt 67) -----------------------------------------------------------

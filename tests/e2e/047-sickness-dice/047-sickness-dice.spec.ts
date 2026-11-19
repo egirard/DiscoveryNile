@@ -37,7 +37,7 @@ test.describe('047 - Sickness dice', () => {
     const steps = new TestStepHelper(page, testInfo);
     steps.setMetadata(
       'Sickness dice',
-      'Every sick man rolls a die each evening. With physical dice the table does not ask for them a man at a time: it asks once for a type of man, "Roll 3 D6 for the 3 sick bearers, a die a man", then for the sick askaris, and the dice of an ask may come as the player likes, a bunch at a throw or one by one, the panel counting them in (prompt 75). A single sick man is still one die.'
+      'Every sick man rolls a die each evening. With physical dice the table does not ask for them a man at a time: it asks once for a type of man, "Sick bearers: a die each", then for the sick askaris, and the dice of an ask may come as the player likes, a bunch at a throw or one by one, the panel counting them in (prompt 75). A single sick man is still one die.'
     );
 
     // Scenario 021's story (seed 863): the stores run out, three guarded bearers starve and fall sick (sickness 4,5,6),
@@ -74,7 +74,7 @@ test.describe('047 - Sickness dice', () => {
       description: 'The turn ends with three sick bearers and nothing to eat. The hunt is in, and the table asks once for the three sick bearers: three dice, a die a man, to come as the player likes',
       verifications: [
         { spec: 'One ask for three dice names the three sick bearers and what a die means; none is in yet', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 3 D6 for the 3 sick bearers, a die a man; starving too, none can recover, 2 or more dies, anything between is still sick');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Sick bearers: a die each; none can recover, 2+ dies (starving too)');
           await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-count', '3');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveAttribute('data-have', '0');
           await expect(page.getByTestId('dice-auto-bottom-1')).toBeVisible();
@@ -105,7 +105,7 @@ test.describe('047 - Sickness dice', () => {
       description: 'The other two dice, a 2 and a 3, complete the bearers\' throw. The starving explorer is one man and one die, asked for as before',
       verifications: [
         { spec: 'The ask is a single die for the starving explorer, the bearers\' three dice read back in order', check: async () => {
-          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll a D6 for the starving explorer; 4 or more and he falls sick, less and he stays well');
+          await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Does the starving explorer fall sick? Roll a D6; 4+ and he does');
           await expect(page.getByTestId('dice-gathered-bottom-1')).toHaveCount(0);
           const a = (await state(page)).awaiting!;
           expect(a).toMatchObject({ count: 1, have: [] });

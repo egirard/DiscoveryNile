@@ -8,11 +8,11 @@ import type { SeatId } from '$lib/tabletop/seats';
 import { LAND_HEXES, RIVERS, isLand } from '$features/map/manifest';
 import { directionTo, neighbour, neighbours, opposite, type HexId } from '$features/map/hex';
 import { courseAt, terrainOf } from '$features/exploration/reducer';
-import { isWater } from '$features/map/rivers';
+import { FALL_POINTS, PEAK_POINTS, isWater } from '$features/map/rivers';
 
-export const PEAK_POINTS = [8, 4, 2, 1];
+export { FALL_POINTS, PEAK_POINTS };
+
 export const LAKE_POINTS = [4, 2, 1];
-export const FALL_POINTS = [4, 2, 1];
 export const RIVER_POINTS = [16, 8, 4, 2, 1];
 export const PEAK_FEET = 15000; // strictly over
 export const FALL_FEET = 400; // recorded at 400 or over (rules §7.5)

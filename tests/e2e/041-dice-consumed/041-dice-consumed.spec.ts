@@ -64,7 +64,7 @@ test.describe('041 - Dice consumed', () => {
     await commission(page, 'bottom-1');
     await commission(page, 'top-1');
     await page.getByTestId('start-game').click();
-    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Roll 4 D6 for first player; the highest total goes first; a tie is rolled again');
+    await expect(page.getByTestId('dice-ask-bottom-1')).toHaveText('Who goes first? Roll 4D6; highest total, ties roll again');
     // The tray as found: four twos lying from before the game. Then the dice are thrown (the engine sees them move) and read twice.
     await dicecamSays(page, settled('lying', [2, 2, 2, 2]));
     await expect(page.getByTestId('dice-prompt-bottom-1')).toHaveAttribute('data-stale', 'true');
@@ -86,7 +86,7 @@ test.describe('041 - Dice consumed', () => {
             lying: [],
             ignored: [0, 1, 2, 3].map((i) => ({ value: 2, ...placeOf(i) })),
             moved: true,
-            for: { event: 'game/started', eventId: expect.any(String), prompt: 'Roll 4 D6 for first player; the highest total goes first; a tie is rolled again', stream: 'main', count: 4, have: 0, rolled: 0 }
+            for: { event: 'game/started', eventId: expect.any(String), prompt: 'Who goes first? Roll 4D6; highest total, ties roll again', stream: 'main', count: 4, have: 0, rolled: 0 }
           });
           expect(c.for.eventId).toBe((await events(page)).find((e) => e.type === 'game/started')!.id);
         } },
@@ -117,7 +117,7 @@ test.describe('041 - Dice consumed', () => {
       description: 'Nothing moves in the tray, but the engine misreads the first of bottom-1\'s dice as a one while top-1\'s ask is open, twice over: the engine has seen nothing move since the throw was taken, so the die is a resting die misread and the table waits for a roll; nothing is consumed, and the capture\'s reading lines say the die was misread',
       verifications: [
         { spec: 'The prompt waits for a roll of four dice, none counted as thrown; nothing more is consumed and no throw is appended', check: async () => {
-          await expect(page.getByTestId('dicecam-status-top-1')).toHaveText('Waiting for a roll of 4 D6');
+          await expect(page.getByTestId('dicecam-status-top-1')).toHaveText('Waiting for a roll of 4D6');
           await expect(page.getByTestId('dice-prompt-top-1')).toHaveAttribute('data-seen', '0');
           expect(consumed()).toHaveLength(1);
           expect((await events(page)).filter((e) => e.type === 'dice/rolled').map((e) => e.payload.values)).toEqual([[6, 6, 6, 6]]);
@@ -157,7 +157,7 @@ test.describe('041 - Dice consumed', () => {
           ]);
           const report = diceHealth('DIAGD', lines);
           expect(report[0]).toBe('DIAGD: 2 throws consumed (2 by the dicecam, 0 tapped, 0 rolled by the table), 8 dice; none re-used, 3 to check');
-          expect(report[1]).toMatch(/^  \d\d:\d\d:\d\d  top-1  6@0\.44,0\.50 for first player  to check: the same 6 at the place of the die taken at \d\d:\d\d:\d\d for first player, after a throw$/);
+          expect(report[1]).toMatch(/^  \d\d:\d\d:\d\d  top-1  6@0\.44,0\.50 Who goes first\? Roll 4D6  to check: the same 6 at the place of the die taken at \d\d:\d\d:\d\d Who goes first\? Roll 4D6, after a throw$/);
         } },
         { spec: 'At the table the roll for first player is decided on the dice as read: bottom-1 24, top-1 19, bottom-1 first', check: async () => {
           await expect(page.getByTestId('first-player-roll-top-1')).toHaveAttribute('data-total', '19');

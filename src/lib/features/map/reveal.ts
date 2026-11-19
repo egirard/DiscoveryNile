@@ -25,13 +25,16 @@ export type RevealPhase = 'digit' | 'hex' | 'copy' | 'empty';
 export const phasesOf = (step: RevealStep): RevealPhase[] => ['digit', 'hex', step.terrain ? 'copy' : 'empty'];
 
 /** The ask's words for the direction die (generate.ts), by which its throws are told among an event's. */
-export const DIRECTION_ASK = 'for the direction of the terrain to copy';
+export const DIRECTION_ASK = 'Terrain in the new hex: Roll a D6 for the neighbour to copy';
+/** Its second roll, when the first neighbour was empty. */
+export const DIRECTION_AGAIN = 'Terrain in the new hex: Roll a D6 again';
+const isDirection = (prompt: string): boolean => prompt === DIRECTION_ASK || prompt === DIRECTION_AGAIN;
 
 type Held = NonNullable<GameState['awaiting']>;
 const isStep = (held: GameState['awaiting']): held is Held => held?.event.type === 'expedition/moved';
 /** The direction dice thrown so far for a step held for dice. */
 export function directionsRolled(held: GameState['awaiting']): number[] {
-  return isStep(held) ? held.rolled.filter((r) => r.prompt.includes(DIRECTION_ASK)).flatMap((r) => r.values) : [];
+  return isStep(held) ? held.rolled.filter((r) => isDirection(r.prompt)).flatMap((r) => r.values) : [];
 }
 /** The hex a held step is entering. */
 export function steppingInto(held: GameState['awaiting']): HexId | null {
@@ -84,7 +87,7 @@ export function provisionalTerrain(held: GameState['awaiting']): { hex: HexId; t
 export function emptyDirection(state: GameState): { direction: number; attempt: number } | null {
   const held = state.awaiting;
   const hex = steppingInto(held);
-  if (!hex || !held!.rolled.at(-1)?.prompt.includes(DIRECTION_ASK)) return null;
+  if (!hex || !isDirection(held!.rolled.at(-1)?.prompt ?? '')) return null;
   const steps = stepsFor(state, hex, directionsRolled(held), 0);
   const last = steps.at(-1);
   return last && !last.terrain ? { direction: last.direction, attempt: last.attempt } : null;

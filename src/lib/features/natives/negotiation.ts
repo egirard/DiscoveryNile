@@ -1,7 +1,7 @@
 // Negotiation, trading and poisoning (rules §8.5) as pure functions over the 'combat' stream.
 import type { Item } from '$features/expedition/prices';
-import type { Roll } from '$features/map/generate';
-import { d6, dice, type RngState } from '$lib/game/random';
+import { capital, type Roll } from '$features/map/generate';
+import { count, d6, dice, rollOf, wantedFace, type RngState } from '$lib/game/random';
 
 export interface OfferResult {
   rng: RngState;
@@ -12,7 +12,7 @@ export interface OfferResult {
 
 /** Gifts offered times the larger of two dice must reach the tribe's warriors, or the chief is insulted. */
 export function offerGifts(rng: RngState, gifts: number, warriors: number): OfferResult {
-  const two = dice(rng, 2, 'combat', { what: `for the offer of ${gifts} gift${gifts === 1 ? '' : 's'}`, hint: `the larger die × ${gifts} must reach the ${warriors} warrior${warriors === 1 ? '' : 's'} to satisfy the chief; less insults him`, result: (vs) => { const top = Math.max(...vs); return `${top} × ${gifts} = ${top * gifts}: the chief is ${top * gifts >= warriors ? 'satisfied' : 'insulted'}`; } });
+  const two = dice(rng, 2, 'combat', { what: `Is the chief satisfied? ${rollOf(2)}`, hint: `${wantedFace((v) => v * gifts >= warriors, 'on either die will do')} (larger die × ${count(gifts, 'gift')} must reach ${count(warriors, 'warrior')})`, label: 'Offer', result: (vs) => { const top = Math.max(...vs); return `${top} × ${gifts} = ${top * gifts}, ${top * gifts >= warriors ? 'reaches' : 'short of'} ${warriors} => The chief is ${top * gifts >= warriors ? 'satisfied' : 'insulted'}`; } });
   const larger = Math.max(...two.values);
   const satisfied = gifts * larger >= warriors;
   return {
@@ -26,14 +26,14 @@ export function offerGifts(rng: RngState, gifts: number, warriors: number): Offe
 
 /** Giving everything but the men always satisfies; the chief returns three dice of gifts. */
 export function giveEverything(rng: RngState): { rng: RngState; rolls: Roll[]; gifts: number } {
-  const three = dice(rng, 3, 'combat', { what: "for the chief's gifts in return", hint: 'the total is the gifts the chief gives in return', result: (vs) => `${vs.join(' + ')} = ${vs.reduce((a, b) => a + b, 0)} gifts` });
+  const three = dice(rng, 3, 'combat', { what: '3D6 added gives the gifts the chief returns', label: "Chief's gifts", result: (vs) => { const sum = vs.reduce((a, b) => a + b, 0); return `${vs.join(' + ')} = ${sum} => ${count(sum, 'gift')} returned; the chief is satisfied`; } });
   return { rng: three.state, rolls: three.values.map((value) => ({ label: 'chief’s gifts', value })), gifts: three.values.reduce((a, b) => a + b, 0) };
 }
 
 export type PoisonResult = 'dies' | 'recovers' | 'fails';
 
 export function attemptPoison(rng: RngState, bonus: number): { rng: RngState; rolls: Roll[]; result: PoisonResult; summary: string } {
-  const r = d6(rng, 'combat', { what: "for the chief's poison", hint: `${bonus ? `the die + ${bonus} for a poisoning survived: ` : ''}2 or less kills the explorer, 3 and he recovers, hardened against the next, 4 or more and the poison fails`, result: ([v]) => { const t = v + bonus; return `${bonus ? `${v} + ${bonus} = ${t}: ` : ''}${t <= 2 ? 'the poison kills' : t === 3 ? 'poisoned, but he recovers' : 'the poison fails'}`; } });
+  const r = d6(rng, 'combat', { what: 'Poison. Roll a D6', hint: `${bonus ? `+${bonus} for a poisoning survived: ` : ''}1 or 2 kills the explorer, 3 he recovers, 4+ it fails`, label: 'Poison', result: ([v]) => { const t = v + bonus; return `${bonus ? `${v} + ${bonus} = ${t} ` : ''}=> ${t <= 2 ? 'The explorer dies' : t === 3 ? 'Poisoned, but he recovers; +1 against poison from now on' : 'The poison fails'}`; } });
   const total = r.value + bonus;
   const result: PoisonResult = total <= 2 ? 'dies' : total === 3 ? 'recovers' : 'fails';
   const die = bonus ? `${r.value} + ${bonus} = ${total}` : `${total}`;
@@ -63,7 +63,7 @@ export function tradePrices(rng: RngState, ctx: TradeContext): { rng: RngState; 
   const rolls: Roll[] = [];
   // One die at a time, each named (prompt 20): a physical table asks "for the price of bearers" and lists each as it is read.
   for (const item of goods) {
-    const r = d6(rng, 'combat', { what: `for the price of ${item}`, hint: item === 'food' ? 'the die is the rations one gift buys' : `the die is the gifts one ${item.slice(0, -1)} costs${item === 'askaris' ? ', with a musket' : ''}`, result: ([v]) => (item === 'food' ? `${v} ration${v === 1 ? '' : 's'} a gift` : `${v} gift${v === 1 ? '' : 's'}${item === 'askaris' ? ' and a musket' : ''} each`) });
+    const r = d6(rng, 'combat', { what: item === 'food' ? 'Price of food: the die is the rations a gift buys' : `Price of ${/^[aeiou]/.test(item) ? 'an' : 'a'} ${item.slice(0, -1)}: the die is ${['bearers', 'guides', 'askaris'].includes(item) ? 'his' : 'its'} cost in gifts${item === 'askaris' ? ', with a musket' : ''}`, label: item === 'food' ? 'Food' : capital(item.slice(0, -1)), result: ([v]) => (item === 'food' ? `=> ${count(v, 'ration')} a gift` : `=> ${count(v, 'gift')}${item === 'askaris' ? ' and a musket' : ''}`) });
     rng = r.state;
     prices[item] = r.value;
     rolls.push({ label: `price of ${item}`, value: r.value });
