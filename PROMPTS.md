@@ -575,3 +575,5 @@ I've just cleaned up the sample turn text.  Please review my changes and evaluat
 ## 89. 2026-11-19
 
 We need to be cautious in our references to natives.  Also, this could be good or bad for the explorer, so no exclamation mark.  Always use 3D6. Drop negatives since they don't add value. Results should be kept to a single line wherever possible.  Other suggestions are good.  Please complete the corrections, and then implement in code.
+
+`Outcome: the spec corrected throughout (bee7653) and its dice text implemented (b2cfd5e, scenario 037 and eight more): every ask in the spec's words, an ask answered one line of label, dice and meaning in the dice panels, the result panel titled by its operation's summary; the lost sample, the warrior cap, "mapped land" and the cataract outside mountain set right. Left for the next slices: the rail and the opened log (and a game without physical dice) still word their lines as before, the prompts with no dice are unchanged, rounds and prices do not fold.`
